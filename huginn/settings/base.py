@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "django_htmx",
+    "django_celery_beat",
     # Huginn apps
     "ingestion",
     "analytics",
