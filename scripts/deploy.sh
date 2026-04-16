@@ -38,9 +38,10 @@ echo "Inactive env: $INACTIVE_ENV  ← deploying here"
 echo "Image:        $ECR_IMAGE"
 
 # ── 2. Bake ECR image tag into compose file, bundle for EB ──
-envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.deploy.yml
-zip -q deploy.zip docker-compose.deploy.yml
-echo "Created deploy.zip"
+# EB Docker platform requires the file to be named exactly 'docker-compose.yml'
+envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.yml
+zip -q deploy.zip docker-compose.yml
+echo "Created deploy.zip (docker-compose.yml with baked image: $ECR_IMAGE)"
 
 # ── 3. Upload bundle to EB S3 bucket ──
 EB_BUCKET=$(aws elasticbeanstalk create-storage-location \
