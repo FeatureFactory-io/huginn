@@ -36,6 +36,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - Interaction: HTMX partial updates (no full page reloads for dashboard interactions)
 - Layout: multi-panel (navigation + dashboard + detail/chat)
 - Design system: Bootstrap 5 — base component library, grid, typography, utilities (CDN)
+- Iconography: Font Awesome Pro — loaded via kit script (CDN)
 - Charts: Apache ECharts — data served as JSON from Django views, chart rendered client-side (CDN)
 
 **Dependency rules:**
