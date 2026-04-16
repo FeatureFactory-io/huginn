@@ -48,27 +48,21 @@ test:
 
 # ──────────────────────────────────────────────────────────────
 # BUILD — main branch only
-# Builds Docker image, pushes to ECR with :sha and :latest tags
+# Uses kaniko (no Docker daemon, no DinD, ECR auth via AWS env vars)
 # ──────────────────────────────────────────────────────────────
 build:
   stage: build
-  image: docker:26
-  services:
-    - docker:26-dind
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  before_script:
-    - apk add --no-cache curl unzip
-    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
-    - aws ecr get-login-password --region $AWS_DEFAULT_REGION
-      | docker login --username AWS --password-stdin $ECR_REGISTRY
   script:
-    - docker build
-        -t $ECR_REGISTRY/huginn:$CI_COMMIT_SHORT_SHA
-        -t $ECR_REGISTRY/huginn:latest .
-    - docker push $ECR_REGISTRY/huginn:$CI_COMMIT_SHORT_SHA
-    - docker push $ECR_REGISTRY/huginn:latest
+    - /kaniko/executor
+        --context "${CI_PROJECT_DIR}"
+        --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+        --destination "${ECR_REGISTRY}/huginn:${CI_COMMIT_SHORT_SHA}"
+        --destination "${ECR_REGISTRY}/huginn:latest"
 
 # ──────────────────────────────────────────────────────────────
 # DEPLOY — main branch only, after build
