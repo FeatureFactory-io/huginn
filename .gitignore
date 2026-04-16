@@ -32,7 +32,6 @@ coverage.xml
 .pytest_cache/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

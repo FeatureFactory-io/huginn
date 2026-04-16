@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Django: Run Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/manage.py",
+            "args": ["runserver", "0.0.0.0:8000"],
+            "django": true,
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "huginn.settings.local",
+                "POSTGRES_HOST": "localhost",
+                "REDIS_URL": "redis://localhost:6379/0"
+            }
+        },
+        {
+            "name": "Pytest: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["${file}", "-v", "--tb=short"],
+            "justMyCode": false
+        },
+        {
+            "name": "Pytest: All Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": ["-v", "--tb=short"],
+            "justMyCode": false
+        }
+    ]
+}
