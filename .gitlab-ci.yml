@@ -58,7 +58,9 @@ build:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   before_script:
-    - apk add --no-cache aws-cli
+    - apk add --no-cache curl unzip
+    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
     - aws ecr get-login-password --region $AWS_DEFAULT_REGION
       | docker login --username AWS --password-stdin $ECR_REGISTRY
   script:
@@ -80,9 +82,9 @@ deploy:
     - if: $CI_COMMIT_BRANCH == "main"
   needs: [build]
   before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends
-        curl gettext-base zip awscli 2>/dev/null
-      || pip install awscli --quiet  # fallback for slim images that lack apt
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip gettext-base zip
+    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
   script:
     - bash scripts/deploy.sh
   environment:
@@ -101,8 +103,9 @@ swap:
       when: manual
   needs: [deploy]
   before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends awscli 2>/dev/null
-      || pip install awscli --quiet
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip
+    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
   script:
     - |
       BLUE_CNAME=$(aws elasticbeanstalk describe-environments \
