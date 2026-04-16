@@ -1,0 +1,38 @@
+# Core framework
+django>=5.1,<6.0
+gunicorn>=22.0
+
+# Async task queue
+celery>=5.4
+django-celery-beat>=2.7
+redis>=5.0
+
+# Database
+psycopg[binary]>=3.2
+
+# AI interface
+fastmcp>=2.0
+
+# Connectors — v1
+python-gitlab>=8.0
+jira>=3.8
+
+# UI
+django-htmx>=1.21
+whitenoise>=6.8
+
+# Testing
+pytest>=8.0
+pytest-django>=4.8
+factory-boy>=3.3
+responses>=0.25
+
+# Code quality
+ruff>=0.6
+pre-commit>=3.8
+
+# AWS
+awsebcli>=3.21
+
+# HTTP / resilience
+tenacity>=9.0

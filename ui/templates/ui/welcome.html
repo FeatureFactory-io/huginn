@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Huginn — Status{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+  <div class="col-lg-8 mx-auto">
+
+    <div class="d-flex align-items-center mb-4">
+      <h1 class="mb-0 me-3">Huginn</h1>
+      {% if status == "healthy" %}
+        <span class="badge bg-success fs-6">Healthy</span>
+      {% else %}
+        <span class="badge bg-danger fs-6">Degraded</span>
+      {% endif %}
+    </div>
+
+    <p class="text-muted">Human-AI OODA composite for engineering PMs.</p>
+
+    <h5 class="mt-4 mb-3">Health Checks</h5>
+    <table class="table table-bordered table-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Component</th>
+          <th>Status</th>
+          <th>Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for check in checks %}
+        <tr>
+          <td>{{ check.name }}</td>
+          <td>
+            {% if check.status == "ok" %}
+              <span class="badge bg-success">OK</span>
+            {% elif check.status == "warn" %}
+              <span class="badge bg-warning text-dark">Warn</span>
+            {% else %}
+              <span class="badge bg-danger">Error</span>
+            {% endif %}
+          </td>
+          <td><small class="text-muted">{{ check.detail }}</small></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="text-muted small mt-4">
+      <div>Python {{ python_version }} &middot; Django {{ django_version }}</div>
+      <div>{{ timestamp }}</div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
