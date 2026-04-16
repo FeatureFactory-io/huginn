@@ -44,8 +44,13 @@ Thumbs.db
 # Docker
 .dockerignore
 
-# AWS EB
-.elasticbeanstalk/
+# AWS EB — ignore local credentials, but track config.yml
+.elasticbeanstalk/*
+!.elasticbeanstalk/config.yml
+
+# CI deploy artifacts
+deploy.zip
+docker-compose.deploy.yml
 
 # Celery
 celerybeat-schedule

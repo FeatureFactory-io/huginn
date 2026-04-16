@@ -1,0 +1,10 @@
+branch-defaults:
+  main:
+    environment: huginn-blue
+
+global:
+  application_name: huginn
+  default_region: us-east-1
+  default_platform: Docker running on 64bit Amazon Linux 2023
+  workspace_type: Application
+  sc: git
