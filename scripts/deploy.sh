@@ -41,6 +41,10 @@ echo "Image:        $ECR_IMAGE"
 # EB Docker platform requires the file to be named exactly 'docker-compose.yml'
 envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.yml
 zip -q deploy.zip docker-compose.yml
+# Include .ebextensions so post-deploy hooks run on the instance
+if [ -d .ebextensions ]; then
+  zip -qr deploy.zip .ebextensions/
+fi
 echo "Created deploy.zip (docker-compose.yml with baked image: $ECR_IMAGE)"
 
 # ── 3. Upload bundle to EB S3 bucket ──
