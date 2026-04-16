@@ -82,7 +82,7 @@ STAGING_CNAME=$(aws elasticbeanstalk describe-environments \
 
 echo "Smoke testing http://${STAGING_CNAME}/health/ ..."
 HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" \
-  --max-time 30 --retry 5 --retry-delay 5 \
+  --max-time 30 --retry 10 --retry-delay 10 --retry-connrefused \
   "http://${STAGING_CNAME}/health/")
 
 if [ "$HTTP_STATUS" != "200" ]; then
