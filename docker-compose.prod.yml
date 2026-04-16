@@ -1,23 +1,11 @@
 # Production Docker Compose — consumed by AWS Elastic Beanstalk.
 # ECR_IMAGE is substituted by scripts/deploy.sh (envsubst) before bundling.
 # All other ${VAR} values are provided by EB environment properties at runtime.
+#
+# NOTE: No 'db' service here — production uses RDS PostgreSQL.
+# POSTGRES_HOST is set as an EB environment property pointing to the RDS endpoint.
 
 services:
-  db:
-    image: postgres:16-alpine
-    restart: always
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     restart: always
@@ -55,8 +43,6 @@ services:
       JIRA_USER: ${JIRA_USER}
       JIRA_TOKEN: ${JIRA_TOKEN}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -79,8 +65,6 @@ services:
       JIRA_USER: ${JIRA_USER}
       JIRA_TOKEN: ${JIRA_TOKEN}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -98,10 +82,5 @@ services:
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-
-volumes:
-  postgres_data:
