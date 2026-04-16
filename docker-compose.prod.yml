@@ -1,9 +1,10 @@
 # Production Docker Compose — consumed by AWS Elastic Beanstalk.
 # ECR_IMAGE is substituted by scripts/deploy.sh (envsubst) before bundling.
-# All other ${VAR} values are provided by EB environment properties at runtime.
 #
-# NOTE: No 'db' service — production uses RDS PostgreSQL (huginn-db.*.rds.amazonaws.com).
-# POSTGRES_HOST is set as an EB environment property.
+# NOTE: No 'db' service — production uses RDS PostgreSQL.
+# All runtime config (POSTGRES_HOST, SECRET_KEY, etc.) is injected via
+# EB environment properties, which EB writes to /opt/elasticbeanstalk/deployment/env.
+# Each service loads that file with env_file so no ${VAR} substitution is needed.
 
 services:
   redis:
@@ -21,21 +22,8 @@ services:
     command: "sh -c 'python manage.py migrate --noinput && gunicorn huginn.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -'"
     ports:
       - "8080:8000"
-    environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.production
-      SECRET_KEY: ${SECRET_KEY}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/0
-      GITLAB_URL: ${GITLAB_URL}
-      GITLAB_TOKEN: ${GITLAB_TOKEN}
-      JIRA_URL: ${JIRA_URL}
-      JIRA_USER: ${JIRA_USER}
-      JIRA_TOKEN: ${JIRA_TOKEN}
+    env_file:
+      - /opt/elasticbeanstalk/deployment/env
     depends_on:
       redis:
         condition: service_healthy
@@ -44,19 +32,8 @@ services:
     image: ${ECR_IMAGE}
     restart: always
     command: celery -A huginn worker --loglevel=info --concurrency=2
-    environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.production
-      SECRET_KEY: ${SECRET_KEY}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/0
-      GITLAB_URL: ${GITLAB_URL}
-      GITLAB_TOKEN: ${GITLAB_TOKEN}
-      JIRA_URL: ${JIRA_URL}
-      JIRA_TOKEN: ${JIRA_TOKEN}
+    env_file:
+      - /opt/elasticbeanstalk/deployment/env
     depends_on:
       redis:
         condition: service_healthy
@@ -65,15 +42,8 @@ services:
     image: ${ECR_IMAGE}
     restart: always
     command: celery -A huginn beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.production
-      SECRET_KEY: ${SECRET_KEY}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: "5432"
-      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - /opt/elasticbeanstalk/deployment/env
     depends_on:
       redis:
         condition: service_healthy
