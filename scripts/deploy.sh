@@ -49,14 +49,15 @@ S3_KEY="huginn/${CI_COMMIT_SHORT_SHA}.zip"
 aws s3 cp deploy.zip "s3://${EB_BUCKET}/${S3_KEY}" --quiet
 echo "Uploaded s3://${EB_BUCKET}/${S3_KEY}"
 
-# ── 4. Create EB application version ──
+# ── 4. Create EB application version (idempotent — skip if already exists) ──
 aws elasticbeanstalk create-application-version \
   --application-name "$EB_APP_NAME" \
   --version-label "$CI_COMMIT_SHORT_SHA" \
   --source-bundle "S3Bucket=${EB_BUCKET},S3Key=${S3_KEY}" \
   --no-auto-create-application \
-  --output text > /dev/null
-echo "Created application version $CI_COMMIT_SHORT_SHA"
+  --output text > /dev/null 2>&1 \
+  || echo "Application version $CI_COMMIT_SHORT_SHA already exists — reusing."
+echo "Application version: $CI_COMMIT_SHORT_SHA"
 
 # ── 5. Deploy to inactive environment ──
 aws elasticbeanstalk update-environment \
