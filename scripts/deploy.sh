@@ -43,7 +43,7 @@ zip -q deploy.zip docker-compose.deploy.yml
 echo "Created deploy.zip"
 
 # ── 3. Upload bundle to EB S3 bucket ──
-EB_BUCKET=$(aws elasticbeanstalk describe-storage-location \
+EB_BUCKET=$(aws elasticbeanstalk create-storage-location \
   --query 'S3Bucket' --output text)
 S3_KEY="huginn/${CI_COMMIT_SHORT_SHA}.zip"
 aws s3 cp deploy.zip "s3://${EB_BUCKET}/${S3_KEY}" --quiet
