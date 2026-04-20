@@ -118,4 +118,4 @@ In the end we produce SitRep ("how bad things are") with Decisions/Actions ("how
     - Gjallarhorn AI assesses situation per OO → SitRep (FastMCP interface)
     - Django + HTMX + Apache ECharts for the PM dashboard and DA chat
     - Configuration (API tokens etc.) externalized as env vars
-3. **Deploy**: AWS Elastic Beanstalk + GitHub Actions. Docker Compose in prod.
+3. **Deploy**: AWS Elastic Beanstalk + GitLab Pipelines. Docker Compose in prod.

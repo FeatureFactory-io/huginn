@@ -1,0 +1,14 @@
+{
+  "availability-zones:account=411113550285:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ],
+  "hosted-zone:account=411113550285:domainName=featurefactory.io:region=us-east-1": {
+    "Id": "/hostedzone/Z02538982P10I9062HOIE",
+    "Name": "featurefactory.io."
+  }
+}

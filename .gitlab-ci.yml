@@ -1,6 +1,7 @@
 stages:
   - lint
   - test
+  - infra
   - build
   - deploy
 
@@ -41,10 +42,27 @@ test:
     SECRET_KEY: ci-test-secret-key-not-used-in-prod
     DEBUG: "True"
     ALLOWED_HOSTS: localhost
+    PYTHONPATH: "."
   before_script:
     - pip install -r requirements.txt --quiet
+    - pip install -r infra/requirements.txt --quiet
   script:
     - pytest --tb=short -q
+
+# ──────────────────────────────────────────────────────────────
+# INFRA — trigger child pipeline when infra/ changes (main only)
+# The child pipeline (infra/gitlab-ci.yml) runs CDK test/diff/deploy.
+# Remove `strategy: depend` until the infra pipeline is stable, then
+# re-enable so infra failures block the app pipeline.
+# ──────────────────────────────────────────────────────────────
+infra-pipeline:
+  stage: infra
+  trigger:
+    include: infra/gitlab-ci.yml
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - infra/**/*
 
 # ──────────────────────────────────────────────────────────────
 # BUILD — main branch only

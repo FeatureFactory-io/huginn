@@ -55,3 +55,7 @@ docker-compose.deploy.yml
 # Celery
 celerybeat-schedule
 celerybeat.pid
+
+# CDK
+cdk.out/
+infra/.venv/

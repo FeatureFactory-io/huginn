@@ -13,11 +13,13 @@ help: ## Show this help
 ##@ Provision
 
 .PHONY: provision
-provision: ## Install all prerequisites and dependencies
+provision: ## Install all prerequisites and dependencies (app + CDK)
 	@echo "Creating virtual environment..."
 	python3 -m venv .venv
 	$(PIP) install --upgrade pip -q
 	$(PIP) install -r requirements.txt -q
+	python3 -m venv infra/.venv
+	infra/.venv/bin/pip install -r infra/requirements.txt -q
 	@cp -n .env.example .env 2>/dev/null && echo "Created .env from .env.example — fill in your values" || echo ".env already exists"
 	@echo "✅ Provision complete. Run 'make run' to start."
 
@@ -57,6 +59,9 @@ logs: ## Tail all container logs
 
 ##@ Testing
 
+# Default SECRET_KEY so pytest-django can import settings without a local .env (matches CI test job).
+export SECRET_KEY ?= ci-test-secret-key-not-used-in-prod
+
 .PHONY: test
 test: ## Run all tests
 	$(PYTEST)
@@ -92,6 +97,26 @@ backup: ## Dump PostgreSQL to S3 (set S3_BUCKET env var)
 .PHONY: db-shell
 db-shell: ## Open psql in db container
 	docker compose exec db psql -U huginn huginn
+
+##@ Infrastructure (CDK)
+
+CDK_VENV := infra/.venv/bin
+
+.PHONY: infra-synth
+infra-synth: ## Synthesise all CDK stacks — validates templates, no AWS calls
+	cd infra && $(CDK_VENV)/cdk synth
+
+.PHONY: infra-diff
+infra-diff: ## Show diff between CDK definition and currently deployed state
+	cd infra && $(CDK_VENV)/cdk diff
+
+.PHONY: infra-deploy-cdn
+infra-deploy-cdn: ## Deploy HuginnCdn (ACM + CloudFront + Route53 CNAME) — Phase 1
+	cd infra && $(CDK_VENV)/cdk deploy HuginnCdn
+
+.PHONY: infra
+infra: ## Deploy all CDK stacks (use with caution on existing infra)
+	cd infra && $(CDK_VENV)/cdk deploy --all
 
 ##@ Cleanup
 

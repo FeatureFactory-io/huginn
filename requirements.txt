@@ -34,5 +34,8 @@ pre-commit>=3.8
 # AWS
 awsebcli>=3.21
 
+# CDK (tests/infra — same pins as infra/requirements.txt)
+-r infra/requirements.txt
+
 # HTTP / resilience
 tenacity>=9.0
