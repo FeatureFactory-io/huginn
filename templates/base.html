@@ -22,8 +22,11 @@
     </a>
     <div class="navbar-nav ms-auto">
       {% if user.is_authenticated %}
-        <span class="navbar-text me-3 text-light">{{ user.username }}</span>
-        <a class="nav-link" href="{% url 'admin:logout' %}">Logout</a>
+        <span class="navbar-text me-3 text-light">{{ user.email|default:user.username }}</span>
+        <form method="post" action="{% url 'auth-logout' %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-link nav-link text-light p-0 border-0" data-testid="navbar-logout">Logout</button>
+        </form>
       {% endif %}
     </div>
   </div>

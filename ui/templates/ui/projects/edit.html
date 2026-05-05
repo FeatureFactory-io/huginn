@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ project.name }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Edit project</h1>
+<p class="text-muted small">Skeleton — playbook and schedule fields deferred to MIT.</p>
+<form method="post" style="max-width:520px;">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="id_display_name">Display name</label>
+    <input id="id_display_name" name="display_name" class="form-control" value="{{ project.display_name|default:project.name }}" required>
+  </div>
+  <div class="mb-3">
+    <span class="form-label text-muted">Source path (read-only in MIT)</span>
+    <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><code>{{ project.source_path|default:"—" }}</code></p>
+  </div>
+  <button type="submit" class="btn btn-primary" data-testid="project-save">Save changes</button>
+  <a href="{% url 'projects-detail' pk=project.pk %}" class="btn btn-link">Cancel</a>
+</form>
+{% endblock %}

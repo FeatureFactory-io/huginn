@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Import projects · Huginn{% endblock %}
+{% block content %}
+<h1 class="h3 mb-2" data-testid="projects-import-title">Import projects</h1>
+{% if form_error %}
+  <div class="alert alert-warning" data-testid="projects-import-feedback">{{ form_error }}</div>
+{% endif %}
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item active">Import</li>
+  </ol>
+</nav>
+{% if datasources %}
+  {% if not catalog %}
+    <div class="alert alert-info" data-testid="projects-import-empty-datasources">Load the remote catalog before importing.</div>
+  {% endif %}
+{% else %}
+  <div class="alert alert-info" data-testid="projects-import-empty-datasources">
+    Connect a GitLab data source first, then return here.
+  </div>
+{% endif %}
+<form method="post" style="max-width:520px;" data-testid="projects-import-form">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="id_ds">Data source</label>
+    <select name="datasource_id" id="id_ds" class="form-select" required data-testid="projects-import-datasource">
+      <option value="">— Choose —</option>
+      {% for ds in datasources %}
+        <option value="{{ ds.pk }}" {% if catalog and catalog.datasource_id == ds.pk %}selected{% endif %}>{{ ds.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="d-flex gap-2 mb-3">
+    <button type="submit" name="action" value="refresh-catalog" class="btn btn-outline-primary" data-testid="projects-import-refresh">Refresh catalog</button>
+  </div>
+  {% if catalog and catalog.entries %}
+    <fieldset class="mb-3">
+      <legend class="form-label">Remote projects</legend>
+      {% for e in catalog.entries %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="remote_keys" value="{{ e.key }}" id="rk-{{ forloop.counter }}">
+          <label class="form-check-label" for="rk-{{ forloop.counter }}">{{ e.name }} ({{ e.key }})</label>
+        </div>
+      {% endfor %}
+    </fieldset>
+  {% endif %}
+  <button type="submit" name="action" value="import" class="btn btn-primary"
+          {% if not catalog %}disabled title="Refresh catalog after choosing a data source"{% endif %}
+          data-testid="projects-import-submit">Import selected</button>
+  <a href="{% url 'projects-list' %}" class="btn btn-link">Cancel</a>
+</form>
+{% endblock %}

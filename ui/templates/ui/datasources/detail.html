@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ datasource.name }} · Data Source{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'datasources-list' %}">Data Sources</a></li>
+    <li class="breadcrumb-item active" data-testid="datasource-detail-name">{{ datasource.name }}</li>
+  </ol>
+</nav>
+<dl class="row">
+  <dt class="col-sm-3">Type</dt><dd class="col-sm-9">{{ datasource.get_datasource_type_display }}</dd>
+  <dt class="col-sm-3">Base URL</dt><dd class="col-sm-9"><code>{{ datasource.base_url }}</code></dd>
+  <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ datasource.get_status_display }}</dd>
+</dl>
+{% endblock %}

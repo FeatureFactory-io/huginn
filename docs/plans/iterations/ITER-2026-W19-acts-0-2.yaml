@@ -1,0 +1,214 @@
+iteration: ITER-2026-W19-acts-0-2
+branch: iteration/2026-W19-acts-0-2
+goal: >-
+  Ship Acts 0–2 as skeleton-first vertical slices with BPE-derived plans +
+  propagated NotImplementedError boundaries, ready for GitLab milestone + MIT execution.
+
+semantic_refinement:
+  summary: >-
+    Commit f511c24 tightens Auth + Act-1 DataSources mutations to propagate NotImplementedError
+    (lists remain structural empties); checkpoints on F02–F06 reran clean after merge.
+  commit: f511c24
+
+parallel_groups:
+  act0_auth_f01:
+    scenarios: [F01]
+    note: orthogonal to ingestion routes
+  act1_datasources_f02_f06:
+    scenarios: [F02, F03, F04, F05, F06]
+    footprint_theme: ingestion DataSource shell + datasources_* templates + urls + datasources_service
+  act2_projects_f07_f11:
+    scenarios: [F07, F08, F09, F10, F11]
+    footprint_theme: Project model + projects_service + projects routes/templates
+
+conflict_map:
+  - pair: [F02, F03]
+    overlap: [ui/urls.py, ui/views/datasources.py]
+  - pair: [F03, F05]
+    overlap: [ui/services/datasources_service.py]
+  - pair: [F08, F09]
+    overlap: [ui/services/projects_service.py, ui/views/projects.py, ui/urls.py]
+
+drift_thresholds:
+  skeleton_commit_doc_sync: forbid link-only milestone issues vs repo plans
+  urls_ordering: more-specific project paths before `/projects/<pk>/`
+
+gitlab_issue:
+  F01: 1
+  F02: 2
+  F03: 3
+  F04: 4
+  F05: 5
+  F06: 6
+  F07: 7
+  F08: 8
+  F09: 9
+  F10: 10
+  F11: 11
+
+milestone:
+  title: "ITER-2026-W19 | Acts 0-2 backbone"
+  iid: 1
+  id: 7414711
+  web_url: "https://gitlab.com/dp2580/huginn/-/milestones/1"
+
+scenarios:
+  F01:
+    screen_id: AUTH-LOGIN-1
+    feature_path: docs/features/act-0-auth/auth-login.feature
+    implementation_plan_path: docs/plans/F01_auth_login_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 0bdd94a
+    codebase_footprint:
+      - ui/services/authentication_service.py
+      - ui/views/auth/login_view.py
+      - ui/templates/ui/auth/login.html
+      - tests/integration/test_auth_login.py
+      - ui/urls.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_auth_login.py -x -q'
+      expected_behavior: login flow + AuthenticationService integration tests pass
+    dependencies: []
+
+  F02:
+    screen_id: DATASOURCES-LIST+FIND-1
+    feature_path: docs/features/act-1-datasources/datasources-list-find.feature
+    implementation_plan_path: docs/plans/F02_datasources_list_find_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 7e88f0a
+    codebase_footprint:
+      - ingestion/models/__init__.py
+      - ui/views/datasources.py
+      - ui/templates/ui/datasources/list.html
+      - tests/integration/test_datasources_list_find.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_datasources_list_find.py -x -q'
+    dependencies: []
+
+  F03:
+    screen_id: DATASOURCES-CREATE_DATASOURCE-1
+    feature_path: docs/features/act-1-datasources/datasources-create.feature
+    implementation_plan_path: docs/plans/F03_datasources_create_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 4e873a2
+    codebase_footprint:
+      - ui/services/datasources_service.py
+      - ingestion/integrations/gitlab_client.py
+      - tests/integration/test_datasources_create.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_datasources_create.py -x -q'
+    dependencies:
+      - F02
+
+  F04:
+    screen_id: DATASOURCES-VIEW_DATASOURCE-1
+    feature_path: docs/features/act-1-datasources/datasources-view.feature
+    implementation_plan_path: docs/plans/F04_datasources_view_IMPLEMENTATION_PLAN.md
+    skeleton_commit: c852ec5
+    codebase_footprint:
+      - tests/integration/test_datasources_view.py
+      - ui/templates/ui/datasources/detail.html
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_datasources_view.py -x -q'
+    dependencies:
+      - F03
+
+  F05:
+    screen_id: DATASOURCES-EDIT_DATASOURCE-1
+    feature_path: docs/features/act-1-datasources/datasources-edit.feature
+    implementation_plan_path: docs/plans/F05_datasources_edit_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 2147f2d
+    codebase_footprint:
+      - ui/services/datasources_service.py
+      - ui/templates/ui/datasources/edit.html
+      - tests/integration/test_datasources_edit.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_datasources_edit.py -x -q'
+    dependencies:
+      - F04
+
+  F06:
+    screen_id: DATASOURCES-DELETE_DATASOURCE-1
+    feature_path: docs/features/act-1-datasources/datasources-delete.feature
+    implementation_plan_path: docs/plans/F06_datasources_delete_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 123930c
+    codebase_footprint:
+      - ui/services/datasources_service.py
+      - ui/templates/ui/datasources/delete.html
+      - tests/integration/test_datasources_delete.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_datasources_delete.py -x -q'
+    dependencies:
+      - F04
+
+  F07:
+    screen_id: PROJECTS-LIST+FIND-1
+    feature_path: docs/features/act-2-projects/projects-list-find.feature
+    implementation_plan_path: docs/plans/F07_projects_list_find_IMPLEMENTATION_PLAN.md
+    skeleton_commit: beab2e1
+    codebase_footprint:
+      - ingestion/models/__init__.py
+      - ingestion/migrations/0002_project_model.py
+      - ingestion/admin.py
+      - ui/views/projects.py
+      - ui/templates/ui/projects/list.html
+      - tests/integration/test_projects_list_find.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_list_find.py -x -q'
+    dependencies:
+      - F02
+
+  F08:
+    screen_id: PROJECTS-IMPORT-1
+    feature_path: docs/features/act-2-projects/projects-import.feature
+    implementation_plan_path: docs/plans/F08_projects_import_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 4654ef4
+    codebase_footprint:
+      - ui/services/projects_service.py
+      - ui/templates/ui/projects/import.html
+      - ui/templates/ui/projects/list.html
+      - tests/integration/test_projects_import.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_import.py -x -q'
+    dependencies:
+      - F07
+      - F03
+
+  F09:
+    screen_id: PROJECTS-VIEW_PROJECT-1
+    feature_path: docs/features/act-2-projects/projects-view.feature
+    implementation_plan_path: docs/plans/F09_projects_view_IMPLEMENTATION_PLAN.md
+    skeleton_commit: df7c97a
+    codebase_footprint:
+      - ui/services/projects_service.py
+      - ui/templates/ui/projects/detail.html
+      - tests/integration/test_projects_view.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_view.py -x -q'
+    dependencies:
+      - F07
+
+  F10:
+    screen_id: PROJECTS-EDIT_PROJECT-1
+    feature_path: docs/features/act-2-projects/projects-edit.feature
+    implementation_plan_path: docs/plans/F10_projects_edit_IMPLEMENTATION_PLAN.md
+    skeleton_commit: e6f4356
+    codebase_footprint:
+      - ui/templates/ui/projects/edit.html
+      - ui/templates/ui/projects/detail.html
+      - tests/integration/test_projects_edit.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_edit.py -x -q'
+    dependencies:
+      - F09
+
+  F11:
+    screen_id: PROJECTS-ARCHIVE_PROJECT-1
+    feature_path: docs/features/act-2-projects/projects-archive.feature
+    implementation_plan_path: docs/plans/F11_projects_archive_IMPLEMENTATION_PLAN.md
+    skeleton_commit: 35b8d69
+    codebase_footprint:
+      - ui/templates/ui/projects/archive.html
+      - ui/templates/ui/projects/detail.html
+      - tests/integration/test_projects_archive.py
+    checkpoint:
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_archive.py -x -q'
+    dependencies:
+      - F09

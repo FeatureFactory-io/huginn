@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Add Data Source · Huginn{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Add Data Source</h1>
+{% if form_success %}
+  <div class="alert alert-success" data-testid="create-datasource-feedback">{{ form_success }}</div>
+{% elif form_error %}
+  <div class="alert alert-warning" data-testid="create-datasource-feedback">{{ form_error }}</div>
+{% endif %}
+<form method="post" id="ds-create-form" class="row g-3" style="max-width:520px;">
+  {% csrf_token %}
+  <div class="col-12">
+    <label class="form-label" for="id_name">Name</label>
+    <input id="id_name" name="name" class="form-control" required data-testid="create-datasource-name" value="{{ preserve_name|default:'' }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label" for="id_base_url">Base URL</label>
+    <input id="id_base_url" name="base_url" type="url" class="form-control" required data-testid="create-datasource-url" value="{{ preserve_base_url|default:'' }}">
+  </div>
+  <div class="col-12">
+    <label class="form-label" for="id_token">Token</label>
+    <input id="id_token" name="token" type="password" class="form-control" required data-testid="create-datasource-token" value="{{ preserve_token|default:'' }}" autocomplete="new-password">
+  </div>
+  <div class="col-12 d-flex gap-2 flex-wrap">
+    <button type="submit" name="action" value="test-connection" class="btn btn-outline-primary" data-testid="create-datasource-test">Test Connection</button>
+    <button type="submit" name="action" value="save" class="btn btn-primary" data-testid="create-datasource-save">Save</button>
+    <a class="btn btn-link" href="{% url 'datasources-list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

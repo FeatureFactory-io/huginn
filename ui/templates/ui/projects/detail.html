@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · Project{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item active" data-testid="project-detail-name">{{ project.name }}</li>
+  </ol>
+</nav>
+<p class="text-muted small">Skeleton — sync sections and activity deferred to MIT.</p>
+<dl class="row">
+  <dt class="col-sm-3">Data source</dt>
+  <dd class="col-sm-9" data-testid="project-datasource-name">{{ project.datasource.name }}</dd>
+  <dt class="col-sm-3">Slug</dt>
+  <dd class="col-sm-9"><code>{{ project.slug }}</code></dd>
+  <dt class="col-sm-3">Status</dt>
+  <dd class="col-sm-9"><span class="badge bg-secondary">{{ project.get_status_display }}</span></dd>
+</dl>
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a class="btn btn-sm btn-outline-primary" href="{% url 'projects-edit' pk=project.pk %}" data-testid="project-edit-link">Edit</a>
+  <form method="post" action="{% url 'projects-sync-now' pk=project.pk %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-sm btn-outline-secondary" data-testid="project-sync-now">Sync now</button>
+  </form>
+  <a class="btn btn-sm btn-outline-danger" href="{% url 'projects-archive' pk=project.pk %}" data-testid="project-archive-link">Archive</a>
+</div>
+{% endblock %}

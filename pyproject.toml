@@ -1,6 +1,6 @@
 [project]
 name = "huginn"
-version = "2026.04.16"
+version = "2026.05.05"
 requires-python = ">=3.12"
 description = "Human-AI OODA composite for engineering PMs"
 
@@ -17,7 +17,7 @@ ignore = ["E501"]
 "*/migrations/*.py" = ["N806", "E501"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "huginn.settings.local"
+DJANGO_SETTINGS_MODULE = "huginn.settings.test"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "-v --tb=short"
 log_cli = true
