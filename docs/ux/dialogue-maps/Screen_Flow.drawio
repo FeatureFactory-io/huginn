@@ -1,0 +1,597 @@
+<mxfile host="app.diagrams.net" modified="2026-05-05T00:00:00.000Z" agent="huginn-esm-activity-04" version="21.7.0">
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TAB 1: DOMAIN MODEL
+       Color key:
+         Light blue  (#dae8fc / #6c8ebf)  — Identity & Configuration
+         Light gold  (#fff2cc / #d6b656)  — Command & Doctrine
+         Light green (#d5e8d4 / #82b366)  — Canonical Work Model
+         Light purple(#e1d5e7 / #9673a6)  — Measurement & Events
+         Light pink  (#f8cecc / #b85450)  — Cross-cutting (Artifact)
+       Dashed edges = optional / "may" relationships
+       ═══════════════════════════════════════════════════════════ -->
+  <diagram name="Domain Model" id="domain-model">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ── Zone backgrounds ─────────────────────────────────── -->
+        <mxCell id="z1" value="IDENTITY &amp; CONFIGURATION" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;verticalAlign=top;fillColor=#f0f7ff;strokeColor=#6c8ebf;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="760" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="z2" value="COMMAND &amp; DOCTRINE" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;verticalAlign=top;fillColor=#fffaec;strokeColor=#d6b656;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="130" width="760" height="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="z3" value="CANONICAL WORK MODEL" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;verticalAlign=top;fillColor=#f0fff4;strokeColor=#82b366;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="790" y="130" width="680" height="450" as="geometry"/>
+        </mxCell>
+        <mxCell id="z4" value="MEASUREMENT &amp; EVENTS" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;verticalAlign=top;fillColor=#f7f0ff;strokeColor=#9673a6;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="460" width="760" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ── IDENTITY & CONFIGURATION ──────────────────────────── -->
+        <mxCell id="e_ds" value="DataSource" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="45" y="50" width="140" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_proj" value="Project" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="240" y="50" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_user" value="User" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="420" y="50" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_contrib" value="Contributor" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="580" y="50" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ── COMMAND & DOCTRINE ─────────────────────────────────── -->
+        <mxCell id="e_pb" value="Playbook" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="45" y="175" width="130" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_pbv" value="PlaybookVersion" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="45" y="295" width="155" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_sr" value="SitRep" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="245" y="175" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_dec" value="Decision" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="245" y="295" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_frago" value="FRAGO" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="435" y="175" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_sa" value="SituationalAwareness" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="415" y="295" width="175" height="40" as="geometry"/>
+        </mxCell>
+        <!-- Cross-cutting Artifact sits between zones -->
+        <mxCell id="e_art" value="Artifact" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="640" y="295" width="110" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ── CANONICAL WORK MODEL ───────────────────────────────── -->
+        <mxCell id="e_ms" value="Milestone" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="815" y="175" width="130" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_sp" value="Sprint" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="175" width="110" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_uow" value="UnitOfWork" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="900" y="295" width="130" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_sc" value="UoWStateChange" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="815" y="420" width="155" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_inc" value="Increment" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="420" width="120" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_tr" value="TestResult" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="295" width="130" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ── MEASUREMENT & EVENTS ────────────────────────────────── -->
+        <mxCell id="e_mvdp" value="MasterVariableDatapoint" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="45" y="480" width="210" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_mvdef" value="MasterVariableDefinition" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="295" y="480" width="210" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ── EDGES ─────────────────────────────────────────────── -->
+        <!-- DataSource → Project -->
+        <mxCell id="r01" value="imported from (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_ds" target="e_proj" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → Playbook (assigned, dashed) -->
+        <mxCell id="r02" value="assigned (N:1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="e_proj" target="e_pb" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → PlaybookVersion (pinned, dashed) -->
+        <mxCell id="r03" value="pinned (N:0..1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="e_proj" target="e_pbv" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Playbook → PlaybookVersion -->
+        <mxCell id="r04" value="versions (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_pb" target="e_pbv" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → SitRep -->
+        <mxCell id="r05" value="produces (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_sr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → FRAGO -->
+        <mxCell id="r06" value="scoped to (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_frago" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → SituationalAwareness -->
+        <mxCell id="r07" value="has one (1:1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_sa" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → Contributor -->
+        <mxCell id="r08" value="team roster (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_contrib" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → Milestone -->
+        <mxCell id="r09" value="targets (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_ms" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Sprint → Milestone -->
+        <mxCell id="r10" value="targets (N:1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_sp" target="e_ms" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Sprint → UnitOfWork -->
+        <mxCell id="r11" value="contains (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_sp" target="e_uow" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- UnitOfWork → Milestone (dashed = optional) -->
+        <mxCell id="r12" value="commits to (N:0..1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="e_uow" target="e_ms" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- UoWStateChange → UnitOfWork -->
+        <mxCell id="r13" value="advances (N:1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_sc" target="e_uow" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Increment → UnitOfWork -->
+        <mxCell id="r14" value="contributes to (N:1)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_inc" target="e_uow" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Contributor → UnitOfWork -->
+        <mxCell id="r15" value="assigned to (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_contrib" target="e_uow" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Contributor → Increment -->
+        <mxCell id="r16" value="authors (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_contrib" target="e_inc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- UnitOfWork → TestResult -->
+        <mxCell id="r17" value="verified by (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_uow" target="e_tr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- User → Decision -->
+        <mxCell id="r18" value="makes (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_user" target="e_dec" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- User → FRAGO -->
+        <mxCell id="r19" value="issues (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_user" target="e_frago" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SitRep → Decision -->
+        <mxCell id="r20" value="proposes (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_sr" target="e_dec" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Decision → FRAGO (may create — XOR branch A) -->
+        <mxCell id="r21" value="may create [A]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#c9a227;" edge="1" source="e_dec" target="e_frago" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Decision → SituationalAwareness (may extend — XOR branch B) -->
+        <mxCell id="r22" value="may extend [B]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#c9a227;" edge="1" source="e_dec" target="e_sa" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Decision → UnitOfWork (may create HUGINN — XOR branch C) -->
+        <mxCell id="r23" value="may create HUGINN [C]" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#c9a227;" edge="1" source="e_dec" target="e_uow" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Project → MasterVariableDatapoint -->
+        <mxCell id="r24" value="measures (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_proj" target="e_mvdp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SitRep → MasterVariableDatapoint -->
+        <mxCell id="r25" value="snapshots (N:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_sr" target="e_mvdp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- MasterVariableDefinition → MasterVariableDatapoint -->
+        <mxCell id="r26" value="shapes (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="e_mvdef" target="e_mvdp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Artifact attachments -->
+        <mxCell id="r27" value="attached (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#b85450;" edge="1" source="e_uow" target="e_art" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="r28" value="attached (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#b85450;" edge="1" source="e_dec" target="e_art" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="r29" value="attached (1:N)" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#b85450;" edge="1" source="e_sr" target="e_art" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ── LEGEND ─────────────────────────────────────────────── -->
+        <mxCell id="leg" value="&lt;b&gt;Legend&lt;/b&gt;&lt;br&gt;─── solid = mandatory relationship&lt;br&gt;- - - dashed = optional / &quot;may&quot;&lt;br&gt;- - - gold = Decision XOR branch (A/B/C)" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=top;spacingLeft=6;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="460" width="250" height="70" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       TAB 2: MVP FLOW
+       Horizontal swimlanes — one per Act (0–12).
+       Screen box styles:
+         Bold border (strokeWidth=3)  = LIST+FIND entry-point screen
+         Solid thin border            = regular screen
+         Dashed border                = modal / confirmation
+       Phase colour coding:
+         Blue tint  (#f0f7ff / #dae8fc) — INCEPTION  (Acts 0–3)
+         Gold tint  (#fffaec / #fff2cc) — CALIBRATION (Acts 4–8)
+         Orange tint(#fff0e0 / #ffe6cc) — ACTION      (Acts 9–12)
+       Cross-lane arrows use strokeWidth=2.
+       ═══════════════════════════════════════════════════════════ -->
+  <diagram name="MVP Flow" id="mvp-flow">
+    <mxGraphModel grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="3508" pageHeight="1500" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Phase labels (vertical text, x=5 absolute) -->
+        <mxCell id="ph0" value="INCEPTION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;rotation=-90;" vertex="1" parent="1">
+          <mxGeometry x="5" y="55" width="20" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="ph1" value="CALIBRATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;rotation=-90;" vertex="1" parent="1">
+          <mxGeometry x="5" y="415" width="20" height="460" as="geometry"/>
+        </mxCell>
+        <mxCell id="ph2" value="ACTION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;rotation=-90;" vertex="1" parent="1">
+          <mxGeometry x="5" y="885" width="20" height="380" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 0 — Authentication ════════ -->
+        <mxCell id="a0" value="ACT 0 — Authentication" style="swimlane;startSize=30;fillColor=#f0f7ff;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="10" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <!-- AUTH-LOGIN-1 (entry, bold) -->
+        <mxCell id="s_login" value="AUTH-LOGIN-1&#xa;Login" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#dae8fc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a0">
+          <mxGeometry x="20" y="22" width="170" height="44" as="geometry"/>
+        </mxCell>
+        <!-- Error state annotation -->
+        <mxCell id="s_login_err" value="invalid creds&#xa;or network error" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="a0">
+          <mxGeometry x="220" y="22" width="160" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="a0e1" value="error" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#b85450;" edge="1" source="s_login" target="s_login_err" parent="a0">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a0e2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#b85450;dashed=1;" edge="1" source="s_login_err" target="s_login" parent="a0">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="300" y="15"/><mxPoint x="105" y="15"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ════════ ACT 1 — DataSource ════════ -->
+        <mxCell id="a1" value="ACT 1 — DataSource  (CRUDLF)" style="swimlane;startSize=30;fillColor=#f0f7ff;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="110" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ds_list" value="DATASOURCES-LIST+FIND-1&#xa;Data Sources" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#dae8fc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a1">
+          <mxGeometry x="20" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ds_create" value="DATASOURCES-CREATE_DATASOURCE-1&#xa;Add Data Source" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a1">
+          <mxGeometry x="250" y="22" width="220" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ds_view" value="DATASOURCES-VIEW_DATASOURCE-1&#xa;View Data Source" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a1">
+          <mxGeometry x="500" y="22" width="220" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ds_edit" value="DATASOURCES-EDIT_DATASOURCE-1&#xa;Edit Data Source" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a1">
+          <mxGeometry x="750" y="22" width="220" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_ds_del" value="DATASOURCES-DELETE_DATASOURCE-1&#xa;Disconnect (modal)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#1f3a5f;dashed=1;" vertex="1" parent="a1">
+          <mxGeometry x="1000" y="22" width="220" height="44" as="geometry"/>
+        </mxCell>
+        <!-- Act 1 edges -->
+        <mxCell id="a1e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_ds_list" target="s_ds_create" parent="a1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a1e2" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_ds_list" target="s_ds_view" parent="a1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="225" y="15"/><mxPoint x="485" y="15"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a1e3" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_ds_view" target="s_ds_edit" parent="a1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a1e4" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_ds_view" target="s_ds_del" parent="a1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="725" y="75"/><mxPoint x="985" y="75"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ════════ ACT 2 — Projects ════════ -->
+        <mxCell id="a2" value="ACT 2 — Projects  (LIST+FIND + IMPORT + VIEW + ARCHIVE)" style="swimlane;startSize=30;fillColor=#f0f7ff;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="210" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_p_list" value="PROJECTS-LIST+FIND-1&#xa;Projects" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#dae8fc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a2">
+          <mxGeometry x="20" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_p_import" value="PROJECTS-IMPORT-1&#xa;Import Projects" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a2">
+          <mxGeometry x="240" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_p_view" value="PROJECTS-VIEW_PROJECT-1&#xa;View Project" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a2">
+          <mxGeometry x="460" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_p_edit" value="PROJECTS-EDIT_PROJECT-1&#xa;Edit Project" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a2">
+          <mxGeometry x="690" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_p_arch" value="PROJECTS-ARCHIVE_PROJECT-1&#xa;Archive (modal)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#1f3a5f;dashed=1;" vertex="1" parent="a2">
+          <mxGeometry x="920" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <!-- Act 2 edges -->
+        <mxCell id="a2e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_p_list" target="s_p_import" parent="a2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a2e2" value="redirect" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_p_import" target="s_p_list" parent="a2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="335" y="15"/><mxPoint x="115" y="15"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a2e3" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_p_list" target="s_p_view" parent="a2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="215" y="75"/><mxPoint x="445" y="75"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a2e4" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_p_view" target="s_p_edit" parent="a2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a2e5" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_p_view" target="s_p_arch" parent="a2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="665" y="75"/><mxPoint x="905" y="75"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ════════ ACT 3 — Playbooks ════════ -->
+        <mxCell id="a3" value="ACT 3 — Playbooks  (CRUDLF, versioned)" style="swimlane;startSize=30;fillColor=#f0f7ff;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="310" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pb_list" value="PLAYBOOKS-LIST+FIND-1&#xa;Playbooks" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#dae8fc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a3">
+          <mxGeometry x="20" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pb_create" value="PLAYBOOKS-CREATE_PLAYBOOK-1&#xa;New Playbook" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a3">
+          <mxGeometry x="240" y="22" width="210" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pb_view" value="PLAYBOOKS-VIEW_PLAYBOOK-1&#xa;View Playbook" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a3">
+          <mxGeometry x="480" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pb_edit" value="PLAYBOOKS-EDIT_PLAYBOOK-1&#xa;Edit Playbook (new version)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a3">
+          <mxGeometry x="710" y="22" width="210" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_pb_del" value="PLAYBOOKS-DELETE_PLAYBOOK-1&#xa;Delete (modal, 0-project guard)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#1f3a5f;dashed=1;" vertex="1" parent="a3">
+          <mxGeometry x="950" y="22" width="230" height="44" as="geometry"/>
+        </mxCell>
+        <!-- Act 3 edges -->
+        <mxCell id="a3e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_pb_list" target="s_pb_create" parent="a3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a3e2" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_pb_list" target="s_pb_view" parent="a3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="215" y="15"/><mxPoint x="465" y="15"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a3e3" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_pb_view" target="s_pb_edit" parent="a3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a3e4" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_pb_list" target="s_pb_del" parent="a3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="215" y="75"/><mxPoint x="935" y="75"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ════════ ACT 4 — Projects Dashboard ════════ -->
+        <mxCell id="a4" value="ACT 4 — Projects Dashboard  (daily landing)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="410" width="2800" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_dash" value="DASHBOARD-PROJECTS-1&#xa;Projects Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a4">
+          <mxGeometry x="20" y="15" width="210" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 5 — SitRep ════════ -->
+        <mxCell id="a5" value="ACT 5 — SitRep  (LIST+FIND + VIEW)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="500" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_sr_list" value="SITREP-LIST+FIND-1&#xa;SitRep List" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a5">
+          <mxGeometry x="20" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_sr_view" value="SITREP-VIEW_SITREP-1&#xa;View SitRep" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a5">
+          <mxGeometry x="240" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="a5e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_sr_list" target="s_sr_view" parent="a5">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 6 — FRAGO ════════ -->
+        <mxCell id="a6" value="ACT 6 — FRAGO  (CRUDLF + Activate/Deactivate)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="600" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_fg_list" value="FRAGOS-LIST+FIND-1&#xa;FRAGOs" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a6">
+          <mxGeometry x="20" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_fg_create" value="FRAGOS-CREATE_FRAGO-1&#xa;New FRAGO" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a6">
+          <mxGeometry x="240" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_fg_view" value="FRAGOS-VIEW_FRAGO-1&#xa;View FRAGO" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a6">
+          <mxGeometry x="460" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_fg_edit" value="FRAGOS-EDIT_FRAGO-1&#xa;Edit FRAGO" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a6">
+          <mxGeometry x="680" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_fg_rev" value="FRAGOS-REVOKE_FRAGO-1&#xa;Revoke (modal)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#f5f5f5;strokeColor=#1f3a5f;dashed=1;" vertex="1" parent="a6">
+          <mxGeometry x="900" y="22" width="190" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="a6e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_fg_list" target="s_fg_create" parent="a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a6e2" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_fg_list" target="s_fg_view" parent="a6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="215" y="15"/><mxPoint x="445" y="15"/></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="a6e3" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_fg_view" target="s_fg_edit" parent="a6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a6e4" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_fg_view" target="s_fg_rev" parent="a6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="655" y="75"/><mxPoint x="885" y="75"/></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ════════ ACT 7 — Variables ════════ -->
+        <mxCell id="a7" value="ACT 7 — Variables  (VIEW only, read-only)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="700" width="2800" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_var" value="VARIABLES-VIEW-1&#xa;Variables Deep-Dive" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a7">
+          <mxGeometry x="20" y="15" width="210" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 8 — Chat ════════ -->
+        <mxCell id="a8" value="ACT 8 — Gjallarhorn Chat  (CHAT)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="790" width="2800" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_chat" value="CHAT-1&#xa;Gjallarhorn Chat" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a8">
+          <mxGeometry x="20" y="15" width="200" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 9 — Decisions ════════ -->
+        <mxCell id="a9" value="ACT 9 — Decisions  (LIST+FIND + VIEW + 3-branch accept)" style="swimlane;startSize=30;fillColor=#fff0e0;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="880" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_dec_list" value="DECISIONS-LIST+FIND-1&#xa;Decisions" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#ffe6cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a9">
+          <mxGeometry x="20" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_dec_view" value="DECISIONS-VIEW_DECISION-1&#xa;Review Decision" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a9">
+          <mxGeometry x="250" y="22" width="200" height="44" as="geometry"/>
+        </mxCell>
+        <!-- Branch outcome annotations -->
+        <mxCell id="s_dec_ba" value="[A] → FRAGO" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="a9">
+          <mxGeometry x="490" y="5" width="130" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_dec_bb" value="[B] → SitAwareness" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="a9">
+          <mxGeometry x="490" y="35" width="150" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_dec_bc" value="[C] → Jira HUGINN" style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;" vertex="1" parent="a9">
+          <mxGeometry x="490" y="65" width="150" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="a9e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_dec_list" target="s_dec_view" parent="a9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a9e2" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_dec_view" target="s_dec_ba" parent="a9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a9e3" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_dec_view" target="s_dec_bb" parent="a9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="a9e4" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_dec_view" target="s_dec_bc" parent="a9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 10 — Contributors ════════ -->
+        <mxCell id="a10" value="ACT 10 — Contributors  (LIST+FIND + VIEW)" style="swimlane;startSize=30;fillColor=#fff0e0;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="980" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_con_list" value="CONTRIBUTORS-LIST+FIND-1&#xa;Contributors" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#ffe6cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a10">
+          <mxGeometry x="20" y="22" width="210" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_con_view" value="CONTRIBUTORS-VIEW_CONTRIBUTOR-1&#xa;View Contributor" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a10">
+          <mxGeometry x="260" y="22" width="230" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="a10e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_con_list" target="s_con_view" parent="a10">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 11 — Action Stations ════════ -->
+        <mxCell id="a11" value="ACT 11 — Action Stations  (LIST+FIND only, read-only Jira mirror)" style="swimlane;startSize=30;fillColor=#fff0e0;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1080" width="2800" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_as" value="ACTIONSTATIONS-LIST+FIND-1&#xa;Action Stations (read-only)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#ffe6cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a11">
+          <mxGeometry x="20" y="15" width="250" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ ACT 12 — Situational Awareness ════════ -->
+        <mxCell id="a12" value="ACT 12 — Situational Awareness  (VIEW + EDIT per Project)" style="swimlane;startSize=30;fillColor=#fff0e0;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="1170" width="2800" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_sitaw_view" value="SITAWARENESS-VIEW-1&#xa;View Sit. Awareness" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#ffe6cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a12">
+          <mxGeometry x="20" y="22" width="210" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="s_sitaw_edit" value="SITAWARENESS-EDIT-1&#xa;Edit Sit. Awareness" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ffffff;strokeColor=#1f3a5f;" vertex="1" parent="a12">
+          <mxGeometry x="260" y="22" width="210" height="44" as="geometry"/>
+        </mxCell>
+        <mxCell id="a12e1" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;" edge="1" source="s_sitaw_view" target="s_sitaw_edit" parent="a12">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ CROSS-LANE NAVIGATION ARROWS ════════ -->
+        <!-- AUTH → DASHBOARD (success) -->
+        <mxCell id="cl01" value="success" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#198754;strokeWidth=2;exitX=1;exitY=0.5;" edge="1" source="s_login" target="s_dash" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DATASOURCES-CREATE → PROJECTS-IMPORT (post-save) -->
+        <mxCell id="cl02" value="post-save" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#1f3a5f;strokeWidth=2;dashed=1;" edge="1" source="s_ds_create" target="s_p_import" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DASHBOARD → SITREP-LIST (click project card) -->
+        <mxCell id="cl03" value="click card" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#1f3a5f;strokeWidth=2;" edge="1" source="s_dash" target="s_sr_list" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DASHBOARD → PROJECTS-LIST (manage / empty state) -->
+        <mxCell id="cl04" value="manage" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_dash" target="s_p_list" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SITREP-VIEW → DECISIONS-LIST -->
+        <mxCell id="cl05" value="open decisions" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#1f3a5f;strokeWidth=2;" edge="1" source="s_sr_view" target="s_dec_list" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SITREP-VIEW → VARIABLES-VIEW -->
+        <mxCell id="cl06" value="open variables" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_sr_view" target="s_var" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SITREP-VIEW → CHAT -->
+        <mxCell id="cl07" value="open chat" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_sr_view" target="s_chat" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- VARIABLES-VIEW → CHAT -->
+        <mxCell id="cl08" value="view in chat" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_var" target="s_chat" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- VARIABLES-VIEW → FRAGOS-CREATE -->
+        <mxCell id="cl09" value="create FRAGO" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="s_var" target="s_fg_create" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DECISIONS-VIEW → FRAGOS-CREATE (Branch A) -->
+        <mxCell id="cl10" value="Branch A" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="s_dec_view" target="s_fg_create" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DECISIONS-VIEW → SITAWARENESS-VIEW (Branch B) -->
+        <mxCell id="cl11" value="Branch B" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="s_dec_view" target="s_sitaw_view" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- PROJECT-VIEW → SITREP-LIST -->
+        <mxCell id="cl12" value="open SitReps" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_p_view" target="s_sr_list" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SITREP-VIEW → FRAGO-LIST (create FRAGO from breach) -->
+        <mxCell id="cl13" value="+ FRAGO from breach" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;strokeColor=#d6b656;" edge="1" source="s_sr_view" target="s_fg_list" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ════════ LEGEND ════════ -->
+        <mxCell id="leg2" value="&lt;b&gt;Screen Box Legend&lt;/b&gt;&lt;br&gt;Bold border (strokeWidth=3) = LIST+FIND entry-point&lt;br&gt;Solid thin border = regular screen&lt;br&gt;Dashed border = modal / confirmation&lt;br&gt;─── solid arrow = primary navigation&lt;br&gt;- - - dashed arrow = secondary / optional flow&lt;br&gt;Green arrow = success path&lt;br&gt;Gold dashed = Decision branch outcome" style="text;html=1;strokeColor=#cccccc;fillColor=#f9f9f9;align=left;verticalAlign=top;spacingLeft=6;rounded=1;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="10" width="310" height="110" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+</mxfile>
