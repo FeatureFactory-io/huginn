@@ -7,7 +7,10 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2">
   <div>
-    <h1 class="hg-page-title" data-testid="page-title">FRAGOs · {{ project_slug }}</h1>
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap" data-testid="page-title">
+      <i class="fa-solid fa-puzzle text-primary" aria-hidden="true"></i>
+      <span>FRAGOs · {{ project_slug }}</span>
+    </h1>
     <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time.</p>
   </div>
   <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>

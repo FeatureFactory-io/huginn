@@ -5,8 +5,11 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between">
-  <h1 class="hg-page-title">Situational Awareness · {{ project_slug }}</h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0">
+    <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
+    <span>Situational Awareness · {{ project_slug }}</span>
+  </h1>
   <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}?project={{ project_slug }}"><i class="fa-solid fa-pen-to-square"></i></a>
 </section>
 

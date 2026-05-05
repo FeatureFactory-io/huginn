@@ -10,4 +10,4 @@ def chat_view(request):
             "tools": True,
         },
     ]
-    return render(request, "ui/mockups/chat/chat.html", {"active_nav": "chat", "thread": messages})
+    return render(request, "ui/mockups/chat/chat.html", {"active_nav": "gjallarhorn", "thread": messages})

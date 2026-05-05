@@ -1,6 +1,6 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}Gjallarhorn · Chat{% endblock %}
+{% block title %}Gjallarhorn{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -14,8 +14,11 @@
 {% include "ui/mockups/_screen_anchor.html" with screen_id="CHAT-1" screen_testid="chat-loaded" %}
 
 <section class="hg-page-header rounded-2 mb-3">
-  <div class="d-flex justify-content-between flex-wrap gap-2">
-    <h1 class="hg-page-title" data-testid="page-title">Gjallarhorn · Chat</h1>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0" data-testid="page-title">
+      <i class="fa-solid fa-brain-circuit text-primary" aria-hidden="true"></i>
+      <span>Gjallarhorn</span>
+    </h1>
     <select class="form-select form-select-sm w-auto" aria-label="Project context"><option selected>atlas-backend</option><option>billing-service</option></select>
   </div>
 </section>

@@ -22,25 +22,49 @@
   <div class="col-lg-9">
     <div class="row g-3 mb-5">
       {% for p in projects %}
-        <div class="col-md-6 col-xl-4" data-testid="project-card-{{ p.id }}">
-          <article class="hg-card position-relative" tabindex="0" role="article">
+        <div class="col-md-6 col-xl-4 d-flex" data-testid="project-card-{{ p.id }}">
+          <article class="hg-card h-100 w-100 position-relative" tabindex="0" role="article">
             <div class="color-bar {{ p.health }}"></div>
-            <div class="card-body pb-3">
-              <div class="d-flex align-items-center gap-2 mb-3">
-                <h3 class="hg-card-name flex-grow-1 mb-0 d-flex gap-2">
-                  {% if p.ds_icon == 'gitlab' %}
-                    <i class="fa-brands fa-gitlab text-danger"></i>
-                  {% endif %}
-                  {{ p.name }}
+            <div class="card-body">
+              <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                <h3 class="hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center">
+                  <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 position-relative z-2">
+                    {% for src in p.sources %}
+                      <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
+                           width="18"
+                           height="18"
+                           alt="{{ src.label }}"
+                           loading="lazy"
+                           decoding="async"
+                           referrerpolicy="no-referrer"
+                           data-testid="project-card-{{ p.id }}-source-{{ src.key }}">
+                    {% endfor %}
+                  </span>
+                  <span>{{ p.name }}</span>
                 </h3>
-                <span class="badge rounded-pill border-0 small text-capitalize fw-semibold"
+                <span class="badge rounded-pill border-0 small text-capitalize fw-semibold flex-shrink-0 align-self-start"
                       style="background:var(--hg-{{ p.health }}); color:#fff;">{{ p.health }}</span>
               </div>
               <p class="hg-headline small">{{ p.headline }}</p>
-              <p class="small text-muted mb-2">SitRep {{ p.last_sitrep }}</p>
-              <div class="hg-var-strip d-flex gap-2 align-items-center" aria-label="Master Variables preview">
-                {% for hue in p.vars %}<span class="hg-var-dot {{ hue }}" title="{{ hue }}"></span>{% endfor %}
-                <span class="small text-muted">T · T · C · R · Q · X · N</span>
+              <p class="small text-muted mb-3">SitRep {{ p.last_sitrep }}</p>
+              <div class="hg-var-strip d-flex flex-wrap align-items-center mt-1 gap-2" aria-label="Master Variables preview">
+                {% for cell in p.var_cells %}
+                  <span class="hg-var-chip d-inline-flex align-items-center gap-1 lh-1 position-relative z-2"
+                        data-testid="project-card-{{ p.id }}-mv-{{ cell.key }}">
+                    <span class="hg-var-abbr small fw-medium text-muted lh-1"
+                          tabindex="0"
+                          data-bs-toggle="tooltip"
+                          data-bs-custom-class="hg-tooltip-wide"
+                          title="{{ cell.name_help }}">{{ cell.abbr }}</span>
+                    <span class="hg-var-dot {{ cell.hue }}"
+                          tabindex="0"
+                          role="img"
+                          aria-label="{{ cell.full }}: {{ cell.hue }}"
+                          data-bs-toggle="tooltip"
+                          data-bs-custom-class="hg-tooltip-wide"
+                          title="{{ cell.dot_reason }}"></span>
+                  </span>
+                {% endfor %}
               </div>
             </div>
             <div class="card-foot text-muted gap-4">
@@ -63,26 +87,61 @@
       {% endfor %}
     </div>
   </div>
+
   <aside class="col-lg-3">
-    <section class="card border-0 shadow-sm rounded-3 mb-3">
-      <div class="card-header bg-white fw-semibold">Connection issues</div>
+    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-sitaware">
+      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
+        <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
+        <span>Situational Awareness</span>
+      </div>
+      <div class="card-body pb-3">
+        <p class="hg-label-caps mb-2">Global events</p>
+        <ul class="list-unstyled mb-0 small">
+          {% for ev in rail_situational_awareness %}
+            <li class="mb-2">
+              <a href="{% url 'mockup-sitawareness-view' %}"
+                 class="text-decoration-none fw-medium"
+                 data-bs-toggle="tooltip"
+                 title="Open Situational Awareness"
+                 data-testid="dashboard-sitaware-{{ forloop.counter }}">
+                {{ ev.text }}
+              </a>
+              {% if ev.severity == 'warning' %}
+                <span class="d-none d-xl-inline ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-fragos">
+      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
+        <i class="fa-solid fa-puzzle me-2 text-primary" aria-hidden="true"></i>
+        <span>FRAGOs</span>
+      </div>
       <ul class="list-group list-group-flush small">
-        {% for issue in rail_issues %}
+        {% for fg in rail_fragos %}
           <li class="list-group-item">
-            <a href="{% url 'mockup-datasources-view' 1 %}">{{ issue.name }}</a>
-            — <span class="text-warning">{{ issue.issue }}</span>
+            {% if fg.fragos_project %}
+              <a href="{% url 'mockup-fragos-list' %}?project={{ fg.fragos_project|urlencode }}"
+                 class="d-block fw-medium mb-1"
+                 data-bs-toggle="tooltip"
+                 title="Browse FRAGOs scoped to this project"
+                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
+            {% else %}
+              <a href="{% url 'mockup-fragos-list' %}"
+                 class="d-block fw-medium mb-1"
+                 data-bs-toggle="tooltip"
+                 title="Browse FRAGOs (all projects)"
+                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
+            {% endif %}
+            <div class="text-muted fst-italic" style="font-size:0.75rem;">({{ fg.scope_label }})</div>
           </li>
         {% endfor %}
       </ul>
     </section>
-    <section class="card border-0 shadow-sm rounded-3">
-      <div class="card-header bg-white fw-semibold">Triggered FRAGOs</div>
-      <ul class="list-group list-group-flush small">
-        {% for fg in rail_fragos %}
-          <li class="list-group-item"><a href="{% url 'mockup-fragos-list' %}?project={{ fg.project }}">{{ fg.title }}</a></li>
-        {% endfor %}
-      </ul>
-    </section>
+
     <section class="text-center mt-4">
       <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-projects-list' %}">Manage projects →</a>
     </section>
