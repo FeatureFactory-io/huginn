@@ -1,0 +1,842 @@
+# Huginn Information Architecture Guidelines
+
+> ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
+> Last updated: May 2026 — initial capture, palette approved.
+
+---
+
+## Philosophy
+
+Bootstrap-first. Use Bootstrap 5.3.8 utilities, components, and CSS variables as the first choice.
+Customize only when Bootstrap cannot express the requirement or when brand identity demands it.
+
+Every component must be:
+- **Testable** — `data-testid` on all interactive elements
+- **Accessible** — semantic HTML, ARIA attributes, keyboard-navigable
+- **Traceable** — screen identifiers flow through journey → diagram → feature file → template
+
+---
+
+## Table of Contents
+
+1. [Technology Baseline](#1-technology-baseline)
+2. [Design Tokens](#2-design-tokens)
+3. [Skeleton & Layout](#3-skeleton--layout)
+4. [Navigation](#4-navigation)
+5. [Component Kit](#5-component-kit)
+6. [Behavior & Interactions](#6-behavior--interactions)
+7. [Icon System — Font Awesome Free](#7-icon-system--font-awesome-free)
+8. [Charts — Apache ECharts](#8-charts--apache-echarts)
+9. [Accessibility](#9-accessibility)
+10. [Screen ID Convention](#10-screen-id-convention)
+
+---
+
+## 1. Technology Baseline
+
+| Concern | Library | Version | Load |
+|---|---|---|---|
+| CSS framework | Bootstrap | 5.3.8 | CDN — `cdn.jsdelivr.net/npm/bootstrap@5.3.8` |
+| Icons | Font Awesome Free | 6.7.x | CDN — `cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2` |
+| Charts | Apache ECharts | 5.5.x | CDN — `cdn.jsdelivr.net/npm/echarts@5.5.1` |
+| Interactivity | HTMX | 2.0.x | CDN — `unpkg.com/htmx.org@2.0.4` |
+| Typography | Montserrat | — | Google Fonts — `fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap` |
+
+**CDN policy**: no `integrity` SRI attributes — keep CDN links clean; revisit for production hardening via subresource integrity once versions stabilise.
+
+**FA Free constraint**: only `fa-solid`, `fa-regular` (limited free set), and `fa-brands` classes are available. `fa-light`, `fa-thin`, `fa-sharp`, `fa-duotone` are Pro-only and must not be used.
+
+**Bootstrap upgrade policy**: track 5.3.x patch releases; evaluate minor bumps (5.4+, 6.x) as an explicit ADR.
+
+---
+
+## 2. Design Tokens
+
+All tokens are CSS custom properties on `:root`. Bootstrap's own vars are overridden where needed.
+
+### 2.1 Brand Tokens
+
+```css
+:root {
+  /* Primary — slate-blue "command" */
+  --hg-primary:     #1f3a5f;
+  --hg-primary-700: #16294a;   /* hover / active state */
+  --hg-primary-100: #e7eef7;   /* tinted bg, callout panels */
+
+  /* Accent — muted gold, used sparingly */
+  --hg-accent:      #c9a227;
+  --hg-accent-700:  #8e7012;
+
+  /* Surface / ink */
+  --hg-bg-body:     #f5f7fa;   /* page background */
+  --hg-bg-surface:  #ffffff;   /* card / panel surface */
+  --hg-ink:         #1a1f2e;   /* primary text */
+  --hg-ink-muted:   #5a6478;   /* secondary text, labels */
+  --hg-border:      #e3e7ee;   /* card borders, dividers */
+
+  /* Bootstrap overrides */
+  --bs-primary:          var(--hg-primary);
+  --bs-primary-rgb:      31, 58, 95;
+  --bs-body-bg:          var(--hg-bg-body);
+  --bs-body-color:       var(--hg-ink);
+  --bs-border-color:     var(--hg-border);
+  --bs-link-color:       var(--hg-primary);
+  --bs-link-hover-color: var(--hg-primary-700);
+}
+```
+
+### 2.2 RYG Semantic Tokens (locked)
+
+Status colours are fixed — they drive the Projects Dashboard health system and must not be repurposed for decoration.
+
+```css
+:root {
+  --hg-red:    #dc3545;   /* = Bootstrap --bs-danger   */
+  --hg-orange: #fd7e14;   /* = Bootstrap --bs-orange   */
+  --hg-yellow: #ffc107;   /* = Bootstrap --bs-warning  */
+  --hg-green:  #198754;   /* = Bootstrap --bs-success  */
+  --hg-blue:   #0dcaf0;   /* = Bootstrap --bs-info     — Scheduled state */
+  --hg-grey:   #6c757d;   /* = Bootstrap --bs-secondary — Expired/Revoked/Rejected */
+}
+```
+
+**RYG usage rules**:
+
+| Colour | Meaning | Examples |
+|---|---|---|
+| Red | Critical breach / token expired / error | Project card, data connection error |
+| Orange | Warning breach / token expiring / degraded | Project card, expiry warning |
+| Yellow | Minor breach | Project card |
+| Green | OK / connected / accepted | Project card, sync status, Accepted badge |
+| Blue | Scheduled / info | FRAGO scheduled state |
+| Grey | Inactive / expired / rejected | FRAGO revoked, Decision rejected |
+
+### 2.3 Spacing
+
+Use Bootstrap's spacing utilities as-is (`m-0` through `m-5`, `p-0` through `p-5`). Component-specific spacing:
+
+```css
+:root {
+  --hg-card-padding:   1.2rem 1.25rem;
+  --hg-card-gap:       1rem;          /* row gap in card grid */
+  --hg-section-gap:    2rem;          /* vertical gap between page sections */
+  --hg-rail-padding:   0.85rem 1rem;
+}
+```
+
+### 2.4 Typography
+
+**Default typeface: Montserrat** (Google Fonts). Load all four weights used: 400 (body), 500 (medium emphasis), 600 (semi-bold headings), 700 (bold).
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+```
+
+Override Bootstrap's font stack in the `:root` block:
+
+```css
+:root {
+  --bs-font-sans-serif: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --bs-body-font-family: var(--bs-font-sans-serif);
+}
+```
+
+Size scale and Huginn-specific classes:
+
+```css
+/* Sizes (Bootstrap defaults, documented here for reference) */
+--bs-body-font-size: 1rem;      /* 16px */
+--bs-h1-font-size:   2.5rem;
+--bs-h2-font-size:   2rem;
+--bs-h3-font-size:   1.75rem;
+
+/* Huginn-specific overrides */
+.hg-page-title  { font-size: 1.75rem; font-weight: 600; }
+.hg-card-name   { font-size: 1rem;    font-weight: 600; }
+.hg-label-caps  { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+```
+
+**Weight conventions**:
+
+| Weight | Token | Usage |
+|---|---|---|
+| 400 | regular | Body copy, table cells, descriptions |
+| 500 | medium | Nav items, badge labels, secondary actions |
+| 600 | semibold | Page titles, card names, column headers |
+| 700 | bold | Primary CTA buttons, critical status labels |
+
+### 2.5 Brand Assets
+
+**Wordmark / logotype**: "Huginn" set in Montserrat 700, colour `--hg-primary` (`#1f3a5f`). Used in the navbar and on the login page.
+
+**Logo mark** (the raven):
+
+![Huginn raven logo mark](../../static/img/Huginn.jpeg)
+
+*File*: `static/img/Huginn.jpeg` — monochrome geometric raven, black on white.
+
+**Usage rules**:
+- Navbar: logo mark at 32 × 32 px beside the "Huginn" wordmark.
+- Login page: logo mark at 64 × 64 px above the wordmark.
+- Do not recolour, stretch, or place on a busy background.
+- Minimum clear-space: half the logo mark's height on every side.
+
+---
+
+## 3. Skeleton & Layout
+
+### 3.1 Page Shell
+
+Every page follows this structure:
+
+```
+<navbar .hg-navbar>        ← fixed top, primary + gold accent border-bottom
+<div .hg-page-header>      ← white bar: page title + subtitle + top actions
+<main .container-fluid>    ← body bg (#f5f7fa), px-4 py-3
+  [page-specific content]
+</main>
+```
+
+### 3.2 Layout Patterns
+
+| Pattern | Used by | Bootstrap classes |
+|---|---|---|
+| **3-column card grid** | Projects Dashboard | `row g-3` / `col-md-6 col-xl-4` |
+| **9+3 split** (cards + rail) | Projects Dashboard | `col-lg-9` / `col-lg-3` |
+| **2-pane** (doc + versions) | Playbook View, SitAwareness | custom flex or `row` |
+| **2-pane chat** (conversation + context) | Gjallarhorn Chat | custom flex, fixed height |
+| **Single-column form** | Create / Edit screens | `col-md-8 col-lg-6`, centred |
+| **Full-width table** | LIST+FIND screens | `table-responsive` |
+
+### 3.3 Navbar CSS
+
+```css
+.hg-navbar {
+  background: var(--hg-primary);
+  border-bottom: 3px solid var(--hg-accent);
+}
+.hg-navbar .navbar-brand { color: #fff; font-weight: 600; }
+.hg-navbar .navbar-brand .accent { color: var(--hg-accent); }
+.hg-navbar .nav-link {
+  color: rgba(255,255,255,0.82);
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+.hg-navbar .nav-link:hover  { color: #fff; background: rgba(255,255,255,0.07); }
+.hg-navbar .nav-link.active { color: #fff; background: rgba(255,255,255,0.13); }
+```
+
+---
+
+## 4. Navigation
+
+### 4.1 Primary Nav Items
+
+Grouped by journey phase (not shown as sections in the navbar — just ordered):
+
+| Nav item | Route | Phase | Icon |
+|---|---|---|---|
+| Dashboard | `/` | Calibration landing | `fa-grip-vertical` |
+| Projects | `/projects/` | Inception / management | `fa-folder-open` |
+| Playbooks | `/playbooks/` | Inception | `fa-book` |
+| Data Sources | `/datasources/` | Inception | `fa-plug` |
+| FRAGOs | `/fragos/` | Calibration | `fa-flag` |
+| Decisions | `/decisions/` | Action | `fa-gavel` |
+| Contributors | `/contributors/` | Action | `fa-users` |
+| Action Stations | `/action-stations/` | Action | `fa-list-check` |
+| Chat | `/chat/` | Calibration | `fa-comments` |
+
+Right-side: authenticated user name + `fa-circle-user`.
+
+### 4.2 Breadcrumbs
+
+Used on detail screens (VIEW, EDIT, CREATE nested under a parent entity):
+
+```html
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/projects/">Projects</a></li>
+    <li class="breadcrumb-item active" aria-current="page">atlas-backend</li>
+  </ol>
+</nav>
+```
+
+### 4.3 Active State
+
+Set `aria-current="page"` on the active nav link and add `.active` class.
+
+---
+
+## 5. Component Kit
+
+### 5.1 Atoms
+
+#### Buttons
+
+All buttons carry a Font Awesome icon and a Bootstrap tooltip.
+
+```html
+<!-- Primary action -->
+<button class="btn btn-primary" data-bs-toggle="tooltip" title="Import projects from a connected source"
+        data-testid="import-projects-btn">
+  <i class="fa-solid fa-plus me-1"></i> Import Projects
+</button>
+
+<!-- Secondary / outline -->
+<button class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Refresh now"
+        data-testid="refresh-btn">
+  <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
+</button>
+
+<!-- Danger -->
+<button class="btn btn-danger" data-bs-toggle="tooltip" title="Disconnect this data source"
+        data-testid="disconnect-btn">
+  <i class="fa-solid fa-plug-circle-xmark me-1"></i> Disconnect
+</button>
+
+<!-- Warning (Archive / Revoke) -->
+<button class="btn btn-warning" data-testid="archive-btn">
+  <i class="fa-solid fa-box-archive me-1"></i> Archive
+</button>
+```
+
+Bootstrap btn overrides to apply brand primary:
+
+```css
+.btn-primary {
+  --bs-btn-bg:              var(--hg-primary);
+  --bs-btn-border-color:    var(--hg-primary);
+  --bs-btn-hover-bg:        var(--hg-primary-700);
+  --bs-btn-hover-border-color: var(--hg-primary-700);
+  --bs-btn-active-bg:       var(--hg-primary-700);
+}
+.btn-outline-primary {
+  --bs-btn-color:           var(--hg-primary);
+  --bs-btn-border-color:    var(--hg-primary);
+  --bs-btn-hover-bg:        var(--hg-primary);
+  --bs-btn-hover-border-color: var(--hg-primary);
+}
+```
+
+#### Status Badges
+
+```html
+<!-- RYG status -->
+<span class="badge" style="background: var(--hg-green)">Green</span>
+<span class="badge" style="background: var(--hg-red)">Red</span>
+
+<!-- Entity state badges -->
+<span class="badge bg-success">Connected</span>
+<span class="badge bg-warning text-dark">Token expiring</span>
+<span class="badge bg-danger">Token expired</span>
+<span class="badge bg-info text-dark">Scheduled</span>
+<span class="badge bg-secondary">Expired</span>
+<span class="badge bg-primary">Proposed</span>
+```
+
+#### Form Inputs
+
+```html
+<div class="mb-3">
+  <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+  <input type="text" class="form-control" id="name" name="name"
+         placeholder="e.g. company-gitlab" required
+         data-testid="datasource-name-input">
+  <div class="invalid-feedback">Name is required.</div>
+</div>
+
+<div class="mb-3">
+  <label for="type" class="form-label">Type</label>
+  <select class="form-select" id="type" name="type" data-testid="datasource-type-select">
+    <option value="">— choose —</option>
+    <option value="gitlab">GitLab</option>
+    <option value="jira" disabled>Jira (coming soon)</option>
+  </select>
+</div>
+```
+
+### 5.2 Molecules
+
+#### Project Card (Dashboard)
+
+```html
+<article class="hg-card" data-testid="project-card">
+  <div class="color-bar {red|orange|yellow|green}"></div>
+  <div class="card-body">
+    <h3 class="hg-card-name">
+      <i class="fa-brands fa-gitlab ds-icon"></i>
+      {project-name}
+      <!-- optional: -->
+      <span class="hg-badge-frago ms-auto">FRAGO</span>
+    </h3>
+    <p class="hg-headline">{headline-from-sitrep}</p>
+    <!-- 7 variable dots: Transparency · Throughput · Cycle · Rework · Quality · Complexity · Contribution -->
+    <div class="hg-var-strip" aria-label="Master Variables">
+      <span class="hg-var-dot {color}" title="Transparency"></span>
+      <!-- × 7 -->
+      <span class="hg-var-label">T·T·C·R·Q·X·N</span>
+    </div>
+  </div>
+  <div class="card-foot">
+    <span class="hg-sync {ok|warn|err}">
+      <i class="fa-solid fa-circle-check"></i> synced {N} ago
+    </span>
+    <span>
+      <i class="fa-solid fa-book"></i> {playbook-name}
+      <i class="fa-solid fa-arrows-rotate" title="Auto-tracking latest"></i>
+      <!-- or: <i class="fa-solid fa-thumbtack" title="Pinned to v{N}"></i> -->
+    </span>
+  </div>
+</article>
+```
+
+CSS:
+
+```css
+.hg-card {
+  background: var(--hg-bg-surface);
+  border: 1px solid var(--hg-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: box-shadow 0.15s, transform 0.15s;
+  cursor: pointer;
+}
+.hg-card:hover {
+  box-shadow: 0 4px 14px rgba(31, 58, 95, 0.12);
+  transform: translateY(-1px);
+}
+.color-bar        { height: 6px; }
+.color-bar.red    { background: var(--hg-red); }
+.color-bar.orange { background: var(--hg-orange); }
+.color-bar.yellow { background: var(--hg-yellow); }
+.color-bar.green  { background: var(--hg-green); }
+
+.card-foot {
+  padding: 0.6rem 1.2rem;
+  border-top: 1px solid var(--hg-border);
+  background: #fafbfd;
+  font-size: 0.78rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+```
+
+#### LIST+FIND Table
+
+```html
+<div class="table-responsive">
+  <table class="table table-hover align-middle" data-testid="{entity}-table">
+    <thead class="table-light">
+      <tr>
+        <th>{Col1}</th>
+        <th>{Col2}</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-testid="{entity}-row">
+        <td>{value}</td>
+        <td>{value}</td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="View"
+                    data-testid="view-{entity}-btn">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Edit"
+                    data-testid="edit-{entity}-btn">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Delete"
+                    data-testid="delete-{entity}-btn">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+```
+
+#### Empty State
+
+```html
+<div class="text-center py-5 text-muted" data-testid="{entity}-empty-state">
+  <i class="fa-solid fa-{icon} fa-2x mb-3 d-block" style="color: var(--hg-border)"></i>
+  <p class="mb-1 fw-medium">{No entities yet.}</p>
+  <p class="small mb-3">{Explanatory sentence.}</p>
+  <a href="{create-url}" class="btn btn-primary btn-sm" data-testid="empty-state-cta">
+    <i class="fa-solid fa-plus me-1"></i> {CTA Label}
+  </a>
+</div>
+```
+
+#### Side Rail
+
+```html
+<aside class="hg-rail" aria-label="{Rail title}">
+  <h6 class="hg-label-caps">{Section title}</h6>
+  <div class="hg-rail-item {err?}">
+    <i class="fa-solid fa-{icon}"></i>
+    <div>
+      <div class="fw-medium">{Title}</div>
+      <div class="text-muted small">{Detail}</div>
+    </div>
+  </div>
+</aside>
+```
+
+```css
+.hg-rail {
+  background: var(--hg-bg-surface);
+  border: 1px solid var(--hg-border);
+  border-radius: 8px;
+  padding: var(--hg-rail-padding);
+}
+.hg-rail-item {
+  display: flex; gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.83rem;
+  border-bottom: 1px dashed var(--hg-border);
+}
+.hg-rail-item:last-child { border-bottom: 0; }
+.hg-rail-item i          { color: var(--hg-orange); margin-top: 0.12rem; flex-shrink: 0; }
+.hg-rail-item.err i      { color: var(--hg-red); }
+```
+
+### 5.3 Organisms
+
+#### Page Header
+
+```html
+<div class="hg-page-header">
+  <div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="hg-page-title">{Page Title} <span class="badge bg-secondary">{count}</span></h1>
+        <p class="hg-page-meta mb-0">{subtitle / last refresh}</p>
+      </div>
+      <div class="d-flex gap-2">
+        {top action buttons}
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+```css
+.hg-page-header {
+  background: var(--hg-bg-surface);
+  border-bottom: 1px solid var(--hg-border);
+  padding: 1rem 0;
+}
+```
+
+#### Summary Strip (Dashboard)
+
+```html
+<div class="hg-summary-strip" role="status" aria-label="Project health summary">
+  <span class="hg-pill"><span class="dot red"></span><strong>2</strong>&nbsp;red</span>
+  <span class="hg-pill"><span class="dot orange"></span><strong>1</strong>&nbsp;orange</span>
+  <span class="hg-pill"><span class="dot yellow"></span><strong>4</strong>&nbsp;yellow</span>
+  <span class="hg-pill"><span class="dot green"></span><strong>6</strong>&nbsp;green</span>
+</div>
+```
+
+```css
+.hg-summary-strip { display: flex; gap: 0.65rem; flex-wrap: wrap; }
+.hg-pill {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.35rem 0.8rem; border-radius: 999px;
+  font-size: 0.8125rem; font-weight: 500;
+  background: var(--hg-bg-surface);
+  border: 1px solid var(--hg-border);
+}
+.hg-pill .dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; }
+.hg-pill .dot.red    { background: var(--hg-red); }
+.hg-pill .dot.orange { background: var(--hg-orange); }
+.hg-pill .dot.yellow { background: var(--hg-yellow); }
+.hg-pill .dot.green  { background: var(--hg-green); }
+```
+
+---
+
+## 6. Behavior & Interactions
+
+### 6.1 HTMX Swap Patterns
+
+| Trigger | `hx-target` | `hx-swap` | Notes |
+|---|---|---|---|
+| Filter / search form | `#table-container` | `innerHTML` | Debounced via `hx-trigger="input changed delay:300ms"` |
+| Inline form submit | `#form-container` | `outerHTML` | Replaces the whole form section on success |
+| Detail panel open | `#detail-panel` | `innerHTML` | Right-rail detail in LIST+FIND screens |
+| Toast (server push) | `#toast-container` | `beforeend` | Append new toast; JS auto-shows it |
+| Page-level redirect | — | — | Django returns `HX-Redirect` header; HTMX follows it |
+
+CSRF token injection (already in `base.html`):
+
+```js
+document.body.addEventListener("htmx:configRequest", (e) => {
+  e.detail.headers["X-CSRFToken"] = "{{ csrf_token }}";
+});
+```
+
+### 6.2 Toast Notifications
+
+```html
+<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" aria-live="polite">
+  <!-- Success -->
+  <div class="toast align-items-center text-bg-success border-0 show" role="alert"
+       data-bs-autohide="true" data-bs-delay="4000" data-testid="success-toast">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="fa-solid fa-circle-check me-2"></i> {Message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="toast align-items-center text-bg-danger border-0 show" role="alert"
+       data-testid="error-toast">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="fa-solid fa-circle-exclamation me-2"></i> {Message}
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+```
+
+### 6.3 Confirmation Modals
+
+Used for destructive actions (Delete, Disconnect, Archive, Revoke).
+
+```html
+<div class="modal fade" id="{action}Modal" tabindex="-1" aria-labelledby="{action}ModalLabel"
+     data-testid="{action}-modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="{action}ModalLabel">{Confirm Action}?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>{Consequence sentence. What happens next.}</p>
+        <!-- Optional: secondary detail in muted text -->
+        <p class="text-muted small">{e.g. "N project(s) will be orphaned."}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-{danger|warning}" data-testid="{action}-confirm-btn">
+          <i class="fa-solid fa-{icon} me-1"></i> {Action Label}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### 6.4 Loading / Empty / Error States
+
+Every list and data section must handle all three:
+
+| State | Pattern |
+|---|---|
+| Loading | `<div class="spinner-border spinner-border-sm text-secondary" role="status">` inside the target container |
+| Empty | `.hg-empty-state` component (§5.2) |
+| Error | Inline `<div class="alert alert-danger" role="alert">` with error message and retry option |
+
+---
+
+## 7. Icon System — Font Awesome Free
+
+**Only `fa-solid` (filled) as primary style.** `fa-regular` available for a limited free subset; `fa-brands` for logos.
+
+### 7.1 Standard Icon Mapping
+
+| Action / Concept | Icon class | Notes |
+|---|---|---|
+| Create / Add | `fa-plus` | |
+| Edit | `fa-pen` | |
+| View / Inspect | `fa-eye` | |
+| Delete | `fa-trash` | |
+| Archive | `fa-box-archive` | |
+| Revoke | `fa-ban` | |
+| Save | `fa-floppy-disk` | |
+| Cancel | `fa-xmark` | |
+| Search | `fa-magnifying-glass` | |
+| Filter | `fa-filter` | |
+| Refresh / Sync | `fa-arrows-rotate` | |
+| Import | `fa-file-import` | |
+| Dashboard | `fa-grip-vertical` | |
+| Project | `fa-folder-open` | |
+| Playbook | `fa-book` | |
+| Data Source | `fa-plug` | |
+| FRAGO | `fa-flag` | |
+| Decision | `fa-gavel` | |
+| SitRep | `fa-file-lines` | |
+| Variables | `fa-chart-line` | |
+| Contributors | `fa-users` | |
+| Action Stations | `fa-list-check` | |
+| Chat / Gjallarhorn | `fa-comments` | |
+| Situational Awareness | `fa-brain` | |
+| Status: OK / Connected | `fa-circle-check` | green |
+| Status: Warning | `fa-triangle-exclamation` | orange |
+| Status: Error | `fa-circle-exclamation` | red |
+| Status: Syncing | `fa-circle-half-stroke fa-spin` | |
+| Auto-tracking | `fa-arrows-rotate` | small, muted |
+| Pinned version | `fa-thumbtack` | small, muted |
+| GitLab | `fa-brands fa-gitlab` | |
+| GitHub | `fa-brands fa-github` | |
+| Jira | `fa-brands fa-jira` | |
+| User | `fa-circle-user` | |
+| Crow (brand) | `fa-crow` | navbar brand only |
+
+### 7.2 Icon Usage Rules
+
+- Always pair an icon with text on non-icon-only buttons (accessibility).
+- Icon-only buttons (table row actions) **must** have a `title` tooltip and `aria-label`.
+- Use `me-1` margin between icon and label text.
+- Never use icons for purely decorative purposes without `aria-hidden="true"`.
+
+---
+
+## 8. Charts — Apache ECharts
+
+### 8.1 Data Pattern
+
+Charts are data-driven. Django views return JSON; the template initialises the chart:
+
+```python
+# views/analytics.py
+def variables_json(request, project_id):
+    data = compute_throughput_series(project_id)
+    return JsonResponse({"dates": data["dates"], "values": data["values"]})
+```
+
+```html
+<!-- template -->
+<div id="throughput-chart" style="height: 260px;" data-testid="throughput-chart"
+     data-src="{% url 'variables-json' project.id %}"></div>
+
+<script>
+  const chart = echarts.init(document.getElementById("throughput-chart"));
+  fetch(document.getElementById("throughput-chart").dataset.src)
+    .then(r => r.json())
+    .then(data => chart.setOption({ /* option */ }));
+</script>
+```
+
+Tests assert on the JSON endpoint response — no browser rendering required.
+
+### 8.2 Palette in Charts
+
+Use token values in ECharts options:
+
+```js
+const HG = {
+  primary: "#1f3a5f",
+  red:     "#dc3545",
+  orange:  "#fd7e14",
+  yellow:  "#ffc107",
+  green:   "#198754",
+  muted:   "#5a6478",
+  border:  "#e3e7ee",
+};
+```
+
+Standard series colours (in order): `HG.primary`, `HG.green`, `HG.orange`, `HG.red`, `HG.yellow`.
+
+### 8.3 Chart Conventions
+
+- **Grid**: minimal — `left: "5%"`, `right: "3%"`, `containLabel: true`.
+- **Tooltip**: `trigger: "axis"`, dark background (`backgroundColor: HG.primary`).
+- **Legend**: top-right, small font.
+- **X-axis**: date strings, `axisLabel.color: HG.muted`.
+- **Y-axis**: no border, `splitLine.lineStyle.color: HG.border`.
+- **Responsive**: call `chart.resize()` on window resize.
+
+---
+
+## 9. Accessibility
+
+### 9.1 Semantic HTML
+
+| Context | Element |
+|---|---|
+| Top navigation | `<nav aria-label="Primary navigation">` |
+| Page main content | `<main>` |
+| Side rail | `<aside aria-label="{rail title}">` |
+| Article card | `<article>` |
+| Data table | `<table>` with `<caption>` or `aria-label` |
+| Status summary | `role="status"` or `aria-live="polite"` |
+
+### 9.2 ARIA Requirements
+
+- All icon-only buttons: `aria-label="{action}"`.
+- All form inputs: `<label>` explicitly linked via `for`/`id`.
+- Dynamic content updated via HTMX: wrap in `aria-live="polite"` region.
+- Modal dialogs: `aria-labelledby` pointing to modal title; `tabindex="-1"` on `.modal`.
+- Status badges that convey meaning via colour alone: add `aria-label` with text value.
+
+### 9.3 Keyboard Navigation
+
+- Tab order follows visual reading order.
+- Modals trap focus while open (Bootstrap handles this).
+- Dropdown menus navigable via arrow keys (Bootstrap handles this).
+- Custom components (e.g. variable mini-strip) must have a text alternative (`aria-label` on the container).
+
+### 9.4 Contrast
+
+| Pair | Ratio target |
+|---|---|
+| Body text on surface | ≥ 4.5:1 (WCAG AA) |
+| `--hg-ink` (#1a1f2e) on white | 16.6:1 ✓ |
+| White on `--hg-primary` (#1f3a5f) | 8.2:1 ✓ |
+| `--hg-ink-muted` (#5a6478) on white | 4.9:1 ✓ |
+| Status badges (white text on status colour) | verify per badge; red/green/orange pass at ≥ 3:1 for large text |
+
+---
+
+## 10. Screen ID Convention
+
+### 10.1 Format
+
+```
+{ENTITY}-{OPERATION}-{VERSION}
+```
+
+- `{ENTITY}` — uppercase entity name: `PROJECTS`, `PLAYBOOKS`, `DATASOURCES`, `SITREP`, `FRAGOS`, `DECISIONS`, `VARIABLES`, `CONTRIBUTORS`, `ACTIONSTATIONS`, `SITAWARENESS`, `CHAT`, `AUTH`, `DASHBOARD`
+- `{OPERATION}` — operation type (see §10.2)
+- `{VERSION}` — integer, starts at `1`
+
+**No `FOB-` prefix** — that is Mimir-specific. Huginn IDs start directly with the entity.
+
+### 10.2 Operations
+
+Standard CRUDLF:
+
+| Operation | Pattern | Example |
+|---|---|---|
+| `LIST+FIND` | List with search/filter — entry point | `PROJECTS-LIST+FIND-1` |
+| `CREATE_{ENTITY}` | Creation form | `PLAYBOOKS-CREATE_PLAYBOOK-1` |
+| `VIEW_{ENTITY}` | Read-only detail | `SITREP-VIEW_SITREP-1` |
+| `EDIT_{ENTITY}` | Edit form | `FRAGOS-EDIT_FRAGO-1` |
+| `DELETE_{ENTITY}` | Deletion confirmation | `PLAYBOOKS-DELETE_PLAYBOOK-1` |
+
+Huginn extensions (established in `user_journey.md` §System Architecture Notes):
+
+| Operation | Used by | Example |
+|---|---|---|
+| `IMPORT` | Projects | `PROJECTS-IMPORT-1` |
+| `ARCHIVE_{ENTITY}` | Projects | `PROJECTS-ARCHIVE_PROJECT-1` |
+| `REVOKE_{ENTITY}` | FRAGOs | `FRAGOS-REVOKE_FRAGO-1` |
+| `VIEW` (no entity suffix) | SituationalAwareness, Variables | `VARIABLES-VIEW-1` |
+| `EDIT` (no entity suffix) | SituationalAwareness | `SITAWARENESS-EDIT-1` |
+| `CHAT` | Gjallarhorn | `CHAT-1` |

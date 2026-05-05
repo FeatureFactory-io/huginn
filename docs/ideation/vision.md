@@ -68,16 +68,19 @@ The side cycling faster wins. The composite  multiplies your tempo giving you an
 
 **A day in the life**:
 
-- **09:00 — AAR, 30-minute budget.** Opens Huginn and expects yesterday's After-Action Review already assembled: *who did what*, new **Issues** (active problems — e.g., "no burndown for 3 days"), new **Risks** (trending problems — e.g., "maintainability index has dropped for 4 consecutive sprints and is about to cross the acceptable threshold"). He uses the AAR to walk into standup with sharp questions that focus the team on risks, issues, and grey areas.
-- **During the day — FRAGOs.** Drops ad-hoc standing orders for Huginn to watch on his behalf: *"keep an eye on the frequency of Anton's commits"*, *"if CI pipeline time exceeds 10 min, let me know"*. Each FRAGO is a persistent watcher with a triggering condition and a notification route, living until he revokes it.
-- **All day — "Action Stations" is always in front of him.** Issues and Risks live in Jira as Tasks tagged `Issue` / `Risk`. Action Stations is the **synchronized Jira ↔ Huginn task list** — the same tasks, rendered in a PM-shaped surface. He annotates them with short status notes and attaches artifacts (PDFs with margin notes, extracts from chats, Confluence links); changes propagate back to Jira so there is one system of record. This is where he parks context between meetings and returns to it between fires.
+- **09:00 — Projects Dashboard.** Donland lands on the Projects Dashboard. Each Project is a status card colored red / orange / yellow / green, derived from the latest SitRep's overall assessment vs. its assigned Playbook. He scans for trouble in seconds — anything red or orange gets opened first.
+- **Reading a SitRep.** For each problem Project he opens the latest SitRep: situation assessment narrative, Variables snapshot, proposed Decisions. When the assessment surprises him in a legitimate way — *"Active Bug Count = 0 — but Friday afternoons routinely run 1–2"* — he creates a **FRAGO** to override the Playbook expectation in flight: *"belay that on Fridays, ≤3 OK"*. FRAGOs are short markdown bodies with optional time/scope filters; Gjallarhorn reads them alongside the Playbook on the next SitRep.
+- **Querying Gjallarhorn.** When the SitRep doesn't answer the question he has, he opens the chat. Gjallarhorn has CRUDL access to platform entities and can search, list, and inspect anything in his context.
+- **Making Decisions.** Each accepted Decision branches into exactly one of three mutually-exclusive outcomes: a new FRAGO, an extension of Situational Awareness, or a `HUGINN`-tagged Jira issue created via the Jira API.
+- **Verifying.** He glances at Action Stations — a read-only sync of `HUGINN`-tagged Jira issues — to confirm what landed. Resolution happens in Jira itself; Huginn does not edit Jira beyond creating these issues.
 
 **Implications for the product** (to carry into ESM):
-- Primary landing surface is an **AAR / SitRep** view, not a generic dashboard.
-- **FRAGO** is a first-class creatable Huginn entity with watcher semantics (condition + trigger + route), not a note.
-- **Action Stations** is a synchronized view of the Jira task list, not a separate entity space. Screen ID likely `FOB-ACTIONS-LIST+FIND-1`, with a "mine / open / tagged Issue|Risk" default filter. Columns: Jira key, status, assignee, last annotation, attached artifacts.
-- **Jira is the system of record** for Issues, Risks, and Actions. Huginn sync is bidirectional: it reads task state and tags, and writes Commander annotations and artifact links back as Jira comments / remote links.
-- Cross-linking is load-bearing: PDFs, chat extracts, Confluence URLs, Jira keys, commits — all attachable to a task from Action Stations and surfaceable in the AAR.
+- Primary landing surface is the **Projects Dashboard** (color-coded health), not a generic dashboard or a single-Project SitRep.
+- **Playbook** is the user-authored guidance for what good looks like. Free-form markdown in MVP. Versioned. Shared: one Playbook can be assigned to many Projects. Each Project pins a (Playbook, version), auto-tracking the latest version by default.
+- **FRAGO** is a per-Project markdown override of Playbook expectations with optional scope (day-of-week, date range, Sprint/Milestone) and an optional Variable-section tag. Not a watcher with triggers — it modifies how SitReps are produced.
+- **Decision** has a 3-branch acceptance flow (FRAGO / Situational Awareness extension / `HUGINN`-tagged Jira issue), mutually exclusive per Decision.
+- **Action Stations** is a read-only mirror of `HUGINN`-tagged Jira issues. The only Huginn → Jira write is the issue creation from Decision Branch C. No annotation, no comment write-back.
+- **Jira / GitLab / etc.** are systems of record for raw work data. Huginn ingests via DataSources; the only thing it writes back to Jira is `HUGINN`-tagged issues from accepted Decisions.
 
 ---
 
@@ -85,11 +88,14 @@ The side cycling faster wins. The composite  multiplies your tempo giving you an
 
 Huginn's domain is organized into four concerns: the **canonical work model** (what we analyze), **command & doctrine** (how we decide and act), **measurement & events** (what we observe), and **identity & configuration** (who and where).
 
-**Ingestion principle**: the analytical layer operates on canonical types (`UnitOfWork`, `Release`, `Sprint`, `Increment`). Adapters translate source-system concepts at the edge:
+**Ingestion principle**: the analytical layer operates on canonical types (`UnitOfWork`, `Milestone`, `Sprint`, `Increment`). Adapters translate source-system concepts at the edge:
 
 - Jira Issue / GitLab Issue / GitHub Issue / Linear Ticket → **UnitOfWork**
-- Jira Version / GitLab Milestone / GitHub Milestone → **Release**
+- Jira Version / GitLab Milestone / GitHub Milestone / Linear Project → **Milestone** *(the planning container — mutable scope, due date, burndown target)*
 - Jira Sprint / GitLab Iteration → **Sprint**
+- *(post-MVP)* GitLab Release / GitHub Release / Jira Version with `released=true` → **Release** *(the artifact — immutable, tag-anchored, realizes one or more Milestones)*
+
+GitLab and GitHub separate the planning container (Milestone) from the shipped artifact (Release). Jira conflates them into a single Version entity that flips a `released` flag. The canonical model treats them as two distinct types so OODA-relevant signals (burndown, scope drift, commitment) attach to the Milestone, while artifact-shaped questions (what shipped, regression baseline) attach to the Release. MVP only ingests Milestone; Release is reserved for a later iteration.
 
 For synchronized surfaces (Action Stations), the upstream tool remains system of record. For analytics, the canonical projection is authoritative.
 
@@ -97,19 +103,21 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
-| **UnitOfWork** | Upstream tool (Jira etc.), mirrored | The atom of trackable work. Has a `backlog` attribute: `engineering` (flows to Release) or `managerial` (Actions spawned from Decisions). Tagged as `Issue` / `Risk` / `Action` when surfaced in Action Stations. |
-| **Release** | Upstream tool, mirrored | The delivery target. UoWs flow through Sprints into a Release. |
-| **Sprint** | Upstream tool, mirrored | Time-boxed cohort of UoWs within a Release. Burndown is computed here. |
+| **UnitOfWork** | Upstream tool (Jira etc.), mirrored | The atom of trackable work. UoWs created via Decision Branch C are tagged `HUGINN` in Jira; Action Stations is the read-only mirror of these. Otherwise UoWs are normal engineering work flowing to Milestones. |
+| **Milestone** | Upstream tool, mirrored | The planning target — a forward-looking, scope-mutable container with a due date. UoWs commit to it; Sprints target it; burndown is computed against it. (GitLab/GitHub Milestone, Jira Version, Linear Project.) |
+| **Sprint** | Upstream tool, mirrored | Time-boxed cohort of UoWs targeting a Milestone. Sprint burndown is the short-cycle view; Milestone burndown is the long-cycle view. |
+| **Release** *(post-MVP)* | Upstream tool, mirrored | The shipped artifact — immutable, tag-anchored, references the Milestone(s) it realizes. Surfaces artifact-shaped signals (deployed scope, regression baseline). Not in MVP scope; placeholder so the rename is intentional rather than ambiguous. |
 
 ### Command & Doctrine
 
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
-| **SitRep / AAR** | Huginn | Generated snapshot of Master Variables + analysis + proposed Decisions. AAR is a time-scoped SitRep ("since yesterday"). Read-only once finalized. |
-| **Decision** | Huginn | DA-loop primitive. Proposed by Gjallarhorn, accepted/rejected by Commander with rationale. **Accepting spawns one or more managerial UoWs.** Full history is the DA-loop log. |
-| **FRAGO** | Huginn | Commander-issued standing watcher (condition + trigger + route). Lives until revoked. Triggered events can surface in the next SitRep or escalate into Decisions. |
-| **SituationalAwareness** | Huginn | Durable narrative context carried across OODA passes. Versioned; updated in the DA write-back step. |
-| **Playbook** | Huginn | Procedural knowledge (OO, DA). Doctrine-level, shared across Projects. Editable when new patterns emerge. |
+| **SitRep** | Huginn | Generated per Project after each successful sync. Snapshot of Master Variable values + situation assessment narrative + proposed Decisions, evaluated against the Project's pinned Playbook version with active FRAGOs applied. Read-only once finalized. |
+| **Decision** | Huginn | DA-loop primitive. Proposed by Gjallarhorn in each SitRep, accepted/rejected by Commander with rationale. **Accepting branches into exactly one of three mutually-exclusive outcomes**: (a) create a new FRAGO, (b) append an entry to the Project's Situational Awareness, or (c) create a `HUGINN`-tagged Jira issue via the Jira API. Full history is the DA-loop log. |
+| **FRAGO** | Huginn | Per-Project, in-flight override of Playbook expectations. Free-form markdown body with optional scope (day-of-week, date range, Sprint/Milestone) and an optional Variable-section tag. Has an `enabled` flag the Commander toggles from the list/detail view — **disabled FRAGOs are excluded by Gjallarhorn at SitRep generation regardless of their effective window**, useful for short-term suspension. Gjallarhorn reads enabled, in-window FRAGOs alongside the Playbook when generating a SitRep. Soft-delete (revoke) preserves history; revoked FRAGOs cannot be re-enabled. Not a watcher — does not trigger; modifies how SitReps are produced. |
+| **SituationalAwareness** | Huginn | Per-Project durable narrative memory. Versioned. Extended via Decision Branch B; read by Gjallarhorn alongside the Playbook when generating SitReps. |
+| **Playbook** | Huginn | What good looks like for a project: roles, key Variables, expected values and thresholds, what to look for. **Free-form markdown content** in MVP (structured fields may be added later). Shared: one Playbook can be assigned to many Projects. Distinct from the OO/DA *procedures* run internally by Gjallarhorn. |
+| **PlaybookVersion** | Huginn | Immutable snapshot of a Playbook's content. Created on every Playbook edit. Has version number, change summary, author, content. A Project pins a (Playbook, version) — auto-tracks latest by default; can be pinned explicitly to keep an older version. |
 
 ### Measurement & Events (append-only)
 
@@ -132,9 +140,9 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 |--------|----------------|-------|
 | **User** | Huginn | Huginn account. Roles: `Commander`, `Analyst` (TBD if distinct). |
 | **Contributor** | Huginn (reconciled) | Developer identity unified across git author / Jira assignee / Slack handle. Derived profile: Pathfinder / Mastermind / Firefighter / Observer. |
-| **Project** | Huginn config | The analysis scope: a repo (or set) + a Jira project + DataSources. One Project = one OODA cycle. |
-| **DataSource** | Huginn config | Connection to GitLab / GitHub / Jira / Slack / Zoom / Confluence / XRay (credentials, endpoints, schedule). |
-| **MasterVariableDefinition** | Huginn config | Formulas and thresholds per variable; FRAGOs may reference these. |
+| **Project** | Huginn (imported) | An imported project from a single DataSource (one upstream project = one Project; e.g., one GitLab project). Defines the analytical scope and pins a (Playbook, version) it is evaluated against. **Cannot be created from a blank form** — only via Project Import. |
+| **DataSource** | Huginn config | Connection to GitLab / Jira / etc. (credentials, base URL, expiry tracking). Source of one or more Projects via import. |
+| **MasterVariableDefinition** | Huginn config | Formulas and units per Master Variable. Used by Gjallarhorn to compute MasterVariableDatapoints. FRAGOs may *tag* a Master Variable section but do not reference specific definitions. |
 
 ---
 
@@ -146,15 +154,15 @@ Read the **overview** first for the spine; then drill into the four focused view
 
 ```mermaid
 erDiagram
-    Project ||--o{ DataSource : configures
+    DataSource ||--o{ Project : "imported from"
     Project ||--o{ UnitOfWork : contains
-    Project ||--o{ Release : targets
+    Project ||--o{ Milestone : targets
     Project ||--o{ SitRep : produces
     Project ||--o{ FRAGO : "scoped to"
-    Sprint }o--|| Release : targets
+    Project }o--|| Playbook : assigned
+    Sprint }o--|| Milestone : targets
     Sprint ||--o{ UnitOfWork : contains
     SitRep ||--o{ Decision : proposes
-    Decision ||--o{ UnitOfWork : "spawns managerial"
     User ||--o{ Decision : makes
     User ||--o{ FRAGO : issues
 ```
@@ -163,13 +171,13 @@ erDiagram
 
 ```mermaid
 erDiagram
-    Project ||--o{ Release : targets
+    Project ||--o{ Milestone : targets
     Project ||--o{ Sprint : runs
     Project ||--o{ UnitOfWork : contains
     Project ||--o{ Contributor : "team roster"
-    Sprint }o--|| Release : targets
+    Sprint }o--|| Milestone : targets
     Sprint ||--o{ UnitOfWork : contains
-    UnitOfWork }o--o| Release : "commits to"
+    UnitOfWork }o--o| Milestone : "commits to"
     UoWStateChange }o--|| UnitOfWork : advances
     Increment }o--|| UnitOfWork : "contributes to"
     Contributor ||--o{ UnitOfWork : "assigned to"
@@ -183,14 +191,19 @@ erDiagram
 erDiagram
     Project ||--o{ SitRep : produces
     Project ||--o{ FRAGO : "scoped to"
-    Project ||--o{ SituationalAwareness : "versions of"
+    Project ||--|| SituationalAwareness : "has one"
+    Project }o--|| Playbook : assigned
+    Project }o--o| PlaybookVersion : "pinned (else auto-tracks latest)"
+    Playbook ||--o{ PlaybookVersion : versions
     User ||--o{ Decision : makes
     User ||--o{ FRAGO : issues
     SitRep ||--o{ Decision : proposes
-    SitRep }o--o{ FRAGO : "active at"
-    Decision ||--o{ UnitOfWork : "spawns managerial actions"
-    Playbook }o--o{ Project : "doctrine applied to"
+    Decision }o--o| FRAGO : "may create"
+    Decision }o--o| SituationalAwareness : "may extend"
+    Decision }o--o| UnitOfWork : "may create HUGINN issue"
 ```
+
+**Decision outcome semantics**: an accepted Decision creates **exactly one** of FRAGO / SituationalAwareness extension / `HUGINN`-tagged UoW. The mermaid `}o--o|` cardinalities show each as optional individually; XOR across the three is enforced at the application layer.
 
 ### Measurement
 
@@ -199,8 +212,9 @@ erDiagram
     Project ||--o{ MasterVariableDatapoint : measures
     MasterVariableDefinition ||--o{ MasterVariableDatapoint : "shape of"
     SitRep }o--o{ MasterVariableDatapoint : snapshots
-    FRAGO }o--o| MasterVariableDefinition : watches
 ```
+
+(FRAGO no longer references MasterVariableDefinition. A FRAGO has an optional `variable_tag` string for filtering, but does not reference a specific definition record.)
 
 ### Cross-cutting — Artifact Attachments
 
@@ -213,7 +227,7 @@ erDiagram
 
 ### Work Flow DAG
 
-How work originates and flows toward Release as the delivery sink. Every path is directed and acyclic — Release has no outgoing edges. The two paths UoW→Sprint→Release and UoW→Release (direct fix-version) form a diamond, not a cycle.
+How work originates and flows toward Milestone as the planning sink. Every path is directed and acyclic — Milestone has no outgoing edges within the analytical layer. The two paths UoW→Sprint→Milestone and UoW→Milestone (direct fix-version equivalent) form a diamond, not a cycle. *(Post-MVP: a Milestone is realized by a Release artifact; that edge is intentionally omitted from MVP analytics.)*
 
 ```mermaid
 flowchart LR
@@ -225,18 +239,22 @@ flowchart LR
     Increment -->|"contributes to"| UoW
     UoWStateChange -->|advances| UoW
     UoW -->|"planned in"| Sprint
-    Sprint -->|targets| Release
-    UoW -->|"commits to"| Release
+    Sprint -->|targets| Milestone
+    UoW -->|"commits to"| Milestone
     UoW -->|"verified by"| TestResult
 ```
 
 **Open questions** (to resolve before ESM Activity 04 formalizes this):
-1. **UoW ↔ Release**: can a UoW commit directly to a Release without going through a Sprint? (Assumed yes.)
+1. **UoW ↔ Milestone**: can a UoW commit directly to a Milestone without going through a Sprint? (Assumed yes — matches Jira's `fixVersion` without an active sprint.)
 2. **SitRep ↔ MasterVariableDatapoint**: does a SitRep *reference* the datapoints (shared, pointer) or *embed* them (snapshot copy)? Pointer is cheaper; embed is safer for reproducibility.
-3. **Playbook scope**: global doctrine, or per-Project customizable fork? (Assumed global for now.)
-4. **Notification / Alert**: when a FRAGO triggers, is the triggered event a first-class entity, or just a log line surfaced in the next SitRep?
+3. **Decision outcome XOR enforcement**: enforce mutual exclusion at DB level (CHECK constraint over three nullable FKs) or at application level only? Affects how loud failures are when invariants drift.
+4. **PlaybookVersion content immutability**: confirmed immutable in MVP. Future question: rebase / cherry-pick across versions?
 5. **Contributor reconciliation**: identity unification across git/Jira/Slack is a known-hard problem. MVP assumes manual mapping table.
-6. **Single-Project MVP?**: the model supports N Projects but MVP may hard-wire one. Affects navigation and scope picker.
+6. **Single-Project MVP?**: the model supports N Projects, but MVP UI may treat the Projects Dashboard as the single landing surface and not expose Project-switching elsewhere. Affects navigation and scope-picker placement.
+
+**Resolved** (no longer open):
+- ~~Playbook scope~~: shared across Projects, versioned, Project pins (Playbook, version) with auto-track-latest as default. Free-form markdown content in MVP.
+- ~~FRAGO trigger semantics~~: FRAGO is not a watcher. It is a markdown override of Playbook expectations consumed by Gjallarhorn at SitRep generation time. No triggers, no notification routes.
 
 ---
 
@@ -269,23 +287,29 @@ CONTRIBUTION: in terms of profile "Y for new code and X axis for churn in existi
 
 SitRep: momentary snapshot of the current values + AI performing first pass of analysis: hypothesi on why there are undesired deviations + suggested Actions to test hypothesi + Decisions to  make -> execute.
 
-## Playbook: doing OO
+## OO Procedure (Gjallarhorn internal)
 
-0. Load Situational Awareness / latest SitRep / FRAGO / Risks & Issues - what we know from the previous OODA passes, things to watch for per commander's request etc.
-1. Check transparency - how stale are updates on Jira issues & pushes? Stale (not today) - this is first thing to fix.
-2. Reconstruct the flow: how Unit of Work travels into the Release. If we dont know - we need to fix it.
-3. Then we operate on Sprints -> culminates in Release. Check - how burndown looks - is it burning down? or scope expanding? or there is no visible progress measured in closed stories?
-4. First we check quality of reqs: too big (thats why likely there is no burn down). Bad -> we need to improve.
-5. Then we assess quality of the pipeline. Unstable -> we need to fix.
-6. Assess architecture readiness - are there things we are missing we need to implement stories? Missing -> we need to act on them.
-[ etc - full list to cover variables]
-In the end we produce SitRep ("how bad things are") with Decisions/Actions ("how set things straight").
+> *Note*: this is Gjallarhorn's internal procedure for producing a SitRep — system behavior, not the user-editable **Playbook** entity. The Playbook entity is the user-authored markdown describing what good looks like for a specific Project; this procedure describes how Gjallarhorn evaluates against it.
 
-## Playbook: doing DA
+0. Load Situational Awareness / latest SitRep / active FRAGOs / pinned Playbook version — what we know from previous OODA passes, things to watch for per commander's overrides.
+1. Check transparency — how stale are updates on Jira issues & pushes? Stale (not today) → flag first.
+2. Reconstruct the flow: how Unit of Work travels into the Milestone. If we don't know — flag it.
+3. Operate on Sprints → culminates in Milestone. Check burndown — burning down? scope expanding? no visible progress measured in closed stories?
+4. Check quality of reqs: too big (root cause for no burndown). Bad → flag for improvement.
+5. Assess quality of the pipeline. Unstable → flag for fix.
+6. Assess architecture readiness — anything missing for the stories at hand? Missing → flag for action.
+[ etc — full list to cover all Master Variables ]
+
+Output: a **SitRep** with situation assessment ("how bad things are") and proposed **Decisions** ("how to set things straight").
+
+## DA Procedure (Gjallarhorn internal)
+
+> *Note*: this is the system behavior of the Decision-Action loop, not the user-editable Playbook.
+
 1. Take a sitrep for every aspect of the Master Variables (think "Project Status Report").
-2. Read problematic areas & propose Decision(s) + Action(s): "I agree with your assessment, my decision is that we need Daily Increment pushed by every developer. We shall have a list of those who is listed among authors but haven't pushed anything today."
-3. Commander accepts/rejects/dids his own explanations + extra Orders ("FRAGO: keep an eye on the Halstead volume - if it goes down let me know"). Huginn creates Issues & Risks for the Commander to act upon.
-4. Collect content of the OODA cycle and perform write back: add to Playbook / update Situational Awareness / extend/add/drop FRAGO / save SitRep.
+2. Read problematic areas and propose Decisions: *"I agree with your assessment; my decision is that we need a Daily Increment pushed by every developer. We shall have a list of those who is listed among authors but haven't pushed anything today."*
+3. Commander accepts / rejects each Decision. Acceptance branches into exactly one of three outcomes: **(a)** new FRAGO ("Disregard broken builds tomorrow"), **(b)** extension of Situational Awareness ("This is because of the GitLab outage — expect unsuccessful data dumps tomorrow"), or **(c)** new Jira issue tagged `HUGINN` ("Create a Task for the QA Architect to draft AI testing strategy").
+4. Collect content of the OODA cycle and perform write-back: update Situational Awareness / extend/add/drop FRAGOs / save SitRep. *(The Playbook entity itself is edited deliberately and separately — it is doctrine, not session output.)*
 
 # Stack
 

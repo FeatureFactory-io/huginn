@@ -1,0 +1,557 @@
+{% comment %}
+  ESM-03 palette preview — DASHBOARD-PROJECTS-1 mockup.
+  Standalone template (does not extend base.html): this is a design-system
+  proposal, not a production UI. Approve palette here, then IA_guidelines.md
+  locks the tokens.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huginn — Palette Preview — DASHBOARD-PROJECTS-1</title>
+
+<!-- Bootstrap 5.3.8 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+  /* ------------------------------------------------------------------
+     Huginn Design Tokens — Proposal v0.1
+     Palette preview only. Pending approval → locks into IA_guidelines.md
+     ------------------------------------------------------------------ */
+  :root {
+    /* Brand */
+    --hg-primary:     #1f3a5f;
+    --hg-primary-700: #16294a;
+    --hg-primary-100: #e7eef7;
+    --hg-accent:      #c9a227;
+    --hg-accent-700:  #8e7012;
+
+    /* Surface / ink */
+    --hg-bg-body:    #f5f7fa;
+    --hg-bg-surface: #ffffff;
+    --hg-ink:        #1a1f2e;
+    --hg-ink-muted:  #5a6478;
+    --hg-border:     #e3e7ee;
+
+    /* RYG semantic — locked from user_journey.md */
+    --hg-red:    #dc3545;
+    --hg-orange: #fd7e14;
+    --hg-yellow: #ffc107;
+    --hg-green:  #198754;
+    --hg-blue:   #0dcaf0;
+    --hg-grey:   #6c757d;
+
+    /* Bootstrap overrides */
+    --bs-primary: var(--hg-primary);
+    --bs-body-bg: var(--hg-bg-body);
+    --bs-body-color: var(--hg-ink);
+    --bs-border-color: var(--hg-border);
+  }
+
+  .btn-primary {
+    --bs-btn-bg: var(--hg-primary);
+    --bs-btn-border-color: var(--hg-primary);
+    --bs-btn-hover-bg: var(--hg-primary-700);
+    --bs-btn-hover-border-color: var(--hg-primary-700);
+    --bs-btn-active-bg: var(--hg-primary-700);
+  }
+  .btn-outline-primary {
+    --bs-btn-color: var(--hg-primary);
+    --bs-btn-border-color: var(--hg-primary);
+    --bs-btn-hover-bg: var(--hg-primary);
+    --bs-btn-hover-border-color: var(--hg-primary);
+  }
+  .text-primary  { color: var(--hg-primary) !important; }
+  .bg-primary    { background-color: var(--hg-primary) !important; }
+
+  /* Navbar */
+  .hg-navbar {
+    background: var(--hg-primary);
+    border-bottom: 3px solid var(--hg-accent);
+  }
+  .hg-navbar .navbar-brand {
+    color: #fff; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .hg-navbar .navbar-brand .accent { color: var(--hg-accent); }
+  .hg-navbar .nav-link {
+    color: rgba(255,255,255,0.80);
+    padding: 0.5rem 0.9rem; border-radius: 4px;
+    transition: background 0.12s;
+  }
+  .hg-navbar .nav-link:hover { color:#fff; background: rgba(255,255,255,0.07); }
+  .hg-navbar .nav-link.active { color:#fff; background: rgba(255,255,255,0.13); }
+
+  /* Page header */
+  .hg-page-header {
+    background: var(--hg-bg-surface);
+    border-bottom: 1px solid var(--hg-border);
+    padding: 1rem 0;
+  }
+  .hg-page-title { font-weight: 600; color: var(--hg-ink); margin: 0; }
+  .hg-page-meta  { color: var(--hg-ink-muted); font-size: 0.875rem; }
+
+  /* Summary strip */
+  .hg-summary-strip { display:flex; gap:0.65rem; flex-wrap:wrap; margin: 1rem 0 1.5rem; }
+  .hg-pill {
+    display:inline-flex; align-items:center; gap:0.45rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.8125rem; font-weight:500;
+    background: var(--hg-bg-surface);
+    border: 1px solid var(--hg-border);
+    color: var(--hg-ink);
+  }
+  .hg-pill .dot { width:0.5rem; height:0.5rem; border-radius:50%; }
+  .hg-pill .dot.red    { background: var(--hg-red); }
+  .hg-pill .dot.orange { background: var(--hg-orange); }
+  .hg-pill .dot.yellow { background: var(--hg-yellow); }
+  .hg-pill .dot.green  { background: var(--hg-green); }
+  .hg-pill .count { font-weight:700; }
+
+  /* Project card */
+  .hg-card {
+    background: var(--hg-bg-surface);
+    border: 1px solid var(--hg-border);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 100%; display:flex; flex-direction:column;
+    transition: box-shadow 0.15s, transform 0.15s;
+    cursor: pointer;
+  }
+  .hg-card:hover {
+    box-shadow: 0 4px 14px rgba(31,58,95,0.12);
+    transform: translateY(-1px);
+  }
+  .hg-card .color-bar { height:6px; }
+  .color-bar.red    { background: var(--hg-red); }
+  .color-bar.orange { background: var(--hg-orange); }
+  .color-bar.yellow { background: var(--hg-yellow); }
+  .color-bar.green  { background: var(--hg-green); }
+  .hg-card .card-body { padding:1rem 1.2rem; flex:1 1 auto; }
+  .hg-card .card-foot {
+    padding: 0.6rem 1.2rem;
+    border-top: 1px solid var(--hg-border);
+    background: #fafbfd;
+    font-size:0.78rem; color: var(--hg-ink-muted);
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .hg-card-name {
+    font-size:1rem; font-weight:600; color:var(--hg-ink);
+    margin:0; display:flex; align-items:center; gap:0.4rem;
+  }
+  .hg-card-name .ds-icon { color: var(--hg-ink-muted); font-size:0.88rem; }
+  .hg-headline {
+    color: var(--hg-ink); margin: 0.45rem 0 0.8rem;
+    font-size:0.875rem; line-height:1.4;
+  }
+
+  /* Variable mini-strip */
+  .hg-var-strip { display:flex; gap:0.3rem; margin-top:0.75rem; align-items:center; }
+  .hg-var-dot {
+    width:0.65rem; height:0.65rem; border-radius:50%;
+    border:1px solid rgba(0,0,0,0.07);
+  }
+  .hg-var-dot.red    { background:var(--hg-red); }
+  .hg-var-dot.orange { background:var(--hg-orange); }
+  .hg-var-dot.yellow { background:var(--hg-yellow); }
+  .hg-var-dot.green  { background:var(--hg-green); }
+  .hg-var-dot.grey   { background:#ccd2dc; }
+  .hg-var-label {
+    font-size:0.68rem; color:var(--hg-ink-muted);
+    text-transform:uppercase; letter-spacing:0.05em; margin-left:0.4rem;
+  }
+
+  /* Sync / playbook indicators */
+  .hg-sync {
+    display:inline-flex; align-items:center; gap:0.3rem; font-size:0.75rem;
+  }
+  .hg-sync.ok   i { color:var(--hg-green); }
+  .hg-sync.warn i { color:var(--hg-orange); }
+  .hg-sync.err  i { color:var(--hg-red); }
+
+  /* Side rail */
+  .hg-rail {
+    background:var(--hg-bg-surface); border:1px solid var(--hg-border);
+    border-radius:8px; padding:0.85rem 1rem;
+  }
+  .hg-rail h6 {
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--hg-ink-muted); margin-bottom:0.55rem; font-weight:600;
+  }
+  .hg-rail .ri {
+    display:flex; gap:0.5rem; padding:0.4rem 0;
+    font-size:0.83rem;
+    border-bottom:1px dashed var(--hg-border);
+  }
+  .hg-rail .ri:last-child { border-bottom:0; }
+  .hg-rail .ri i { color:var(--hg-orange); margin-top:0.12rem; flex-shrink:0; }
+  .hg-rail .ri.err i { color:var(--hg-red); }
+
+  /* FRAGO badge */
+  .hg-badge-frago {
+    background:var(--hg-accent); color:#fff;
+    font-size:0.65rem; font-weight:700; padding:0.12rem 0.45rem;
+    border-radius:3px; letter-spacing:0.04em; text-transform:uppercase;
+  }
+
+  /* Token swatches */
+  .hg-swatch-row { display:flex; gap:0.4rem; flex-wrap:wrap; margin:0.4rem 0 0.15rem; }
+  .hg-swatch {
+    flex:1 1 120px; border:1px solid var(--hg-border);
+    border-radius:5px; overflow:hidden; background:#fff;
+  }
+  .hg-swatch .chip { height:40px; }
+  .hg-swatch .meta { padding:0.3rem 0.5rem; font-size:0.68rem; color:var(--hg-ink-muted); }
+  .hg-swatch .meta b { color:var(--hg-ink); display:block; font-weight:600; }
+
+  /* Preview banner */
+  .hg-preview-banner {
+    margin-top:2.5rem; padding:0.9rem 1.2rem;
+    background:var(--hg-primary-100);
+    border-left:3px solid var(--hg-accent);
+    border-radius:4px; font-size:0.875rem; color:var(--hg-ink);
+  }
+  .hg-preview-banner code {
+    background:rgba(31,58,95,0.1); padding:0.05rem 0.35rem;
+    border-radius:3px; color:var(--hg-primary);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg hg-navbar">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="{% url 'welcome' %}">
+      <i class="fa-solid fa-crow me-1" style="color:var(--hg-accent)"></i>
+      Huginn<span class="accent">.</span>
+    </a>
+    <button class="navbar-toggler border-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#hgNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="hgNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link active" href="#"><i class="fa-solid fa-grip-vertical me-1"></i>Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-folder-open me-1"></i>Projects</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-book me-1"></i>Playbooks</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-plug me-1"></i>Data Sources</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-flag me-1"></i>FRAGOs</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-gavel me-1"></i>Decisions</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-comments me-1"></i>Chat</a></li>
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-circle-user me-1"></i>Cmdr. Donland</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="hg-page-header">
+  <div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="hg-page-title">Projects</h1>
+        <p class="hg-page-meta mb-0">
+          Last refresh <strong>2 min ago</strong> &middot; 13 projects
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrows-rotate me-1"></i>Refresh
+        </button>
+        <button class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-plus me-1"></i>Import Projects
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main class="container-fluid px-4 py-3">
+
+  <!-- Summary strip -->
+  <div class="hg-summary-strip">
+    <span class="hg-pill"><span class="dot red"></span><span class="count">2</span>&nbsp;red</span>
+    <span class="hg-pill"><span class="dot orange"></span><span class="count">1</span>&nbsp;orange</span>
+    <span class="hg-pill"><span class="dot yellow"></span><span class="count">4</span>&nbsp;yellow</span>
+    <span class="hg-pill"><span class="dot green"></span><span class="count">6</span>&nbsp;green</span>
+    <span class="hg-pill" style="border-style:dashed">
+      <i class="fa-solid fa-flag" style="color:var(--hg-accent)"></i>
+      <span class="count">3</span>&nbsp;FRAGOs triggered
+    </span>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Cards grid -->
+    <div class="col-lg-9">
+      <div class="row g-3">
+
+        <!-- RED #1 -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar red"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                atlas-backend
+                <span class="hg-badge-frago ms-auto">FRAGO</span>
+              </h3>
+              <p class="hg-headline"><strong>Milestone v1.21 at risk:</strong> 3 critical bugs open, expected 0.</p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green" title="Transparency"></span>
+                <span class="hg-var-dot yellow" title="Throughput"></span>
+                <span class="hg-var-dot orange" title="Cycle Time"></span>
+                <span class="hg-var-dot green" title="Rework"></span>
+                <span class="hg-var-dot red" title="Quality"></span>
+                <span class="hg-var-dot yellow" title="Complexity"></span>
+                <span class="hg-var-dot green" title="Contribution"></span>
+                <span class="hg-var-label">T&middot;T&middot;C&middot;R&middot;Q&middot;X&middot;N</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 4m ago</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> Standard Eng
+                <i class="fa-solid fa-arrows-rotate ms-1" title="Auto-tracking latest"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- RED #2 — no SitRep yet -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar red"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                payments-svc
+              </h3>
+              <p class="hg-headline"><strong>No SitRep yet</strong> — initial sync running (87%).</p>
+              <div class="hg-var-strip">
+                {% for i in "1234567" %}
+                <span class="hg-var-dot grey"></span>
+                {% endfor %}
+                <span class="hg-var-label">awaiting sync</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync warn"><i class="fa-solid fa-circle-half-stroke"></i> syncing…</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> — not assigned
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- ORANGE -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar orange"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-github ds-icon"></i>
+                forge-cli
+              </h3>
+              <p class="hg-headline">Cycle time p90 climbing for 5 days; review backlog at 14.</p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot orange"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="hg-var-label">T&middot;T&middot;C&middot;R&middot;Q&middot;X&middot;N</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 12m ago</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> Standard Eng
+                <i class="fa-solid fa-thumbtack ms-1" title="Pinned to v3"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- YELLOW -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar yellow"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                titan-ui
+              </h3>
+              <p class="hg-headline">Coverage drift below 80% threshold (currently 78.4%).</p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-label">T&middot;T&middot;C&middot;R&middot;Q&middot;X&middot;N</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 1h ago</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> Standard Eng
+                <i class="fa-solid fa-arrows-rotate ms-1"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- GREEN #1 -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar green"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                bifrost-gateway
+              </h3>
+              <p class="hg-headline">All 7 monitored expectations met. Sprint burndown on plan.</p>
+              <div class="hg-var-strip">
+                {% for i in "1234567" %}
+                <span class="hg-var-dot green"></span>
+                {% endfor %}
+                <span class="hg-var-label">T&middot;T&middot;C&middot;R&middot;Q&middot;X&middot;N</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 7m ago</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> Standard Eng
+                <i class="fa-solid fa-arrows-rotate ms-1"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- GREEN #2 -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-card">
+            <div class="color-bar green"></div>
+            <div class="card-body">
+              <h3 class="hg-card-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                ratatosk-edge
+              </h3>
+              <p class="hg-headline">Zero open bugs. Increment cadence steady.</p>
+              <div class="hg-var-strip">
+                {% for i in "1234567" %}
+                <span class="hg-var-dot green"></span>
+                {% endfor %}
+                <span class="hg-var-label">T&middot;T&middot;C&middot;R&middot;Q&middot;X&middot;N</span>
+              </div>
+            </div>
+            <div class="card-foot">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 3m ago</span>
+              <span style="font-size:0.78rem; color:var(--hg-ink-muted)">
+                <i class="fa-solid fa-book"></i> Lite Ops
+                <i class="fa-solid fa-thumbtack ms-1"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+      </div><!-- /row cards -->
+    </div><!-- /col-9 -->
+
+    <!-- SIDE RAIL -->
+    <div class="col-lg-3 d-flex flex-column gap-3">
+      <div class="hg-rail">
+        <h6>Data connection issues</h6>
+        <div class="ri err">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <div class="fw-medium">company-gitlab</div>
+            <div class="text-muted small">Token expired 2d ago</div>
+          </div>
+        </div>
+        <div class="ri">
+          <i class="fa-solid fa-clock"></i>
+          <div>
+            <div class="fw-medium">corp-jira-eu</div>
+            <div class="text-muted small">Token expires in 12 days</div>
+          </div>
+        </div>
+      </div>
+      <div class="hg-rail">
+        <h6>FRAGOs triggered since last visit</h6>
+        <div class="ri">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Friday bug-carry</div>
+            <div class="text-muted small">atlas-backend &middot; 14:21</div>
+          </div>
+        </div>
+        <div class="ri">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Halstead drift watch</div>
+            <div class="text-muted small">forge-cli &middot; 09:47</div>
+          </div>
+        </div>
+        <div class="ri">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Anton commit cadence</div>
+            <div class="text-muted small">titan-ui &middot; 08:02</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row main -->
+
+  <!-- Review banner -->
+  <div class="hg-preview-banner">
+    <strong>Palette proposal v0.1</strong> —
+    Primary <code>#1f3a5f</code> slate-blue &middot;
+    Accent <code>#c9a227</code> muted gold &middot;
+    RYG locked from <code>user_journey.md</code>.
+    Bootstrap <code>5.3.8</code> / Font Awesome Free <code>6.7.2</code>.
+    <br>Approve → tokens lock into <code>docs/ux/IA_guidelines.md</code>.
+    Back to <a href="{% url 'welcome' %}">home</a>.
+  </div>
+
+  <!-- Swatch tables -->
+  <h6 class="text-uppercase text-muted mt-4 mb-2" style="font-size:0.68rem;letter-spacing:0.06em">Brand tokens</h6>
+  <div class="hg-swatch-row">
+    <div class="hg-swatch"><div class="chip" style="background:#1f3a5f"></div><div class="meta"><b>--hg-primary</b>#1f3a5f</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#16294a"></div><div class="meta"><b>--hg-primary-700</b>#16294a</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#e7eef7"></div><div class="meta"><b>--hg-primary-100</b>#e7eef7</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#c9a227"></div><div class="meta"><b>--hg-accent</b>#c9a227</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#1a1f2e"></div><div class="meta" style="background:#1a1f2e;color:#fff"><b style="color:#fff">--hg-ink</b>#1a1f2e</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#5a6478"></div><div class="meta"><b>--hg-ink-muted</b>#5a6478</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#f5f7fa; border-bottom:1px solid #e3e7ee"></div><div class="meta"><b>--hg-bg-body</b>#f5f7fa</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#e3e7ee"></div><div class="meta"><b>--hg-border</b>#e3e7ee</div></div>
+  </div>
+
+  <h6 class="text-uppercase text-muted mt-3 mb-2" style="font-size:0.68rem;letter-spacing:0.06em">RYG semantic (locked)</h6>
+  <div class="hg-swatch-row">
+    <div class="hg-swatch"><div class="chip" style="background:#dc3545"></div><div class="meta"><b>--hg-red</b>#dc3545</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#fd7e14"></div><div class="meta"><b>--hg-orange</b>#fd7e14</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#ffc107"></div><div class="meta"><b>--hg-yellow</b>#ffc107</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#198754"></div><div class="meta"><b>--hg-green</b>#198754</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#0dcaf0"></div><div class="meta"><b>--hg-blue</b>#0dcaf0</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#6c757d"></div><div class="meta"><b>--hg-grey</b>#6c757d</div></div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<!-- FA Free 6.7.2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+</body>
+</html>

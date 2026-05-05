@@ -14,5 +14,8 @@
         "**/*.pyc": true,
         ".venv": true
     },
-    "editor.rulers": [120]
+    "editor.rulers": [
+        120
+    ],
+    "cursorpyright.analysis.typeCheckingMode": "basic"
 }

@@ -1,0 +1,31 @@
+---
+description: Skip Mimir-specific FOB-* Screen ID convention when applying FeatureFactory workflows to Huginn
+alwaysApply: true
+---
+
+# No FOB-* Screen IDs in Huginn
+
+The Mimir FeatureFactory playbook prescribes a Screen ID convention
+`FOB-{ENTITY}-{OPERATION}-{VERSION}` (FOB = "Forward Operating Base", Mimir's
+web UI). **This is Mimir-specific. Do NOT apply it to Huginn.**
+
+When executing FeatureFactory activities in this repo (ESM-01 Establish
+Conventions, ESM-02 User Journey, ESM-03 IA, ESM-04 Dialogue Maps, ESM-05
+Feature Files, ESM-06 Mockups), substitute or omit the Screen ID convention:
+
+- ❌ Do NOT introduce `FOB-*` identifiers anywhere (journey, IA, feature
+  files, templates, tests, diagrams, comments).
+- ❌ Do NOT add `<!-- Screen: FOB-... -->` headers or
+  `data-testid="...-loaded">FOB-..."` discovery divs.
+- ✅ Huginn already uses a native Screen ID scheme: `{ENTITY}-{OPERATION}-{VERSION}`
+  (e.g. `PROJECTS-LIST+FIND-1`, `DASHBOARD-PROJECTS-1`, `CHAT-1`). Use this
+  scheme — it's the Mimir convention with the `FOB-` prefix stripped.
+- ✅ Established CRUDLF + Huginn extensions: `LIST+FIND`, `CREATE_*`,
+  `VIEW_*`, `EDIT_*`, `DELETE_*`, plus Huginn-specific patterns documented
+  in `docs/features/user_journey.md` (`IMPORT`, `ARCHIVE`, `VIEW`-only,
+  `VIEW + EDIT`, `LIST+FIND + VIEW`, `CHAT`, `REVOKE_*`).
+
+This rule is a project-level override of the Mimir template defaults. The
+template text in `.cursor/workflows/ESM-reference/*` is reference material
+only — treat any `FOB-*` examples there as illustrative of Mimir, not as
+prescriptive for Huginn.

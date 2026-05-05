@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huginn — Palette Preview — DASHBOARD-PROJECTS-1</title>
+
+<!-- Bootstrap 5.3.8 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
+
+<!-- Font Awesome 6.7.2 Free -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+
+<style>
+  /* ------------------------------------------------------------------
+     Huginn Design Tokens — Proposal v0.1 (palette preview)
+     Slate-command primary + muted-gold accent
+     ------------------------------------------------------------------ */
+  :root {
+    /* Brand */
+    --hg-primary:    #1f3a5f;       /* deep slate-blue, "command" */
+    --hg-primary-700:#16294a;
+    --hg-primary-100:#e7eef7;
+    --hg-accent:     #c9a227;       /* muted gold, used sparingly */
+    --hg-accent-700: #8e7012;
+
+    /* Surface / ink */
+    --hg-bg-body:    #f5f7fa;
+    --hg-bg-surface: #ffffff;
+    --hg-bg-elevated:#ffffff;
+    --hg-ink:        #1a1f2e;
+    --hg-ink-muted:  #5a6478;
+    --hg-border:     #e3e7ee;
+
+    /* RYG semantic (locked to user_journey.md) */
+    --hg-status-red:    #dc3545;
+    --hg-status-orange: #fd7e14;
+    --hg-status-yellow: #ffc107;
+    --hg-status-green:  #198754;
+    --hg-status-grey:   #6c757d;
+    --hg-status-blue:   #0dcaf0;
+
+    /* Bootstrap overrides */
+    --bs-primary: var(--hg-primary);
+    --bs-primary-rgb: 31, 58, 95;
+    --bs-link-color: var(--hg-primary);
+    --bs-link-color-rgb: 31, 58, 95;
+    --bs-link-hover-color: var(--hg-primary-700);
+    --bs-body-bg: var(--hg-bg-body);
+    --bs-body-color: var(--hg-ink);
+    --bs-border-color: var(--hg-border);
+  }
+
+  /* Override Bootstrap utilities that ship with hard-coded colors */
+  .btn-primary {
+    --bs-btn-bg: var(--hg-primary);
+    --bs-btn-border-color: var(--hg-primary);
+    --bs-btn-hover-bg: var(--hg-primary-700);
+    --bs-btn-hover-border-color: var(--hg-primary-700);
+    --bs-btn-active-bg: var(--hg-primary-700);
+    --bs-btn-active-border-color: var(--hg-primary-700);
+  }
+  .btn-outline-primary {
+    --bs-btn-color: var(--hg-primary);
+    --bs-btn-border-color: var(--hg-primary);
+    --bs-btn-hover-bg: var(--hg-primary);
+    --bs-btn-hover-border-color: var(--hg-primary);
+    --bs-btn-active-bg: var(--hg-primary-700);
+  }
+  .bg-primary { background-color: var(--hg-primary) !important; }
+  .text-primary { color: var(--hg-primary) !important; }
+
+  /* Top navbar — Commander surface */
+  .hg-navbar {
+    background: var(--hg-primary);
+    border-bottom: 3px solid var(--hg-accent);
+  }
+  .hg-navbar .navbar-brand {
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .hg-navbar .navbar-brand .hg-mark {
+    color: var(--hg-accent);
+  }
+  .hg-navbar .nav-link {
+    color: rgba(255,255,255,0.82);
+    padding: 0.5rem 0.9rem;
+    border-radius: 4px;
+  }
+  .hg-navbar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .hg-navbar .nav-link.active { color: #fff; background: rgba(255,255,255,0.12); }
+
+  /* Page header */
+  .hg-page-header {
+    background: var(--hg-bg-surface);
+    border-bottom: 1px solid var(--hg-border);
+    padding: 1rem 0;
+  }
+  .hg-page-title { font-weight: 600; color: var(--hg-ink); margin: 0; }
+  .hg-page-meta  { color: var(--hg-ink-muted); font-size: 0.875rem; }
+
+  /* Summary strip */
+  .hg-summary-strip {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem;
+  }
+  .hg-summary-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: var(--hg-bg-surface);
+    border: 1px solid var(--hg-border);
+    color: var(--hg-ink);
+  }
+  .hg-summary-pill .dot {
+    width: 0.55rem; height: 0.55rem; border-radius: 50%;
+  }
+  .hg-summary-pill .dot.red    { background: var(--hg-status-red); }
+  .hg-summary-pill .dot.orange { background: var(--hg-status-orange); }
+  .hg-summary-pill .dot.yellow { background: var(--hg-status-yellow); }
+  .hg-summary-pill .dot.green  { background: var(--hg-status-green); }
+  .hg-summary-pill .count { font-weight: 700; color: var(--hg-ink); }
+
+  /* Project card */
+  .hg-project-card {
+    background: var(--hg-bg-surface);
+    border: 1px solid var(--hg-border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+    height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .hg-project-card:hover {
+    box-shadow: 0 4px 14px rgba(31, 58, 95, 0.12);
+    transform: translateY(-1px);
+    cursor: pointer;
+  }
+  .hg-project-card .hg-color-bar {
+    height: 6px;
+    width: 100%;
+  }
+  .hg-color-bar.red    { background: var(--hg-status-red); }
+  .hg-color-bar.orange { background: var(--hg-status-orange); }
+  .hg-color-bar.yellow { background: var(--hg-status-yellow); }
+  .hg-color-bar.green  { background: var(--hg-status-green); }
+
+  .hg-project-card .hg-card-body { padding: 1rem 1.25rem; flex: 1 1 auto; }
+  .hg-project-card .hg-card-footer {
+    padding: 0.65rem 1.25rem;
+    border-top: 1px solid var(--hg-border);
+    background: #fafbfd;
+    font-size: 0.8125rem;
+    color: var(--hg-ink-muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hg-project-name {
+    font-size: 1.05rem; font-weight: 600; color: var(--hg-ink);
+    margin: 0;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .hg-project-name .ds-icon { color: var(--hg-ink-muted); font-size: 0.95rem; }
+  .hg-headline {
+    color: var(--hg-ink);
+    margin: 0.5rem 0 0.85rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  /* Variable mini-strip */
+  .hg-var-strip {
+    display: flex; gap: 0.35rem;
+    margin-top: 0.85rem;
+    align-items: center;
+  }
+  .hg-var-dot {
+    width: 0.7rem; height: 0.7rem; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .hg-var-dot.red    { background: var(--hg-status-red); }
+  .hg-var-dot.orange { background: var(--hg-status-orange); }
+  .hg-var-dot.yellow { background: var(--hg-status-yellow); }
+  .hg-var-dot.green  { background: var(--hg-status-green); }
+  .hg-var-strip .label {
+    font-size: 0.7rem; color: var(--hg-ink-muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-left: 0.5rem;
+  }
+
+  /* Sync status pill */
+  .hg-sync {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.75rem; color: var(--hg-ink-muted);
+  }
+  .hg-sync i { font-size: 0.75rem; }
+  .hg-sync.ok i    { color: var(--hg-status-green); }
+  .hg-sync.warn i  { color: var(--hg-status-orange); }
+  .hg-sync.error i { color: var(--hg-status-red); }
+
+  /* Playbook indicator */
+  .hg-playbook {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.75rem; color: var(--hg-ink-muted);
+  }
+  .hg-playbook i { font-size: 0.7rem; }
+  .hg-playbook .name { color: var(--hg-ink); font-weight: 500; }
+
+  /* Side rail */
+  .hg-side-rail {
+    background: var(--hg-bg-surface);
+    border: 1px solid var(--hg-border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+  }
+  .hg-side-rail h6 {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--hg-ink-muted); margin-bottom: 0.65rem; font-weight: 600;
+  }
+  .hg-side-rail .item {
+    display: flex; gap: 0.55rem; padding: 0.45rem 0;
+    font-size: 0.85rem;
+    border-bottom: 1px dashed var(--hg-border);
+  }
+  .hg-side-rail .item:last-child { border-bottom: 0; }
+  .hg-side-rail .item i { color: var(--hg-status-orange); margin-top: 0.15rem; }
+  .hg-side-rail .item.error i { color: var(--hg-status-red); }
+
+  /* Accent badge */
+  .hg-badge-accent {
+    background: var(--hg-accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Footer note */
+  .hg-preview-note {
+    margin-top: 3rem; padding: 1rem 1.25rem;
+    background: var(--hg-primary-100);
+    border-left: 3px solid var(--hg-accent);
+    border-radius: 4px;
+    color: var(--hg-ink);
+    font-size: 0.875rem;
+  }
+  .hg-preview-note code {
+    background: rgba(31, 58, 95, 0.1);
+    padding: 0.05rem 0.35rem; border-radius: 3px;
+    color: var(--hg-primary);
+  }
+
+  /* Token swatches at the bottom */
+  .hg-swatch-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0 0.25rem; }
+  .hg-swatch {
+    flex: 1 1 130px;
+    border: 1px solid var(--hg-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .hg-swatch .chip { height: 44px; }
+  .hg-swatch .meta { padding: 0.35rem 0.55rem; font-size: 0.7rem; color: var(--hg-ink-muted); }
+  .hg-swatch .meta b { color: var(--hg-ink); display: block; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ===================== NAVBAR ===================== -->
+<nav class="navbar navbar-expand-lg hg-navbar">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="#">
+      <i class="fa-solid fa-crow me-2" style="color: var(--hg-accent);"></i>
+      Huginn<span class="hg-mark">.</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link active" href="#"><i class="fa-solid fa-grip-vertical me-1"></i> Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-folder-open me-1"></i> Projects</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-book me-1"></i> Playbooks</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-plug me-1"></i> Data Sources</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-flag me-1"></i> FRAGOs</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-gavel me-1"></i> Decisions</a></li>
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-comments me-1"></i> Chat</a></li>
+      </ul>
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link" href="#"><i class="fa-solid fa-circle-user"></i> Cmdr. Donland</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- ===================== PAGE HEADER ===================== -->
+<div class="hg-page-header">
+  <div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="hg-page-title">Projects</h1>
+        <div class="hg-page-meta">
+          Last refresh
+          <span class="text-dark fw-medium">2 min ago</span>
+          &middot; 13 projects
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
+        </button>
+        <button class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-plus me-1"></i> Import Projects
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MAIN ===================== -->
+<main class="container-fluid px-4 py-3">
+
+  <!-- Summary strip -->
+  <div class="hg-summary-strip">
+    <span class="hg-summary-pill"><span class="dot red"></span><span class="count">2</span> red</span>
+    <span class="hg-summary-pill"><span class="dot orange"></span><span class="count">1</span> orange</span>
+    <span class="hg-summary-pill"><span class="dot yellow"></span><span class="count">4</span> yellow</span>
+    <span class="hg-summary-pill"><span class="dot green"></span><span class="count">6</span> green</span>
+    <span class="hg-summary-pill" style="border-style: dashed;">
+      <i class="fa-solid fa-flag" style="color: var(--hg-accent);"></i>
+      <span class="count">3</span> FRAGOs triggered since last visit
+    </span>
+  </div>
+
+  <div class="row g-3">
+    <!-- Cards column (left, larger) -->
+    <div class="col-lg-9">
+      <div class="row g-3">
+
+        <!-- Card 1: RED -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar red"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                atlas-backend
+                <span class="hg-badge-accent ms-auto">FRAGO</span>
+              </h3>
+              <p class="hg-headline">
+                <strong>Milestone v1.21 at risk:</strong>
+                3 critical bugs open, expected 0.
+              </p>
+              <div class="hg-var-strip" title="Master Variables">
+                <span class="hg-var-dot green" title="Transparency"></span>
+                <span class="hg-var-dot yellow" title="Throughput"></span>
+                <span class="hg-var-dot orange" title="Cycle Time"></span>
+                <span class="hg-var-dot green" title="Rework"></span>
+                <span class="hg-var-dot red" title="Quality"></span>
+                <span class="hg-var-dot yellow" title="Complexity"></span>
+                <span class="hg-var-dot green" title="Contribution"></span>
+                <span class="label">T·T·C·R·Q·X·N</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 4m ago</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">Standard Eng</span>
+                <i class="fa-solid fa-arrows-rotate" title="Auto-tracking latest"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card 2: RED -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar red"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                payments-svc
+              </h3>
+              <p class="hg-headline">
+                <strong>No SitRep yet</strong> — initial sync still running (87%).
+              </p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="hg-var-dot" style="background:#ccd2dc"></span>
+                <span class="label">awaiting sync</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync warn"><i class="fa-solid fa-circle-half-stroke fa-spin"></i> syncing</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">— not assigned</span>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card 3: ORANGE -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar orange"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-github ds-icon"></i>
+                forge-cli
+              </h3>
+              <p class="hg-headline">
+                Cycle time p90 climbing for 5 days; review backlog at 14.
+              </p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot orange"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="label">T·T·C·R·Q·X·N</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 12m ago</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">Standard Eng</span>
+                <i class="fa-solid fa-thumbtack" title="Pinned to v3"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card 4: YELLOW -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar yellow"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                titan-ui
+              </h3>
+              <p class="hg-headline">
+                Coverage drift below 80% threshold (currently 78.4%).
+              </p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot yellow"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="label">T·T·C·R·Q·X·N</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 1h ago</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">Standard Eng</span>
+                <i class="fa-solid fa-arrows-rotate" title="Auto-tracking latest"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card 5: GREEN -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar green"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-gitlab ds-icon"></i>
+                bifrost-gateway
+              </h3>
+              <p class="hg-headline">
+                All 7 monitored expectations met. Sprint burndown on plan.
+              </p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="label">T·T·C·R·Q·X·N</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 7m ago</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">Standard Eng</span>
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Card 6: GREEN -->
+        <div class="col-md-6 col-xl-4">
+          <article class="hg-project-card">
+            <div class="hg-color-bar green"></div>
+            <div class="hg-card-body">
+              <h3 class="hg-project-name">
+                <i class="fa-brands fa-jira ds-icon"></i>
+                ratatosk-edge
+              </h3>
+              <p class="hg-headline">
+                Zero open bugs. Increment cadence steady.
+              </p>
+              <div class="hg-var-strip">
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="hg-var-dot green"></span>
+                <span class="label">T·T·C·R·Q·X·N</span>
+              </div>
+            </div>
+            <div class="hg-card-footer">
+              <span class="hg-sync ok"><i class="fa-solid fa-circle-check"></i> synced 3m ago</span>
+              <span class="hg-playbook">
+                <i class="fa-solid fa-book"></i>
+                <span class="name">Lite Ops</span>
+                <i class="fa-solid fa-thumbtack"></i>
+              </span>
+            </div>
+          </article>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Side rail -->
+    <div class="col-lg-3">
+      <div class="hg-side-rail mb-3">
+        <h6>Data connection issues</h6>
+        <div class="item error">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <div>
+            <div class="fw-medium">company-gitlab</div>
+            <div class="text-muted small">Token expired 2d ago</div>
+          </div>
+        </div>
+        <div class="item">
+          <i class="fa-solid fa-clock"></i>
+          <div>
+            <div class="fw-medium">corp-jira-eu</div>
+            <div class="text-muted small">Token expires in 12 days</div>
+          </div>
+        </div>
+      </div>
+      <div class="hg-side-rail">
+        <h6>FRAGOs triggered</h6>
+        <div class="item">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Friday bug-carry</div>
+            <div class="text-muted small">atlas-backend &middot; 14:21</div>
+          </div>
+        </div>
+        <div class="item">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Halstead drift watch</div>
+            <div class="text-muted small">forge-cli &middot; 09:47</div>
+          </div>
+        </div>
+        <div class="item">
+          <i class="fa-solid fa-flag"></i>
+          <div>
+            <div class="fw-medium">Anton commit cadence</div>
+            <div class="text-muted small">titan-ui &middot; 08:02</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Token swatches -->
+  <div class="hg-preview-note">
+    <strong>Palette preview — proposal v0.1.</strong>
+    Slate-blue command primary <code>#1f3a5f</code> + muted-gold accent <code>#c9a227</code>.
+    RYG locked from <code>docs/features/user_journey.md</code>. Bootstrap <code>5.3.8</code>, Font Awesome Free <code>6.7.2</code>.
+    Reject / tweak / accept and I'll lock it into <code>docs/ux/IA_guidelines.md</code>.
+  </div>
+
+  <h6 class="text-uppercase text-muted mt-4 mb-2" style="font-size: 0.7rem; letter-spacing: 0.06em;">Brand tokens</h6>
+  <div class="hg-swatch-row">
+    <div class="hg-swatch"><div class="chip" style="background:#1f3a5f"></div><div class="meta"><b>--hg-primary</b>#1f3a5f</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#16294a"></div><div class="meta"><b>--hg-primary-700</b>#16294a</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#e7eef7"></div><div class="meta"><b>--hg-primary-100</b>#e7eef7</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#c9a227"></div><div class="meta"><b>--hg-accent</b>#c9a227</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#1a1f2e"></div><div class="meta" style="color:#fff;background:#1a1f2e"><b>--hg-ink</b>#1a1f2e</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#5a6478"></div><div class="meta"><b>--hg-ink-muted</b>#5a6478</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#f5f7fa"></div><div class="meta"><b>--hg-bg-body</b>#f5f7fa</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#e3e7ee"></div><div class="meta"><b>--hg-border</b>#e3e7ee</div></div>
+  </div>
+
+  <h6 class="text-uppercase text-muted mt-3 mb-2" style="font-size: 0.7rem; letter-spacing: 0.06em;">RYG semantic (locked)</h6>
+  <div class="hg-swatch-row">
+    <div class="hg-swatch"><div class="chip" style="background:#dc3545"></div><div class="meta"><b>--hg-status-red</b>#dc3545</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#fd7e14"></div><div class="meta"><b>--hg-status-orange</b>#fd7e14</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#ffc107"></div><div class="meta"><b>--hg-status-yellow</b>#ffc107</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#198754"></div><div class="meta"><b>--hg-status-green</b>#198754</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#0dcaf0"></div><div class="meta"><b>--hg-status-blue</b>#0dcaf0</div></div>
+    <div class="hg-swatch"><div class="chip" style="background:#6c757d"></div><div class="meta"><b>--hg-status-grey</b>#6c757d</div></div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
