@@ -1,0 +1,116 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Data Sources · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DATASOURCES-LIST+FIND-1" screen_testid="datasources-list-find-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
+  <div>
+    <span class="badge bg-secondary rounded-pill me-2" data-testid="datasources-count-badge">Data Sources ({{ rows|length }})</span>
+    <h1 class="hg-page-title d-inline" data-testid="page-title">Data Sources</h1>
+    <p class="text-muted small mb-0">Manage GitLab connections (Jira coming soon).</p>
+  </div>
+  <a class="btn btn-primary btn-sm"
+     href="{% url 'mockup-datasources-create' %}"
+     data-bs-toggle="tooltip" title="Add a GitLab PAT connection"
+     data-testid="datasource-add-btn">
+    <i class="fa-solid fa-plus me-1"></i> Add Data Source
+  </a>
+</section>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="ds-filter-type">Type</label>
+    <select class="form-select form-select-sm" id="ds-filter-type" data-testid="datasources-filter-type">
+      <option>All</option>
+      <option>GitLab</option>
+      <option disabled>Jira</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="ds-filter-status">Status</label>
+    <select class="form-select form-select-sm" id="ds-filter-status" data-testid="datasources-filter-status">
+      <option>All</option>
+      <option>Connected</option>
+      <option>Token expiring</option>
+      <option>Error</option>
+    </select>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body">
+    {% if rows %}
+      <div class="table-responsive" data-testid="datasources-table-wrap">
+        <table class="table table-hover align-middle mb-0" data-testid="datasources-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Type</th>
+              <th scope="col">Name</th>
+              <th scope="col">Base URL</th>
+              <th scope="col">Token expires</th>
+              <th scope="col">Status</th>
+              <th scope="col">Last activity</th>
+              <th class="text-end" scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr data-testid="datasources-row-{{ r.id }}">
+                <td><span class="badge bg-light text-dark border">{{ r.type }}</span></td>
+                <td class="fw-medium">{{ r.name }}</td>
+                <td class="small text-break">{{ r.base_url }}</td>
+                <td>{{ r.token_expires_in|default:"—" }}</td>
+                <td data-testid="datasources-status-{{ r.id }}">
+                  {% if r.status == 'connected' %}
+                    <span class="badge rounded-pill" style="background:var(--hg-green)">Connected</span>
+                  {% elif r.status == 'expiring' %}
+                    <span class="badge bg-warning text-dark">Token expiring in {{ r.token_expires_in }} days</span>
+                  {% elif r.status == 'error' %}
+                    <span class="badge bg-danger">Connection error</span>
+                  {% else %}
+                    <span class="badge bg-secondary">{{ r.status_label }}</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ r.last_activity }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a class="btn btn-outline-secondary" href="{% url 'mockup-datasources-view' r.id %}"
+                       data-bs-toggle="tooltip" title="View" data-testid="datasources-row-view-{{ r.id }}">
+                      <i class="fa-solid fa-eye"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{% url 'mockup-datasources-edit' r.id %}"
+                       data-bs-toggle="tooltip" title="Edit" data-testid="datasources-row-edit-{{ r.id }}">
+                      <i class="fa-solid fa-pen"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{% url 'mockup-projects-import' %}"
+                       {% if r.status != 'connected' %}tabindex="-1" aria-disabled="true"{% endif %}
+                       data-bs-toggle="tooltip" title="Import projects"
+                       data-testid="datasources-row-import-{{ r.id }}">
+                      <i class="fa-solid fa-download"></i>
+                    </a>
+                    <a class="btn btn-outline-danger" href="{% url 'mockup-datasources-delete' r.id %}"
+                       data-bs-toggle="tooltip" title="Disconnect" data-testid="datasources-row-delete-{{ r.id }}">
+                      <i class="fa-solid fa-plug-circle-xmark"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted" data-testid="datasources-empty-state">
+        <i class="fa-solid fa-plug fa-2x mb-3 d-block" style="color:var(--hg-border)"></i>
+        <p class="mb-1 fw-medium">No data sources connected</p>
+        <p class="small mb-3">Add a GitLab connection to start importing projects.</p>
+        <a href="{% url 'mockup-datasources-create' %}" class="btn btn-primary" data-testid="empty-add-datasource">
+          <i class="fa-solid fa-plus me-1"></i> Add Data Source
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

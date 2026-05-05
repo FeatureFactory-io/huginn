@@ -1,0 +1,22 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Edit FRAGO{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-EDIT_FRAGO-1" screen_testid="fragos-edit-frago-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">Edit FRAGO</h1></section>
+
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <form class="card border-0 shadow-sm rounded-3 card-body vstack gap-3">
+      <input class="form-control" value="{{ fg.title }}">
+      <textarea class="form-control font-monospace" rows="8">Markdown body…</textarea>
+      <div class="d-flex gap-2 justify-content-end">
+        <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-view' fg.id %}">Cancel</a>
+        <button class="btn btn-primary disabled" disabled>Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

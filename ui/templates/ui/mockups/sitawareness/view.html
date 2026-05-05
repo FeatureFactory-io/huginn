@@ -1,0 +1,25 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Situational Awareness · {{ project_slug }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between">
+  <h1 class="hg-page-title">Situational Awareness · {{ project_slug }}</h1>
+  <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}?project={{ project_slug }}"><i class="fa-solid fa-pen-to-square"></i></a>
+</section>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body" style="white-space:pre-wrap;">{{ standing }}</div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body">{{ active }}</div></article>
+    <article class="card border-0 shadow-sm rounded-3 mt-4"><div class="card-header bg-white fw-semibold">Recent entries</div><ul class="list-group list-group-flush">{% for e in recent_entries %}<li class="list-group-item"><strong>{{ e.title }}</strong> · {{ e.on }} · {{ e.by }} {% if e.from_decision %}<small class="text-muted">Decision {{ e.from_decision }}</small>{% endif %}</li>{% endfor %}</ul></article>
+  </div>
+  <aside class="col-lg-4">
+    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body"><h3 class="h6">Versions</h3><div class="list-group list-group-flush small">
+      {% for v in versions %}<button type="button" class="list-group-item text-start">{{ v.summary }} · v{{ v.n }}</button>{% endfor %}
+    </div></div></article>
+  </aside>
+</div>
+{% endblock %}

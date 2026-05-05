@@ -1,0 +1,39 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Playbooks · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-LIST+FIND-1" screen_testid="playbooks-list-find-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-2">
+  <div>
+    <span class="badge bg-secondary rounded-pill me-2">{{ rows|length }} playbooks</span>
+    <h1 class="hg-page-title d-inline">Playbooks</h1>
+  </div>
+  <a class="btn btn-primary btn-sm" href="{% url 'mockup-playbooks-create' %}" data-testid="playbooks-new-btn"><i class="fa-solid fa-plus me-1"></i> New Playbook</a>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body table-responsive">
+    <table class="table table-hover mb-0 align-middle" data-testid="playbooks-table">
+      <thead class="table-light">
+        <tr><th>Name</th><th>Latest ver.</th><th>Used by</th><th>Updated</th><th class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr data-testid="playbooks-row-{{ r.id }}">
+            <td>{{ r.name }}</td><td>v{{ r.latest_version }}</td><td>{{ r.used_by }}</td><td>{{ r.updated }}</td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm">
+                <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-view' r.id %}"><i class="fa-solid fa-eye"></i></a>
+                <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-edit' r.id %}"><i class="fa-solid fa-pen"></i></a>
+                <a class="btn btn-outline-danger" href="{% url 'mockup-playbooks-delete' r.id %}"><i class="fa-solid fa-trash"></i></a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

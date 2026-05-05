@@ -1,0 +1,57 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Decision · {{ d.title|truncatechars:40 }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DECISIONS-VIEW_DECISION-1" screen_testid="decisions-view-decision-loaded" %}
+
+<nav aria-label="breadcrumb"><ol class="breadcrumb small"><li class="breadcrumb-item"><a href="{% url 'mockup-decisions-list' %}">Decisions</a></li><li class="breadcrumb-item active">{{ d.title }}</li></ol></nav>
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title" data-testid="page-title">{{ d.title }}</h1>
+  <span class="badge bg-primary">{{ proposal_status }}</span>
+  <small class="ms-3 text-muted">Source SitRep {{ d.sitrep_ref }}</small>
+</section>
+
+<div class="vstack gap-4">
+  <article class="card border-0 shadow-sm rounded-3">
+    <div class="card-header bg-white fw-semibold">Case</div>
+    <div class="card-body">
+      <p>{{ proposed_body|first }}</p>
+    </div>
+  </article>
+
+  <article class="card border-0 shadow-sm rounded-3 border-primary">
+    <div class="card-header bg-white fw-semibold d-flex gap-3">
+      Decision
+      <span class="ms-auto badge bg-outline-secondary border">{{ proposal_status }}</span>
+    </div>
+    <div class="card-body d-flex gap-3 flex-wrap">
+      <button class="btn btn-success btn-sm" disabled><i class="fa-solid fa-check me-2"></i>Accept</button>
+      <button class="btn btn-outline-secondary btn-sm" disabled>Reject</button>
+    </div>
+  </article>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <article class="card h-100 border-warning">
+        <div class="card-header bg-warning-subtle fw-semibold">Branch A · FRAGO</div>
+        <div class="card-body small"><a href="{% url 'mockup-fragos-create' %}">Opens FRAGO wizard</a></div>
+      </article>
+    </div>
+    <div class="col-lg-4">
+      <article class="card h-100 border-info">
+        <div class="card-header bg-info-subtle fw-semibold">Branch B · Situational Awareness</div>
+        <div class="card-body small"><a href="{% url 'mockup-sitawareness-edit' %}?project=atlas-backend">Opens awareness append</a></div>
+      </article>
+    </div>
+    <div class="col-lg-4">
+      <article class="card h-100 border-success">
+        <div class="card-header bg-success-subtle text-success fw-semibold">Branch C · Jira Issue</div>
+        <div class="card-body small">Creates tagged <code>HUGINN</code> ticket</div>
+      </article>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

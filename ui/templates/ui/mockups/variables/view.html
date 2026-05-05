@@ -1,0 +1,42 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Variables · {{ project_slug }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="VARIABLES-VIEW-1" screen_testid="variables-view-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2 align-items-start">
+  <div>
+    <h1 class="hg-page-title" data-testid="page-title">Variables · {{ project_slug }}</h1>
+    <p class="text-muted mb-0 small">Read-only panels (mock charts placeholders).</p>
+  </div>
+  <div class="btn-group btn-group-sm" role="group" aria-label="Time range">
+    <button type="button" class="btn btn-outline-secondary">This week</button>
+    <button type="button" class="btn btn-outline-secondary">Previous week</button>
+    <button type="button" class="btn btn-primary">Last 2 weeks</button>
+  </div>
+</section>
+
+<div class="vstack gap-4">
+  <section class="card border-0 shadow-sm rounded-3" data-testid="variables-section-transparency">
+    <div class="card-header bg-white fw-semibold">TRANSPARENCY</div>
+    <div class="card-body row g-3">
+      <div class="col-md-6">
+        <p class="small text-muted mb-1">Freshness dashboard</p>
+        <div class="rounded-3 border bg-light-subtle p-5 text-center text-muted"><i class="fa-solid fa-wave-square mb-3"></i> Apache ECharts hook</div>
+      </div>
+      <div class="col-md-6">
+        <p class="small text-muted mb-1">Stale Jira breakdown</p>
+        <div class="rounded-3 border bg-light-subtle p-5 text-center text-muted"><i class="fa-solid fa-table-cells-large mb-3"></i> Placeholder viz</div>
+      </div>
+    </div>
+  </section>
+  <section class="card border-0 shadow-sm rounded-3"><div class="card-header bg-white fw-semibold">THROUGHPUT</div>
+    <div class="card-body"><div class="rounded-3 border bg-light-subtle p-5 text-center text-muted" style="min-height:200px;"><i class="fa-solid fa-chart-line mb-2"></i> Burndown + cadence</div></div>
+  </section>
+  <section class="card border-0 shadow-sm rounded-3"><div class="card-header bg-white fw-semibold">CYCLE & LEAD TIME</div>
+    <div class="card-body"><div class="rounded-3 border bg-light-subtle p-5 text-muted text-center">Median / p90 trend</div></div>
+  </section>
+</div>
+
+{% endblock %}

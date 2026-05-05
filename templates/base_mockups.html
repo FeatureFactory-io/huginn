@@ -1,0 +1,322 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Huginn{% endblock %}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐦‍⬛</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+  <script src="https://kit.fontawesome.com/5763ae6dfb.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --hg-primary: #1f3a5f;
+      --hg-primary-700: #16294a;
+      --hg-primary-100: #e7eef7;
+      --hg-accent: #c9a227;
+      --hg-accent-700: #8e7012;
+      --hg-bg-body: #f5f7fa;
+      --hg-bg-surface: #ffffff;
+      --hg-ink: #1a1f2e;
+      --hg-ink-muted: #5a6478;
+      --hg-border: #e3e7ee;
+      --hg-red: #dc3545;
+      --hg-orange: #fd7e14;
+      --hg-yellow: #ffc107;
+      --hg-green: #198754;
+      --hg-blue: #0dcaf0;
+      --hg-grey: #6c757d;
+      --bs-primary: var(--hg-primary);
+      --bs-primary-rgb: 31, 58, 95;
+      --bs-font-sans-serif: "Montserrat", system-ui, -apple-system, sans-serif;
+      --bs-body-font-family: var(--bs-font-sans-serif);
+      --bs-body-bg: var(--hg-bg-body);
+      --bs-body-color: var(--hg-ink);
+      --bs-border-color: var(--hg-border);
+      --bs-link-color: var(--hg-primary);
+      --bs-link-hover-color: var(--hg-primary-700);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .btn-primary {
+      --bs-btn-bg: var(--hg-primary);
+      --bs-btn-border-color: var(--hg-primary);
+      --bs-btn-hover-bg: var(--hg-primary-700);
+      --bs-btn-hover-border-color: var(--hg-primary-700);
+      --bs-btn-active-bg: var(--hg-primary-700);
+      --bs-btn-active-border-color: var(--hg-primary-700);
+    }
+
+    .btn-outline-primary {
+      --bs-btn-color: var(--hg-primary);
+      --bs-btn-border-color: var(--hg-primary);
+      --bs-btn-hover-bg: var(--hg-primary);
+      --bs-btn-hover-border-color: var(--hg-primary);
+      --bs-btn-active-bg: var(--hg-primary-700);
+    }
+
+    .hg-navbar {
+      background: var(--hg-primary);
+      border-bottom: 3px solid var(--hg-accent);
+    }
+
+    .hg-navbar .navbar-brand {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .hg-navbar .navbar-brand img {
+      object-fit: contain;
+    }
+
+    .hg-navbar .nav-link {
+      color: rgba(255, 255, 255, 0.82);
+      padding: 0.5rem 0.9rem;
+      border-radius: 4px;
+      transition: background 0.12s;
+      font-weight: 500;
+    }
+
+    .hg-navbar .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .hg-navbar .nav-link.active,
+    .hg-navbar .nav-link[aria-current="page"] {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .hg-page-header {
+      background: var(--hg-bg-surface);
+      border-bottom: 1px solid var(--hg-border);
+      padding: 0.85rem 1.5rem;
+    }
+
+    .hg-page-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    main.hg-main {
+      padding: 1rem 1.5rem;
+    }
+
+    .hg-card {
+      background: var(--hg-bg-surface);
+      border: 1px solid var(--hg-border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .hg-card:hover {
+      box-shadow: 0 4px 14px rgba(31, 58, 95, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .hg-card .color-bar {
+      height: 6px;
+    }
+
+    .hg-card .color-bar.red {
+      background: var(--hg-red);
+    }
+
+    .hg-card .color-bar.orange {
+      background: var(--hg-orange);
+    }
+
+    .hg-card .color-bar.yellow {
+      background: var(--hg-yellow);
+    }
+
+    .hg-card .color-bar.green {
+      background: var(--hg-green);
+    }
+
+    .hg-card-name {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .hg-card .card-foot {
+      padding: 0.6rem 1.2rem;
+      border-top: 1px solid var(--hg-border);
+      background: #fafbfd;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .hg-var-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .hg-var-dot.red {
+      background: var(--hg-red);
+    }
+
+    .hg-var-dot.orange {
+      background: var(--hg-orange);
+    }
+
+    .hg-var-dot.yellow {
+      background: var(--hg-yellow);
+    }
+
+    .hg-var-dot.green {
+      background: var(--hg-green);
+    }
+
+    .hg-label-caps {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--hg-ink-muted);
+    }
+
+    .hg-chat-shell {
+      min-height: calc(100vh - 120px);
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+{% block navbar %}
+<nav class="navbar navbar-expand-lg hg-navbar" data-testid="main-navbar">
+  <div class="container-fluid px-3">
+    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'welcome' %}" data-testid="nav-brand">
+      <img src="{% static 'img/Huginn.jpeg' %}" alt="" width="32" height="32" class="rounded-1 bg-white p-1">
+      <span>Huginn</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#hgNav"
+            aria-controls="hgNav" aria-expanded="false" aria-label="Toggle navigation"
+            data-testid="nav-toggler">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="hgNav">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'dashboard' %}active{% endif %}" aria-current="{% if active_nav == 'dashboard' %}page{% else %}false{% endif %}"
+             href="{% url 'mockup-dashboard' %}" data-testid="nav-dashboard">
+            <i class="fa-solid fa-grip-vertical me-1"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'projects' %}active{% endif %}"
+             href="{% url 'mockup-projects-list' %}" data-testid="nav-projects">
+            <i class="fa-solid fa-folder-open me-1"></i> Projects
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'playbooks' %}active{% endif %}"
+             href="{% url 'mockup-playbooks-list' %}" data-testid="nav-playbooks">
+            <i class="fa-solid fa-book me-1"></i> Playbooks
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'datasources' %}active{% endif %}"
+             href="{% url 'mockup-datasources-list' %}" data-testid="nav-datasources">
+            <i class="fa-solid fa-plug me-1"></i> Data Sources
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'fragos' %}active{% endif %}"
+             href="{% url 'mockup-fragos-list' %}" data-testid="nav-fragos">
+            <i class="fa-solid fa-flag me-1"></i> FRAGOs
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'decisions' %}active{% endif %}"
+             href="{% url 'mockup-decisions-list' %}" data-testid="nav-decisions">
+            <i class="fa-solid fa-gavel me-1"></i> Decisions
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'contributors' %}active{% endif %}"
+             href="{% url 'mockup-contributors-list' %}" data-testid="nav-contributors">
+            <i class="fa-solid fa-users me-1"></i> Contributors
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'action-stations' %}active{% endif %}"
+             href="{% url 'mockup-action-stations-list' %}" data-testid="nav-action-stations">
+            <i class="fa-solid fa-list-check me-1"></i> Action Stations
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if active_nav == 'chat' %}active{% endif %}"
+             href="{% url 'mockup-chat' %}" data-testid="nav-chat">
+            <i class="fa-solid fa-comments me-1"></i> Chat
+          </a>
+        </li>
+      </ul>
+      <div class="d-flex align-items-center text-white">
+        <a class="btn btn-sm btn-outline-light me-2" href="{% url 'mockup-auth-login' %}" data-testid="nav-mock-login">
+          <i class="fa-solid fa-right-to-bracket me-1"></i> Mock login
+        </a>
+        <span class="navbar-text d-flex align-items-center" data-testid="nav-user">
+          <i class="fa-solid fa-circle-user me-2 fs-5"></i>
+          <span class="d-none d-md-inline">Commander Donland</span>
+        </span>
+      {% if user.is_authenticated %}
+          <a class="nav-link text-white ms-2" href="{% url 'admin:logout' %}" data-testid="nav-logout">Logout</a>
+      {% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+{% endblock navbar %}
+
+<main class="hg-main container-fluid">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+
+<script>
+  document.body.addEventListener("htmx:configRequest", (event) => {
+    event.detail.headers["X-CSRFToken"] = "{{ csrf_token }}";
+  });
+  document.addEventListener("DOMContentLoaded", () => {
+    const tt = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tt.map((el) => new bootstrap.Tooltip(el));
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

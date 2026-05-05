@@ -1,0 +1,18 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Revoke FRAGO{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-REVOKE_FRAGO-1" screen_testid="fragos-revoke-frago-loaded" %}
+
+<div class="modal fade show d-block py-5" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header border-0"><h1 class="modal-title fs-5">Revoke “{{ title }}”?</h1></div>
+    <div class="modal-body">Future SitReps won’t apply this FRAGO. Revoked rows can’t be toggled back on.</div>
+    <div class="modal-footer border-0 pt-0"><button class="btn btn-outline-secondary" onclick="history.back()">Cancel</button>
+      <a class="btn btn-warning" href="{% url 'mockup-fragos-list' %}">Revoke</a>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+{% endblock %}

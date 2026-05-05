@@ -1,0 +1,24 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Edit Situational Awareness{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-EDIT-1" screen_testid="sitawareness-edit-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">Edit Awareness · {{ project_slug }}</h1></section>
+
+<form class="row g-4">
+  <div class="col-xl-9">
+    <label class="form-label">Standing context</label>
+    <textarea class="form-control mb-4" rows="6">Standing...</textarea>
+    <label class="form-label">Active situations</label>
+    <textarea class="form-control mb-4" rows="5">Situations...</textarea>
+    <label class="form-label">Change summary <span class="text-danger">*</span></label>
+    <input class="form-control" placeholder="Captured outage context …">
+    <div class="d-flex justify-content-end mt-4 gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'mockup-sitawareness-view' %}">Cancel</a>
+      <button class="btn btn-primary disabled">Save Version</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

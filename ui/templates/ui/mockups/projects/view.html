@@ -1,0 +1,38 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}{{ p.name }} · Project{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PROJECTS-VIEW_PROJECT-1" screen_testid="projects-view-project-loaded" %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ p.name }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-3">
+  <div>
+    <span class="badge bg-success rounded-pill me-2">{{ p.sync_state }}</span>
+    <h1 class="hg-page-title d-inline">{{ p.name }}</h1>
+    <p class="text-muted mb-0 small">{{ p.datasource }} · {{ p.source_path }}</p>
+  </div>
+</section>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-projects-edit' pk %}" data-testid="projects-view-edit"><i class="fa-solid fa-pen me-1"></i> Edit</a>
+  <button class="btn btn-outline-primary btn-sm" data-bs-toggle="tooltip" title="Enqueue sync now"><i class="fa-solid fa-arrows-rotate me-1"></i> Sync Now</button>
+  <a class="btn btn-outline-warning btn-sm" href="{% url 'mockup-projects-archive' pk %}"><i class="fa-solid fa-box-archive me-1"></i> Archive</a>
+  <a class="btn btn-primary btn-sm" href="{% url 'mockup-sitrep-list' %}?project={{ p.name }}" data-testid="projects-view-sitreps"><i class="fa-solid fa-file-waveform me-1"></i> Open SitReps</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8 vstack gap-4">
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2><dl class="row small mb-0"><dt class="col-sm-4">Source path</dt><dd class="col-sm-8">{{ p.source_path }}</dd><dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd></dl></div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2><p>{{ p.playbook_display }}</p></div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2><p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p><p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p></div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Recent activity</h2>{% if p.recent_activity %}<p>TODO</p>{% else %}<p class="text-muted mb-0" data-testid="projects-placeholder-activity">V0.1 placeholder — no UoW/Increment feeds yet.</p>{% endif %}</div></article>
+  </div>
+</div>
+{% endblock %}

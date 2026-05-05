@@ -1,0 +1,107 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Add Data Source · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DATASOURCES-CREATE_DATASOURCE-1" screen_testid="datasources-create-datasource-loaded" %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-datasources-list' %}">Data Sources</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Create</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title" data-testid="page-title">Add Data Source</h1>
+  <p class="text-muted small mb-0">Step {{ step }} of 2</p>
+</section>
+
+{% if step == 1 %}
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <button type="button" class="card h-100 border-primary shadow-sm w-100 text-start p-3"
+                  data-bs-toggle="tooltip" title="Connect GitLab with a PAT"
+                  data-testid="datasource-type-gitlab">
+            <div class="d-flex align-items-center gap-3">
+              <span class="fa-3x text-primary"><i class="fa-brands fa-gitlab"></i></span>
+              <div>
+                <div class="fw-semibold fs-5">GitLab</div>
+                <div class="small text-muted">Recommended for MVP</div>
+              </div>
+            </div>
+          </button>
+        </div>
+        <div class="col-md-6">
+          <button type="button" class="card h-100 border-secondary-subtle opacity-75 w-100 text-start p-3"
+                  disabled
+                  data-bs-toggle="tooltip" title="Coming soon"
+                  data-testid="datasource-type-jira">
+            <div class="d-flex align-items-center gap-3">
+              <span class="fa-3x text-secondary"><i class="fa-brands fa-jira"></i></span>
+              <div>
+                <div class="fw-semibold fs-5">Jira</div>
+                <div class="small text-muted">Coming soon</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+      <div class="mt-4 text-end">
+        <a href="{% url 'mockup-datasources-create' %}?step=2" class="btn btn-primary" data-testid="datasource-step-next">
+          Continue <i class="fa-solid fa-arrow-right ms-1"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+      <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body">
+          <form class="vstack gap-3">
+            <div class="mb-2">
+              <label class="form-label" for="ds-name">Name <span class="text-danger">*</span></label>
+              <input class="form-control" id="ds-name" placeholder="company-gitlab" data-testid="datasource-name-input">
+            </div>
+            <div class="mb-2">
+              <label class="form-label" for="ds-url">Base URL <span class="text-danger">*</span></label>
+              <input class="form-control" id="ds-url" placeholder="https://gitlab.example.com" data-testid="datasource-base-url-input">
+            </div>
+            <div class="mb-2">
+              <label class="form-label" for="ds-token">Personal Access Token <span class="text-danger">*</span></label>
+              <input type="password" class="form-control font-monospace" id="ds-token" data-testid="datasource-token-input">
+              <div class="form-text">Masked in UI; rotating tokens is supported.</div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label" for="ds-expiry">Token expires on</label>
+              <input type="date" class="form-control w-auto" id="ds-expiry" data-testid="datasource-token-expiry">
+            </div>
+            <div class="alert alert-secondary small mb-0" data-testid="datasource-test-result">
+              Mock: <strong>Connected as user@example.com</strong> — your token can see <strong>12</strong> projects.
+            </div>
+          </form>
+          <div class="d-flex justify-content-between flex-wrap gap-2 mt-4">
+            <a href="{% url 'mockup-datasources-list' %}" class="btn btn-outline-secondary"
+               data-bs-toggle="tooltip" title="Discard"
+               data-testid="datasource-cancel">Cancel</a>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-outline-primary" data-testid="datasource-test-connection">
+                <i class="fa-solid fa-vial-circle-check me-1"></i> Test Connection
+              </button>
+              <a href="{% url 'mockup-projects-import' %}" class="btn btn-primary disabled" tabindex="-1" aria-disabled="true"
+                 data-bs-toggle="tooltip" title="Enabled after successful connection test"
+                 data-testid="datasource-save">
+                <i class="fa-solid fa-floppy-disk me-1"></i> Save Data Source
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}

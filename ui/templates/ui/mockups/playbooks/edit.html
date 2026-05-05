@@ -1,0 +1,22 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Edit {{ pb.name }} · Playbook{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-EDIT_PLAYBOOK-1" screen_testid="playbooks-edit-playbook-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">Edit Playbook · {{ pb.name }}</h1></section>
+
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <label class="form-label">Change summary</label>
+    <input class="form-control mb-3" placeholder="Shown in versions log">
+    <label class="form-label">Content</label>
+    <textarea class="form-control font-monospace mb-4" rows="16"># Existing markdown…</textarea>
+    <div class="text-end gap-2 d-flex justify-content-between">
+      <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-view' pk %}">Cancel</a>
+      <button class="btn btn-primary disabled">Save as v{{ pb.latest_version|add:'1' }}</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

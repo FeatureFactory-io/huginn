@@ -1,0 +1,57 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Edit {{ ds.name }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DATASOURCES-EDIT_DATASOURCE-1" screen_testid="datasources-edit-datasource-loaded" %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-datasources-list' %}">Data Sources</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'mockup-datasources-view' pk %}">{{ ds.name }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Edit</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title" data-testid="page-title">Edit Data Source</h1>
+  <p class="text-muted small mb-0">Rotate tokens anytime — we re-verify on save.</p>
+</section>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-xl-7">
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <form class="vstack gap-3">
+          <div>
+            <label class="form-label" for="ename">Name <span class="text-danger">*</span></label>
+            <input class="form-control" id="ename" value="{{ ds.name }}" data-testid="datasource-name-input">
+          </div>
+          <div>
+            <label class="form-label" for="eurl">Base URL</label>
+            <input class="form-control" id="eurl" value="{{ ds.base_url }}" data-testid="datasource-base-url-input">
+          </div>
+          <div class="rounded-3 p-3" style="background:var(--hg-primary-100); border:1px solid var(--hg-border);">
+            <label class="form-label" for="etoken-replace">Token</label>
+            <div class="input-group mb-2">
+              <span class="input-group-text font-monospace">•••• •••• ••••</span>
+              <button type="button" class="btn btn-outline-primary" id="replace-token-toggle" data-testid="datasource-replace-token-btn">
+                Replace Token
+              </button>
+            </div>
+            <input type="password" class="form-control font-monospace d-none mt-2" id="etoken-new" placeholder="glpat-…">
+          </div>
+          <button type="button" class="btn btn-outline-secondary w-fit" data-testid="datasource-test-connection">
+            <i class="fa-solid fa-vial-circle-check me-1"></i> Test Connection
+          </button>
+        </form>
+        <div class="d-flex gap-2 justify-content-end mt-4">
+          <a href="{% url 'mockup-datasources-view' pk %}" class="btn btn-outline-secondary" data-testid="datasource-cancel">Cancel</a>
+          <button class="btn btn-primary" disabled data-bs-toggle="tooltip" title="Re-test after edits" data-testid="datasource-save">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}New FRAGO{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-CREATE_FRAGO-1" screen_testid="fragos-create-frago-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">New FRAGO</h1></section>
+
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <form class="vstack gap-3">
+          <div>
+            <label class="form-label" for="frago-title">Title <span class="text-danger">*</span></label>
+            <input id="frago-title" class="form-control" placeholder="Belay Active Bug Count = 0 on Fridays" data-testid="frago-title-input">
+          </div>
+          <div>
+            <label class="form-label" for="frago-body">Markdown body</label>
+            <textarea id="frago-body" class="form-control font-monospace" rows="8" data-testid="frago-body-input"></textarea>
+          </div>
+          <div>
+            <label class="form-label" for="frago-tag">Variable tag (optional)</label>
+            <select id="frago-tag" class="form-select" data-testid="frago-variable-tag-select">
+              <option value="">—</option>
+              <option>Transparency</option>
+              <option>Throughput</option>
+              <option>Cycle &amp; Lead Time</option>
+              <option>Rework</option>
+              <option>Quality</option>
+              <option>Complexity</option>
+              <option>Contribution</option>
+            </select>
+          </div>
+          <div class="rounded-3 border p-3 bg-light">
+            <label class="hg-label-caps mb-2 d-block">Scope filter (optional)</label>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label small">Start</label>
+                <input type="date" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">End</label>
+                <input type="date" class="form-control form-control-sm">
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 justify-content-end">
+            <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-list' %}">Cancel</a>
+            <button type="button" class="btn btn-primary disabled" disabled>Save FRAGO</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

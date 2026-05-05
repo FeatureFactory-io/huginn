@@ -1,0 +1,38 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Contributors · {{ project_slug }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="CONTRIBUTORS-LIST+FIND-1" screen_testid="contributors-list-find-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2 align-items-start">
+  <div>
+    <h1 class="hg-page-title" data-testid="page-title">Contributors · {{ project_slug }}</h1>
+    <span class="small text-muted">Inc / Closed UoWs per weekday</span>
+  </div>
+  <div class="btn-group btn-group-sm">
+    <button class="btn btn-outline-secondary disabled">Week</button>
+    <button class="btn btn-primary disabled">2 wks</button>
+  </div>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-body row g-2">
+    <div class="col-md-8"><label class="form-label visually-hidden" for="contributor-find">Find contributor</label><input id="contributor-find" class="form-control" placeholder="Find contributor..." data-testid="contributors-search"></div>
+  </div>
+</div>
+
+<div class="table-responsive card border-0 shadow-sm rounded-3">
+  <table class="table table-hover mb-0 align-middle" data-testid="contributors-matrix">
+    <thead class="table-light"><tr><th>Name</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Total</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="fw-medium">{{ r.name }}</td><td>{{ r.mon }}</td><td>{{ r.tue }}</td><td>{{ r.wed }}</td><td>—</td><td>—</td><td>{{ r.total }}</td>
+          <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'mockup-contributors-view' r.id %}">View</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

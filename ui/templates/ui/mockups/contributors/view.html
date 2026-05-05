@@ -1,0 +1,23 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}{{ c.name }} · Contributor{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="CONTRIBUTORS-VIEW_CONTRIBUTOR-1" screen_testid="contributors-view-contributor-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">{{ c.name }}</h1><small class="text-muted">{% for h in c.handles %}<span class="badge bg-secondary-subtle text-dark fw-normal">{{ h }}</span> {% endfor %}</small></section>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body">
+      <h2 class="h6 fw-semibold mb-3">Activity timeline · This week</h2>
+      <div class="rounded-4 border dashed p-5 text-center text-muted" style="border-style:dashed;">Incremental chart placeholder</div>
+    </div></article>
+  </div>
+  <aside class="col-lg-4">
+    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body small text-muted"><h3 class="h6 text-dark fw-semibold">Open UoWs</h3>Mock table…</div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body small"><h3 class="h6 fw-semibold">Mentions</h3>None mocked.</div></article>
+  </aside>
+</div>
+
+{% endblock %}

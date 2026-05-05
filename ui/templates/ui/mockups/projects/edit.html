@@ -1,0 +1,39 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Edit {{ p.name }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PROJECTS-EDIT_PROJECT-1" screen_testid="projects-edit-project-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
+      <li class="breadcrumb-item">{{ p.name }}</li>
+      <li class="breadcrumb-item active" aria-current="page">Edit</li>
+    </ol>
+  </nav>
+  <h1 class="hg-page-title" data-testid="page-title">Edit Project</h1>
+</section>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-xl-6">
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <form class="vstack gap-3">
+      <label class="form-label">Display name</label><input class="form-control mb-3" value="{{ p.name }}" data-testid="project-display-name-input">
+      <label class="form-label text-muted small">Immutable source path</label><input class="form-control mb-3 bg-light font-monospace" value="{{ p.source_path }}" disabled>
+      <label class="form-label">Assigned playbook</label>
+      <select class="form-select mb-3" data-testid="project-playbook-select"><option value="">None</option><option>Standard Engineering</option></select>
+      <label class="form-label">Sync schedule</label>
+      <select class="form-select mb-3"><option>Hourly</option><option>Every 6h</option><option>Daily</option></select>
+      <div class="d-flex justify-content-end gap-2">
+        <a href="{% url 'mockup-projects-view' pk %}" class="btn btn-outline-secondary">Cancel</a>
+        <button class="btn btn-primary disabled" tabindex="-1" aria-disabled="true">Save Changes</button>
+      </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

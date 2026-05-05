@@ -1,0 +1,44 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}{{ pb.name }} · Playbook{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-VIEW_PLAYBOOK-1" screen_testid="playbooks-view-playbook-loaded" %}
+
+<nav aria-label="breadcrumb"><ol class="breadcrumb small"><li class="breadcrumb-item"><a href="{% url 'mockup-playbooks-list' %}">Playbooks</a></li><li class="breadcrumb-item active">{{ pb.name }}</li></ol></nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between">
+  <h1 class="hg-page-title">{{ pb.name }} <small class="text-muted fs-6">latest v{{ pb.latest_version }}</small></h1>
+  <div class="btn-group btn-group-sm">
+    <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-edit' pk %}"><i class="fa-solid fa-pen"></i></a>
+  </div>
+</section>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <article class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-body prose small" style="white-space:pre-wrap;" data-testid="playbook-rendered">{{ pb.content_md }}</div>
+    </article>
+    <section class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold mb-3">Used by</h2>
+        <ul class="list-group list-group-flush">
+          {% for up in pb.used_by_projects %}
+            <li class="list-group-item d-flex justify-content-between">{{ up.name }}<span class="badge bg-light border">{{ up.tracks }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-4">
+    <aside class="card border-0 shadow-sm rounded-3">
+      <div class="card-header bg-white fw-semibold">Versions</div>
+      <div class="list-group list-group-flush small">
+        {% for v in pb.versions %}
+          <button type="button" class="list-group-item list-group-item-action">{{ v.summary }} · v{{ v.n }} · {{ v.on }}</button>
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}

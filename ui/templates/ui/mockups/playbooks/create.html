@@ -1,0 +1,43 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}New Playbook · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-CREATE_PLAYBOOK-1" screen_testid="playbooks-create-playbook-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title">New Playbook</h1>
+</section>
+
+<div class="row justify-content-center">
+  <div class="col-xl-11">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Name <span class="text-danger">*</span></label>
+        <input class="form-control" data-testid="playbook-name-input">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Description</label>
+        <input class="form-control" placeholder="Single line elevator pitch" data-testid="playbook-desc-input">
+      </div>
+    </div>
+    <div class="row g-3 mt-1">
+      <div class="col-lg-6">
+        <textarea class="form-control font-monospace small" rows="18" spellcheck="false" data-testid="playbook-editor"># Outline
+
+Describe roles, thresholds, watchers…</textarea>
+      </div>
+      <div class="col-lg-6">
+        <div class="border rounded-3 bg-light p-3 h-100" style="border-color:var(--hg-border);" data-testid="playbook-preview">
+          <h2 class="h6 fw-semibold">Preview</h2>
+          <p class="small text-muted">Rendered markdown lands here.</p>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4 d-flex justify-content-end gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-list' %}">Cancel</a>
+      <button class="btn btn-primary disabled">Save as v1</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

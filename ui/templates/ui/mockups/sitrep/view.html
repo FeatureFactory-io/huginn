@@ -1,0 +1,83 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}SitRep #{{ sitrep_pk }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITREP-VIEW_SITREP-1" screen_testid="sitrep-view-sitrep-loaded" %}
+
+<nav aria-label="breadcrumb" class="mb-3"><ol class="breadcrumb small"><li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li><li class="breadcrumb-item">{{ project }}</li><li class="breadcrumb-item"><a href="{% url 'mockup-sitrep-list' %}">SitReps</a></li><li class="breadcrumb-item active">#{{ sitrep_pk }}</li></ol></nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="hg-page-title" data-testid="page-title">Situation Report · {{ generated }}</h1>
+    <p class="text-muted mb-0 small">{{ project }} · Playbook evaluated v<strong>{{ pb_version_eval }}</strong></p>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge rounded-pill align-self-center text-uppercase fs-6" style="background:var(--hg-{{ overall.status }});">{{ overall.badge }}</span>
+    <a class="btn btn-primary btn-sm" href="{% url 'mockup-decisions-list' %}" data-testid="sitrep-open-decisions">Open Decisions</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-variables-view' %}?project={{ project|urlencode }}" data-testid="sitrep-open-variables">Open Variables</a>
+  </div>
+</section>
+
+<div class="vstack gap-4">
+  <article class="card border-0 shadow-sm rounded-3" id="section-situation">
+    <div class="card-header bg-white fw-semibold">1 · Situation assessment</div>
+    <div class="card-body">
+      <p class="mb-3">{{ situation_narrative }}</p>
+      <ul class="list-group list-group-flush">
+        {% for b in breaches %}
+          <li class="list-group-item d-flex justify-content-between gap-4">
+            <div><strong>{{ b.var }}</strong><div class="small text-muted">{{ b.expected }} → actual {{ b.actual }}</div></div>
+            <span class="badge" style="background:var(--hg-{{ b.sev }});">{{ b.sev }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </article>
+
+  <article class="card border-0 shadow-sm rounded-3" id="section-variables">
+    <div class="card-header bg-white fw-semibold">2 · Variables snapshot</div>
+    <div class="card-body"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      <thead class="table-light"><tr><th>Section</th><th>Traffic</th></tr></thead>
+      <tbody>
+        {% for v in matrix_vars %}
+          <tr><td><a href="{% url 'mockup-variables-view' %}">{{ v.label }}</a></td><td><span class="hg-var-dot {{ v.traffic }}"></span>{{ v.traffic }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div></div>
+  </article>
+
+  <article class="card border-0 shadow-sm rounded-3" id="section-decisions">
+    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">3 · Proposed Decisions<span class="small text-muted">Mock</span></div>
+    <div class="card-body"><div class="row g-3">
+      {% for d in decisions_cards %}
+        <div class="col-md-6">
+          <div class="border rounded-3 p-3 h-100">
+            <h3 class="h6 fw-semibold">{{ d.title }}</h3>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'mockup-decisions-view' d.id %}">Review</a>
+          </div>
+        </div>
+      {% endfor %}
+    </div></div>
+  </article>
+
+  <article class="card border-0 shadow-sm rounded-3" id="section-fragos">
+    <div class="card-header bg-white fw-semibold">4 · FRAGOs applied</div>
+    <div class="card-body"><ul class="mb-0">
+      {% for f in fragos_applied %}
+        <li><a href="{% url 'mockup-fragos-view' 701 %}">{{ f.title }}</a></li>
+      {% endfor %}
+      </ul></div>
+  </article>
+
+  <article class="card border-0 shadow-sm rounded-3" id="section-activity">
+    <div class="card-header bg-white fw-semibold">5 · Notable activity</div>
+    <div class="card-body">{{ notable }}</div>
+  </article>
+
+  <div class="text-end">
+    <a class="btn btn-outline-secondary" href="{% url 'mockup-chat' %}" data-testid="sitrep-open-chat">Open Chat about this SitRep</a>
+  </div>
+</div>
+
+{% endblock %}

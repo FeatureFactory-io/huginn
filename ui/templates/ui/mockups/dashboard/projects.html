@@ -1,0 +1,92 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Projects Dashboard · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DASHBOARD-PROJECTS-1" screen_testid="dashboard-projects-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="hg-page-title mb-1" data-testid="page-title">Projects</h1>
+    <p class="text-muted mb-0 small">Last refreshed <strong>today 09:25</strong></p>
+    <div class="mt-2 small">
+      {% for hue, qty in summary_strip.items %}
+        <span class="me-3"><strong>{{ qty }}</strong> <span style="color:var(--hg-{{ hue }})">{{ hue }}</span></span>
+      {% endfor %}
+    </div>
+  </div>
+  <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Refresh"><i class="fa-solid fa-arrows-rotate"></i></button>
+</section>
+
+<div class="row">
+  <div class="col-lg-9">
+    <div class="row g-3 mb-5">
+      {% for p in projects %}
+        <div class="col-md-6 col-xl-4" data-testid="project-card-{{ p.id }}">
+          <article class="hg-card position-relative" tabindex="0" role="article">
+            <div class="color-bar {{ p.health }}"></div>
+            <div class="card-body pb-3">
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <h3 class="hg-card-name flex-grow-1 mb-0 d-flex gap-2">
+                  {% if p.ds_icon == 'gitlab' %}
+                    <i class="fa-brands fa-gitlab text-danger"></i>
+                  {% endif %}
+                  {{ p.name }}
+                </h3>
+                <span class="badge rounded-pill border-0 small text-capitalize fw-semibold"
+                      style="background:var(--hg-{{ p.health }}); color:#fff;">{{ p.health }}</span>
+              </div>
+              <p class="hg-headline small">{{ p.headline }}</p>
+              <p class="small text-muted mb-2">SitRep {{ p.last_sitrep }}</p>
+              <div class="hg-var-strip d-flex gap-2 align-items-center" aria-label="Master Variables preview">
+                {% for hue in p.vars %}<span class="hg-var-dot {{ hue }}" title="{{ hue }}"></span>{% endfor %}
+                <span class="small text-muted">T · T · C · R · Q · X · N</span>
+              </div>
+            </div>
+            <div class="card-foot text-muted gap-4">
+              <span class="d-flex gap-2 align-items-center">
+                {% if p.sync_ok %}
+                  <i class="fa-solid fa-circle-check text-success"></i>
+                {% else %}
+                  <i class="fa-solid fa-triangle-exclamation text-warning"></i>
+                {% endif %}
+                synced {{ p.last_sync }}
+              </span>
+              <span class="d-flex gap-2 align-items-center">
+                <i class="fa-solid fa-book-open"></i> {{ p.playbook }}
+                {% if p.playbook_track == 'pin' %}<i class="fa-solid fa-thumbtack text-warning" title="Pinned"></i>{% else %}<i class="fa-solid fa-arrows-rotate text-muted" title="Auto-track"></i>{% endif %}
+              </span>
+            </div>
+            <a class="stretched-link" href="{% url 'mockup-sitrep-list' %}?project={{ p.name|urlencode }}" aria-label="Open latest SitRep for {{ p.name }}"></a>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  <aside class="col-lg-3">
+    <section class="card border-0 shadow-sm rounded-3 mb-3">
+      <div class="card-header bg-white fw-semibold">Connection issues</div>
+      <ul class="list-group list-group-flush small">
+        {% for issue in rail_issues %}
+          <li class="list-group-item">
+            <a href="{% url 'mockup-datasources-view' 1 %}">{{ issue.name }}</a>
+            — <span class="text-warning">{{ issue.issue }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="card border-0 shadow-sm rounded-3">
+      <div class="card-header bg-white fw-semibold">Triggered FRAGOs</div>
+      <ul class="list-group list-group-flush small">
+        {% for fg in rail_fragos %}
+          <li class="list-group-item"><a href="{% url 'mockup-fragos-list' %}?project={{ fg.project }}">{{ fg.title }}</a></li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section class="text-center mt-4">
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-projects-list' %}">Manage projects →</a>
+    </section>
+  </aside>
+</div>
+
+{% endblock %}

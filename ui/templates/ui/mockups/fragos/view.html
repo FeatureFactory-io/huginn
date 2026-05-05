@@ -1,0 +1,28 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}FRAGO {{ fg.title|truncatechars:40 }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-VIEW_FRAGO-1" screen_testid="fragos-view-frago-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between gap-2">
+  <div>
+    <h1 class="hg-page-title" data-testid="page-title">{{ fg.title }}</h1>
+    <span class="badge bg-{{ fg.status_class }}">{{ fg.status }}</span>
+    <span class="badge bg-secondary ms-2">{{ fg.tag }}</span>
+  </div>
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" checked id="fragoEnabled" disabled>
+    <label class="form-check-label" for="fragoEnabled">Enabled</label>
+  </div>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-body" style="white-space:pre-wrap;" data-testid="frago-rendered-body">Disregard playbook bug-count ceiling on Fridays ≤3 ok.</div>
+</div>
+
+<div class="d-flex gap-2">
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-fragos-edit' fg.id %}"><i class="fa-solid fa-pen me-1"></i> Edit</a>
+  <a class="btn btn-outline-danger btn-sm" href="{% url 'mockup-fragos-revoke' fg.id %}"><i class="fa-solid fa-ban me-1"></i> Revoke</a>
+</div>
+{% endblock %}

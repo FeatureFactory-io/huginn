@@ -1,0 +1,38 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Disconnect {{ ds.name }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DATASOURCES-DELETE_DATASOURCE-1" screen_testid="datasources-delete-datasource-loaded" %}
+
+<div class="py-5 text-center">
+  <p class="text-muted mb-5">Backdrop mock — modal launches automatically.</p>
+</div>
+
+<div class="modal fade show" id="disconnectModal" tabindex="-1" aria-modal="true" role="dialog" style="display:block;" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h1 class="modal-title fs-5" id="disconnectLabel" data-testid="datasource-delete-title">Disconnect “{{ ds.name }}”?</h1>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3" data-testid="datasource-delete-body">
+          <strong>{{ imported_projects }}</strong> project(s) currently use this data source. Disconnecting will stop syncs and mark them orphaned.
+        </p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                onclick="history.back()" data-testid="datasource-delete-cancel">
+          Cancel
+        </button>
+        <a class="btn btn-danger" role="button" href="{% url 'mockup-datasources-list' %}" data-testid="datasource-delete-confirm">
+          Disconnect
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop fade show"></div>
+
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}SitReps · {{ project_slug }} · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITREP-LIST+FIND-1" screen_testid="sitrep-list-find-loaded" %}
+
+<nav aria-label="breadcrumb"><ol class="breadcrumb small mb-3"><li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li><li class="breadcrumb-item">{{ project_slug }}</li><li class="breadcrumb-item active">SitReps</li></ol></nav>
+
+<section class="hg-page-header rounded-2 mb-4">
+  <h1 class="hg-page-title" data-testid="page-title">SitReps · {{ project_slug }}</h1>
+</section>
+
+<div class="card border-danger mb-4">
+  <div class="card-body row g-4">
+    <div class="col-md-8">
+      <div class="d-flex gap-3 align-items-center mb-3">
+        <span class="badge bg-danger text-uppercase">{{ pinned.status }}</span>
+        <div>
+          <div class="hg-label-caps">Latest</div>
+          <h2 class="h4 mb-2">{{ pinned.headline }}</h2>
+          <div class="small text-muted">{{ pinned.generated_at }}</div>
+        </div>
+      </div>
+      <p class="small text-muted mb-0">Pending Decisions: {{ pinned.decisions_proposed }}</p>
+    </div>
+    <div class="col-md-4 d-grid align-content-center">
+      <a class="btn btn-primary btn-lg" href="{% url 'mockup-sitrep-view' pinned.id %}" data-testid="sitrep-open-latest">Open SitRep</a>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body table-responsive">
+    <table class="table table-hover mb-0 align-middle" data-testid="sitrep-history-table">
+      <thead class="table-light">
+        <tr>
+          <th>Generated</th><th>Status</th><th>Headline</th><th class="text-center">Proposed</th><th class="text-center">Accepted</th><th>Playbook</th><th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr data-testid="sitrep-row-{{ r.id }}">
+            <td>{{ r.generated_at }}</td>
+            <td><span class="badge text-uppercase {% if r.status == 'red' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.status }}</span></td>
+            <td>{{ r.headline }}</td>
+            <td class="text-center">{{ r.decisions_proposed }}</td><td class="text-center">{{ r.decisions_accepted }}</td>
+            <td>v{{ r.pb_version }}</td>
+            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'mockup-sitrep-view' r.id %}">View</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

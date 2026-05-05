@@ -1,0 +1,84 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}{{ ds.name }} · Data Source{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="DATASOURCES-VIEW_DATASOURCE-1" screen_testid="datasources-view-datasource-loaded" %}
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-datasources-list' %}">Data Sources</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ ds.name }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-3">
+  <div>
+    <span class="badge bg-light border text-capitalize me-2" data-testid="datasource-type-badge">{{ ds.type }}</span>
+    <h1 class="hg-page-title d-inline" data-testid="page-title">{{ ds.name }}</h1>
+    <p class="text-muted mb-0 small">{{ ds.base_url }}</p>
+  </div>
+  <span class="badge bg-warning text-dark">{{ ds.status }}</span>
+</section>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <section class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Connection</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-4">Token</dt>
+          <dd class="col-sm-8 font-monospace" data-testid="datasource-token-masked">•••• •••• •••• {{ ds.token_last4 }}</dd>
+          <dt class="col-sm-4">Expires</dt>
+          <dd class="col-sm-8">{{ ds.expires_on }} · <strong>{{ ds.expires_in_days }} days</strong></dd>
+          <dt class="col-sm-4">Authenticated as</dt>
+          <dd class="col-sm-8">{{ ds.auth_as }}</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Recent sync runs</h2>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" data-testid="datasource-sync-log">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Project</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Ingested</th>
+                <th scope="col">Errors</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for run in ds.sync_runs %}
+                <tr>
+                  <td>{{ run.at }}</td>
+                  <td>{{ run.project }}</td>
+                  <td>{{ run.duration_ms }} ms</td>
+                  <td>{{ run.ingested }}</td>
+                  <td>{{ run.errors }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="col-xl-4">
+    <div class="d-grid gap-2">
+      <a class="btn btn-outline-primary" href="{% url 'mockup-datasources-edit' pk %}" data-testid="datasource-edit-btn">
+        <i class="fa-solid fa-pen me-2"></i> Edit
+      </a>
+      <button type="button" class="btn btn-outline-secondary" data-testid="datasource-test-now">
+        <i class="fa-solid fa-arrows-rotate me-2"></i> Test Connection Now
+      </button>
+      <a class="btn btn-outline-danger" href="{% url 'mockup-datasources-delete' pk %}" data-testid="datasource-delete-btn">
+        <i class="fa-solid fa-plug-circle-xmark me-2"></i> Disconnect
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

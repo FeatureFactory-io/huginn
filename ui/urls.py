@@ -1,7 +1,7 @@
 """URL patterns for the ui app."""
 
 from django.contrib.auth.views import LogoutView
-from django.urls import path
+from django.urls import include, path
 from django.views.generic import RedirectView
 
 from .views.auth.login_view import LoginScreenView
@@ -36,6 +36,7 @@ urlpatterns = [
         name="auth-logout",
     ),
     path("welcome/", welcome, name="welcome"),
+    path("mockups/", include("ui.urls_mockups")),
     path("datasources/", DataSourcesListView.as_view(), name="datasources-list"),
     path("datasources/create/", DataSourcesCreateView.as_view(), name="datasources-create"),
     path("datasources/<int:pk>/", DataSourcesDetailView.as_view(), name="datasource-detail"),

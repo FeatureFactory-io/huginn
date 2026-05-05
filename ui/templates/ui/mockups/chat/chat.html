@@ -1,0 +1,50 @@
+{% extends "base_mockups.html" %}
+
+{% block title %}Gjallarhorn · Chat{% endblock %}
+
+{% block extra_css %}
+<style>
+.hg-chat-panes{display:flex;min-height:calc(100vh - 160px);}
+.hg-chat-left{flex:1;border-right:1px solid var(--hg-border);}
+.hg-chat-right{width:340px;background:var(--hg-bg-surface);}
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="CHAT-1" screen_testid="chat-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3">
+  <div class="d-flex justify-content-between flex-wrap gap-2">
+    <h1 class="hg-page-title" data-testid="page-title">Gjallarhorn · Chat</h1>
+    <select class="form-select form-select-sm w-auto" aria-label="Project context"><option selected>atlas-backend</option><option>billing-service</option></select>
+  </div>
+</section>
+
+<div class="hg-chat-shell hg-chat-panes rounded-3 border bg-white shadow-sm overflow-hidden" data-testid="chat-shell">
+  <div class="hg-chat-left d-flex flex-column">
+    <div class="border-bottom px-3 py-2 small text-muted" data-testid="chat-context-chip">Context: Latest SitRep 2026-05-05 09:15</div>
+    <div class="flex-grow-1 p-3 overflow-auto" data-testid="chat-thread" style="max-height:60vh;">
+      {% for msg in thread %}
+        <div class="mb-4 {% if msg.role == 'user' %}text-end{% endif %}">
+          <div class="d-inline-block p-3 rounded-4 {% if msg.role == 'user' %}bg-primary text-white{% else %}border{% endif %}">
+            {{ msg.text }}
+          </div>
+          {% if msg.tools %}<details class="mt-2"><summary class="small">Tool trace</summary><pre class="small bg-dark text-warning p-2 rounded">list_uows(filters=bug…)</pre></details>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <form class="p-3 border-top d-flex gap-2">
+      <label class="visually-hidden" for="chatInput">Prompt</label>
+      <textarea id="chatInput" class="form-control" rows="2" placeholder="Ask Gjallarhorn…"></textarea>
+      <button type="button" class="btn btn-primary" data-testid="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+  </div>
+  <aside class="hg-chat-right p-3 d-none d-lg-block overflow-auto">
+    <h3 class="h6">Pinned context</h3>
+    <p class="small text-muted mb-4">Attachments show up here in real implementation.</p>
+    <div class="card border-secondary-subtle">
+      <div class="card-body small"><strong>Recent entities</strong><ul class="mb-0 ps-3 mt-2"><li>SitRep #2001</li><li>Variable: Bugs</li></ul></div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
