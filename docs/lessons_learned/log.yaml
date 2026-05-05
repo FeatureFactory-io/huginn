@@ -1,0 +1,24 @@
+# Iteration learning log — append only, newest entries last.
+#
+# Schema per entry:
+#   milestone:           "ITER-YYYY-Www | <goal slug>"
+#   date:                "YYYY-MM-DD"
+#   goal:                "<iteration goal sentence>"
+#   velocity_ratio:      <planned/actual scenarios>
+#   dominant_drift:      "<signal type>"
+#   footprint_accuracy:  <0.0..1.0>
+#   pip_candidates:      ["<process improvement proposals>"]
+#
+# This log is read by PIT-Orient & Validate Scope to compute trends.
+
+entries:
+  - milestone: "ITER-2026-W19 | Acts 0-2 backbone"
+    date: "2026-05-05"
+    goal: >-
+      Ship Acts 0–2 vertical slices (auth, datasources CRUD, projects list/import/view/edit/archive/sync)
+      with integration tests aligned to CI.
+    velocity_ratio: "11/11 planned scenarios implemented in one MR"
+    dominant_drift: "F01 YAML checkpoint wording updated post-skeleton removal"
+    footprint_accuracy: 0.92
+    pip_candidates:
+      - Replace placeholder token ciphertext with KMS-backed secret storage before prod scale

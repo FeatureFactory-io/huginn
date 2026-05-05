@@ -115,6 +115,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGIN_URL = "/"
+LOGIN_REDIRECT_URL = "/projects/"
+
 # Structured JSON logging to stdout — collected by CloudWatch on EB
 LOGGING = {
     "version": 1,

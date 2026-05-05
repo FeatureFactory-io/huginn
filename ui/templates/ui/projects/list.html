@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Projects · Huginn{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div>
+    <h1 class="h3 mb-1" data-testid="projects-page-title">Projects</h1>
+    <p class="text-muted small mb-0">Skeleton — listing deferred to MIT wiring.</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge bg-secondary" data-testid="projects-count-badge">{{ projects|length }} total</span>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'projects-import' %}" data-testid="projects-import-link">Import projects</a>
+  </div>
+</div>
+{% if not projects %}
+  <div class="alert alert-info mt-3" data-testid="projects-empty-state">No projects imported yet.</div>
+{% else %}
+  <ul class="list-group mt-3">
+    {% for p in projects %}
+      <li class="list-group-item" data-testid="project-row-{{ p.pk }}">{{ p.name }} — {{ p.datasource.name }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Sign in · Huginn{% endblock %}
+{% block content %}
+<section class="container py-5" data-testid="auth-login-loaded">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      {# AUTH-LOGIN-08 / tagline in main — header wordmark is global (base.html) #}
+      <h1 class="h4 mb-3">Human-AI OODA for PM</h1>
+      {% if login_error %}
+        <div class="alert alert-warning" role="alert" data-testid="login-inline-error">{{ login_error }}</div>
+      {% endif %}
+      {% if connectivity_error %}
+        <div class="alert alert-danger" role="alert" data-testid="login-connectivity-error">{{ connectivity_error }}</div>
+      {% endif %}
+      <form method="post" action="" id="login-form-main" data-testid="login-form-main">{% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="id_email">Email</label>
+          <input id="id_email" name="email" type="email" class="form-control" autocomplete="username"
+                 data-testid="login-email" required value="{{ field_email|default:'' }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label" for="id_password">Password</label>
+          <input id="id_password" name="password" type="password" class="form-control" autocomplete="current-password"
+                 data-testid="login-password" required {% if login_error %}value=""{% endif %}>
+        </div>
+        <div class="d-grid gap-2 mb-3">
+          <button type="submit" class="btn btn-primary w-100" data-testid="login-submit" id="login-submit-btn" disabled>Sign In</button>
+          <button type="button" class="d-none"></button>{# sentinel for ENTER submit — primary is Sign In #}
+        </div>
+        <p class="small text-muted mb-0">
+          <a href="#" class="link-secondary text-decoration-none pe-none" tabindex="-1" role="link" aria-disabled="true"
+             data-bs-toggle="tooltip" data-bs-title="Contact your admin" data-testid="login-forgot-password-link">Forgot password?</a>
+        </p>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+  (function () {
+    const form = document.getElementById('login-form-main');
+    const email = document.getElementById('id_email');
+    const password = document.getElementById('id_password');
+    const btn = document.getElementById('login-submit-btn');
+    if (!form || !email || !password || !btn) return;
+    function sync() {
+      const ok = email.value.trim().length > 0 && password.value.length > 0;
+      btn.disabled = !ok;
+    }
+    email.addEventListener('input', sync);
+    password.addEventListener('input', sync);
+    sync();
+    var tips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tips.forEach(function (el) { new bootstrap.Tooltip(el); });
+  })();
+</script>
+{% endblock %}
