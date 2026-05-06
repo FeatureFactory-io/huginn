@@ -10,7 +10,7 @@
 </nav>
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-  <div class="flex-grow-1 hg-page-header-main">
+  <div class="flex-grow-1">
     <span class="badge bg-success rounded-pill me-2 text-capitalize" data-testid="project-sync-state">{{ project.get_sync_state_display }}</span>
     <h1 class="hg-page-title d-inline">{{ project.display_name|default:project.name }}</h1>
     <p class="text-muted mb-0 small">
@@ -23,8 +23,10 @@
     {% if project.status != "archived" %}
     <form method="post" action="{% url 'projects-sync-now' pk=project.pk %}" class="d-inline" id="project-sync-now-form">
       {% csrf_token %}
-      <input type="hidden" name="tab" value="{{ active_tab }}" id="project-sync-tab-field" />
-      <input type="hidden" name="range" value="{{ time_range }}" id="project-sync-range-field" />
+      <input type="hidden" name="tab" value="{{ active_tab }}" />
+      {% if active_tab == "increments" %}
+      <input type="hidden" name="range" value="{{ time_range }}" />
+      {% endif %}
       <button type="submit" class="btn btn-outline-primary btn-sm" data-testid="project-sync-now"><i class="fa-solid fa-arrows-rotate me-1"></i>Sync now</button>
     </form>
     {% else %}
@@ -35,165 +37,135 @@
   </div>
 </section>
 
-<div class="hg-detail-tabs mb-3">
-  <div class="hg-detail-tabs-head">
-    <ul class="nav nav-tabs" id="project-detail-tabs" role="tablist">
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
+  <div class="card-header border-0 pt-3 px-3 pb-0">
+    <ul class="nav nav-tabs card-header-tabs" role="tablist" id="project-detail-tabs">
       <li class="nav-item" role="presentation">
-        <button
+        <a
           class="nav-link {% if active_tab == 'vitals' %}active{% endif %}"
-          id="project-tab-vitals"
-          data-bs-toggle="tab"
-          data-bs-target="#project-pane-vitals"
-          type="button"
+          href="{% url 'projects-detail' project.pk %}?tab=vitals"
           role="tab"
-          aria-controls="project-pane-vitals"
           aria-selected="{% if active_tab == 'vitals' %}true{% else %}false{% endif %}"
+          id="project-tab-vitals"
           data-testid="project-tab-vitals"
-        ><i class="fa-solid fa-heart-pulse me-1" aria-hidden="true"></i>Vitals</button>
+        ><i class="fa-solid fa-heart-pulse me-1" aria-hidden="true"></i>Vitals</a>
       </li>
       <li class="nav-item" role="presentation">
-        <button
+        <a
           class="nav-link {% if active_tab == 'increments' %}active{% endif %}"
-          id="project-tab-increments"
-          data-bs-toggle="tab"
-          data-bs-target="#project-pane-increments"
-          type="button"
+          href="{% url 'projects-detail' project.pk %}?tab=increments&range={{ time_range }}"
           role="tab"
-          aria-controls="project-pane-increments"
           aria-selected="{% if active_tab == 'increments' %}true{% else %}false{% endif %}"
+          id="project-tab-increments"
           data-testid="project-tab-increments"
-        ><i class="fa-solid fa-gift me-1" aria-hidden="true"></i>Increments</button>
+        ><i class="fa-solid fa-gift me-1" aria-hidden="true"></i>Increments</a>
       </li>
     </ul>
   </div>
-
-  <div class="tab-content hg-detail-tabs-body" id="project-detail-tab-content">
-  <div
-    class="tab-pane fade {% if active_tab == 'vitals' %}show active{% endif %}"
-    id="project-pane-vitals"
-    role="tabpanel"
-    aria-labelledby="project-tab-vitals"
-    tabindex="0"
-  >
-    <div class="row g-4">
-      <div class="col-lg-8 vstack hg-vitals-stack">
-        <section class="hg-vitals-section" aria-labelledby="project-transparency-heading">
-          <h2 id="project-transparency-heading" class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
-          <dl class="row small mb-0" data-testid="project-widget-transparency">
-            <dt class="col-sm-4 text-muted">Last sync</dt>
-            <dd class="col-sm-8" data-testid="project-transparency-last-sync">
-              {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
-            </dd>
-            <dt class="col-sm-4 text-muted">Last commits</dt>
-            <dd class="col-sm-8" data-testid="project-transparency-last-commits">
-              {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
-            </dd>
-          </dl>
-        </section>
-        <section class="hg-vitals-section">
-          <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
-          <dl class="row small mb-0">
-            <dt class="col-sm-4 text-muted">Source path</dt>
-            <dd class="col-sm-8"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
-            <dt class="col-sm-4 text-muted">Imported on</dt>
-            <dd class="col-sm-8" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
-            <dt class="col-sm-4 text-muted">Imported by</dt>
-            <dd class="col-sm-8" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
-          </dl>
-        </section>
-        <section class="hg-vitals-section">
-          <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2>
-          <div data-testid="project-playbook-section">
-            {% if project.playbook_slug %}
-              <p class="mb-0">{{ project.playbook_slug }}</p>
-            {% else %}
-              <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
-            {% endif %}
-          </div>
-        </section>
-        <section class="hg-vitals-section">
-          <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
-          <p class="mb-2">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
-          <p class="mb-0 text-muted small">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
-        </section>
-      </div>
-    </div>
-  </div>
-  <div
-    class="tab-pane fade {% if active_tab == 'increments' %}show active{% endif %}"
-    id="project-pane-increments"
-    role="tabpanel"
-    aria-labelledby="project-tab-increments"
-    tabindex="0"
-  >
-    <div class="mb-3 hg-increments-range-outer">
-      <div class="btn-group btn-group-sm hg-increments-range" role="group" aria-label="Increments time range">
-        {% for key, label in time_range_choices %}
-        <a
-          href="{% url 'projects-detail' project.pk %}?tab=increments&range={{ key }}"
-          class="btn {% if time_range == key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-          data-testid="increments-range-{{ key }}"
-          aria-label="Show Increments from {{ label }}"
-        >{{ label }}</a>
-        {% endfor %}
-      </div>
-    </div>
-
-    {% if increments %}
-    <div class="table-responsive">
-      <table class="table table-sm align-middle" data-testid="increments-table">
-        <thead>
-          <tr>
-            <th scope="col">Occurred at</th>
-            <th scope="col">Author</th>
-            <th scope="col">Kind</th>
-            <th scope="col">Commit</th>
-            <th scope="col">Source</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for inc in increments %}
-          <tr data-testid="increments-row-{{ inc.kind }}-{{ inc.external_id|slice:':12' }}">
-            <td><time datetime="{{ inc.occurred_at|date:'c' }}">{{ inc.occurred_at }}</time></td>
-            <td>{% if inc.contributor %}{{ inc.contributor.name|default:inc.contributor.handle|default:inc.contributor.email }}{% else %}—{% endif %}</td>
-            <td><span class="badge text-bg-secondary text-lowercase">{{ inc.kind }}</span></td>
-            <td class="commit-message-cell">
-              {% if inc.summary or inc.payload.message_body %}
-                {% if inc.summary %}<div class="fw-medium text-break">{{ inc.summary }}</div>{% endif %}
-                {% if inc.payload.message_body %}
-                <div class="small text-muted text-break {% if inc.summary %}mt-1{% endif %}">{{ inc.payload.message_body|linebreaksbr }}</div>
-                {% endif %}
-              {% else %}
-              —
-              {% endif %}
-            </td>
-            <td>
-              {% if inc.payload.web_url %}
-              <a href="{{ inc.payload.web_url }}" target="_blank" rel="noopener noreferrer" data-testid="increment-source-link">Open</a>
-              {% else %}—{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <div class="card-body">
+    {% if active_tab == 'vitals' %}
+    <div id="project-pane-vitals" role="tabpanel" aria-labelledby="project-tab-vitals" tabindex="0">
+      <section class="hg-vitals-section">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
+        <dl class="row small mb-0" data-testid="project-widget-transparency">
+          <dt class="col-sm-4 text-muted">Last sync</dt>
+          <dd class="col-sm-8" data-testid="project-transparency-last-sync">
+            {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
+          </dd>
+          <dt class="col-sm-4 text-muted">Last commits</dt>
+          <dd class="col-sm-8" data-testid="project-transparency-last-commits">
+            {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
+          </dd>
+        </dl>
+      </section>
+      <hr class="my-4" />
+      <section class="hg-vitals-section">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-4 text-muted">Source path</dt>
+          <dd class="col-sm-8"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
+          <dt class="col-sm-4 text-muted">Imported on</dt>
+          <dd class="col-sm-8" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
+          <dt class="col-sm-4 text-muted">Imported by</dt>
+          <dd class="col-sm-8" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
+        </dl>
+      </section>
+      <hr class="my-4" />
+      <section class="hg-vitals-section">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2>
+        <div data-testid="project-playbook-section">
+          {% if project.playbook_slug %}
+            <p class="mb-0">{{ project.playbook_slug }}</p>
+          {% else %}
+            <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
+          {% endif %}
+        </div>
+      </section>
+      <hr class="my-4" />
+      <section class="hg-vitals-section">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
+        <p class="mb-2">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
+        <p class="mb-0 text-muted small">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
+      </section>
     </div>
     {% else %}
-    <p class="text-muted" data-testid="increments-empty-state">No Increments in this range yet.</p>
+    <div id="project-pane-increments" role="tabpanel" aria-labelledby="project-tab-increments" tabindex="0">
+      <div class="mb-3 d-flex flex-wrap gap-2 hg-increments-range-outer" role="group" aria-label="Increments time range">
+        <div class="btn-group btn-group-sm hg-increments-range flex-wrap" role="group">
+          {% for key, label in time_range_choices %}
+          <a
+            href="{% url 'projects-detail' project.pk %}?tab=increments&range={{ key }}"
+            class="btn {% if time_range == key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+            data-testid="increments-range-{{ key }}"
+            aria-label="Show Increments from {{ label }}"
+          >{{ label }}</a>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if increments %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" data-testid="increments-table">
+          <thead>
+            <tr>
+              <th scope="col">Occurred at</th>
+              <th scope="col">Author</th>
+              <th scope="col">Kind</th>
+              <th scope="col">Commit</th>
+              <th scope="col">Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inc in increments %}
+            <tr data-testid="increments-row-{{ inc.kind }}-{{ inc.external_id|slice:':12' }}">
+              <td><time datetime="{{ inc.occurred_at|date:'c' }}">{{ inc.occurred_at }}</time></td>
+              <td>{% if inc.contributor %}{{ inc.contributor.name|default:inc.contributor.handle|default:inc.contributor.email }}{% else %}—{% endif %}</td>
+              <td><span class="badge text-bg-secondary text-lowercase">{{ inc.kind }}</span></td>
+              <td class="commit-message-cell">
+                {% if inc.summary or inc.payload.message_body %}
+                  {% if inc.summary %}<div class="fw-medium text-break">{{ inc.summary }}</div>{% endif %}
+                  {% if inc.payload.message_body %}
+                  <div class="small text-muted text-break {% if inc.summary %}mt-1{% endif %}">{{ inc.payload.message_body|linebreaksbr }}</div>
+                  {% endif %}
+                {% else %}
+                —
+                {% endif %}
+              </td>
+              <td>
+                {% if inc.payload.web_url %}
+                <a href="{{ inc.payload.web_url }}" target="_blank" rel="noopener noreferrer" data-testid="increment-source-link">Open</a>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0" data-testid="increments-empty-state">No Increments in this range yet.</p>
+      {% endif %}
+    </div>
     {% endif %}
   </div>
-  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-(function () {
-  var root = document.getElementById("project-detail-tabs");
-  var tabField = document.getElementById("project-sync-tab-field");
-  if (!root || !tabField) return;
-  root.addEventListener("shown.bs.tab", function (e) {
-    tabField.value = e.target.id === "project-tab-increments" ? "increments" : "vitals";
-  });
-})();
-</script>
 {% endblock %}

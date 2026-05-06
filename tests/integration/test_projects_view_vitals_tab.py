@@ -63,7 +63,7 @@ def test_vitals_01_tab_labels_and_testids(commander_client):
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
     assert 'data-testid="project-tab-vitals"' in body
     assert 'data-testid="project-tab-increments"' in body
-    assert ">Vitals</button>" in body or "Vitals</button>" in body
+    assert "Vitals</a>" in body
     assert "Increments" in body
 
 
@@ -71,11 +71,10 @@ def test_vitals_01_tab_labels_and_testids(commander_client):
 def test_vitals_02_deeplink_tab_vitals_active(commander_client):
     p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(reverse("projects-detail", args=[p.pk]) + "?tab=vitals").content.decode()
-    pane_at = body.index('id="project-pane-vitals"')
-    pane_open = body[pane_at - 80 : pane_at + 40]
-    assert "show active" in pane_open
-    nav_at = body.index('id="project-tab-vitals"')
-    nav_snippet = body[nav_at - 120 : nav_at + 400]
+    assert 'id="project-pane-vitals"' in body
+    nav_at = body.index('data-testid="project-tab-vitals"')
+    nav_snippet = body[nav_at - 200 : nav_at + 80]
+    assert "nav-link" in nav_snippet
     assert "active" in nav_snippet
     assert 'aria-selected="true"' in nav_snippet
 

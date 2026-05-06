@@ -226,3 +226,56 @@ main.hg-main {
 .hg-navbar .navbar-toggler-icon {
   filter: invert(1) grayscale(100%);
 }
+
+/* Tabbed detail card: gray tab bar, white active tab popping into white body */
+.hg-detail-tabs-card > .card-header {
+  background-color: var(--hg-bg-body);
+  border-bottom: 0;
+  padding: 0.6rem 0.75rem 0;
+}
+
+.hg-detail-tabs-card .card-header-tabs {
+  margin: 0;
+}
+
+.hg-detail-tabs-card .nav-tabs {
+  border-bottom: 0;
+  gap: 0.25rem;
+}
+
+.hg-detail-tabs-card .nav-tabs .nav-link {
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  color: var(--hg-ink-muted);
+  margin-bottom: 0;
+  padding: 0.55rem 1rem;
+}
+
+.hg-detail-tabs-card .nav-tabs .nav-link:hover,
+.hg-detail-tabs-card .nav-tabs .nav-link:focus {
+  background-color: rgba(255, 255, 255, 0.55);
+  border-color: transparent;
+  color: var(--hg-ink);
+}
+
+.hg-detail-tabs-card .nav-tabs .nav-link.active {
+  background-color: var(--hg-bg-surface);
+  border-color: var(--hg-border);
+  border-bottom: 0;
+  color: var(--hg-ink);
+  font-weight: 600;
+  position: relative;
+}
+
+.hg-detail-tabs-card .nav-tabs .nav-link.active::after {
+  background-color: var(--hg-bg-surface);
+  bottom: -1px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  right: 0;
+}
