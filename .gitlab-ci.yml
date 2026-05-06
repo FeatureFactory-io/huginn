@@ -26,28 +26,13 @@ lint:
 test:
   stage: test
   image: $PYTHON_IMAGE
-  services:
-    - name: postgres:16-alpine
-      alias: db
-    - name: redis:7-alpine
-      alias: redis
   variables:
-    POSTGRES_DB: huginn
-    POSTGRES_USER: huginn
-    POSTGRES_PASSWORD: huginn
-    POSTGRES_HOST: db
-    POSTGRES_PORT: "5432"
-    REDIS_URL: redis://redis:6379/0
-    DJANGO_SETTINGS_MODULE: huginn.settings.local
     SECRET_KEY: ci-test-secret-key-not-used-in-prod
-    DEBUG: "True"
-    ALLOWED_HOSTS: localhost
     PYTHONPATH: "."
   before_script:
     # aws-cdk / jsii synth tests need a Node.js runtime during pytest collection
     - apt-get update -qq && apt-get install -y -qq nodejs
     - pip install -r requirements.txt --quiet
-    - pip install -r infra/requirements.txt --quiet
   script:
     - pytest --tb=short -q
 

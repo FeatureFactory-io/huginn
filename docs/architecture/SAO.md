@@ -1,12 +1,12 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: April 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`)*
 
 ---
 
 ## Executive Summary
 
-Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on an hourly schedule, computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and produces a SitRep at the morning daily planning session. The PM conducts Observe-Orient (OO) with Gjallarhorn AI, then makes Decisions and defines Actions (DA).
+Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 15 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and produces a SitRep at the morning daily planning session. The PM conducts Observe-Orient (OO) with Gjallarhorn AI, then makes Decisions and defines Actions (DA).
 
 **Key architectural decisions:**
 - Django MTV + Celery hybrid: web UI and async ingestion in one monorepo
@@ -27,6 +27,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 
 | App | Responsibility |
 |---|---|
+| `accounts/` | Custom user model (`AUTH_USER_MODEL`), authentication hooks. |
 | `ingestion/` | Extraction jobs per source (GitLab, Jira, …). Celery tasks, connector clients, raw data models. |
 | `analytics/` | Master Variable computation (THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION). Reads from ingested data, writes computed metrics. |
 | `sitrep/` | SitRep generation, FRAGO store, Situational Awareness snapshots. |
@@ -42,6 +43,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - Charts: Apache ECharts — data served as JSON from Django views, chart rendered client-side (CDN)
 
 **Dependency rules:**
+- `accounts/` → no internal Huginn app dependencies
 - `analytics/` → reads from `ingestion/` models
 - `sitrep/` → reads from `analytics/` + `ingestion/`
 - `ui/` → reads from all apps, no business logic
@@ -54,6 +56,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - **`ingestion/services/sync_engine.py`** — `SyncEngine.run_for_project(project_id)` orchestrates: open `IngestionRun`, resolve adapters for the project's `DataSource`, upsert `Contributor` / `Increment` rows idempotently on `(project, kind, external_id)`, close run with counts and cursor, update `Project.last_sync_at` and `sync_state`.
 - **Idempotency:** re-running sync is safe — upserts only; duplicate external IDs do not create second rows.
 - **Audit:** every run appends an `IngestionRun` row (success or error) for TRANSPARENCY and ops visibility.
+- **Scheduling (prod):** `django_celery_beat` `PeriodicTask` `ingestion.sync_due_projects` runs every **15 minutes** (migration `0007_beat_sync_due_projects`). The task enqueues `ingestion.sync_project` per **Active** project when `last_sync_at` is older than that project's `sync_schedule` (hourly, every 6h, or daily).
 - **Acceptance:** `docs/features/act-2-projects/projects-sync-engine.feature` encodes scheduling, idempotency, error, concurrency, and archived-skip behavior.
 
 ---
@@ -81,7 +84,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 | Slack / email | TBD |
 | XRay (test state) | TBD |
 
-**Ingestion cadence:** hourly Celery beat schedule per source. OODA loop runs daily at morning planning session.
+**Ingestion cadence:** Celery Beat (`DatabaseScheduler`) fires `ingestion.sync_due_projects` every **15 minutes**; that task enqueues `ingestion.sync_project(project_id)` for each **Active** project whose `last_sync_at` exceeds its `sync_schedule` (hourly / every 6h / daily). On-demand sync from the UI still calls the same task. OODA loop runs daily at morning planning session.
 
 **Contract approach:** no formal REST contract for v1 (single consumer: the web UI). MCP tools documented inline in `gjallarhorn/`.
 
@@ -94,6 +97,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 **Top-level layout:**
 ```
 huginn/
+├── accounts/            # AUTH_USER_MODEL, user admin
 ├── ingestion/
 │   ├── domain/          # pure-Python DTOs (IncrementDTO, etc.)
 │   ├── models/
@@ -121,7 +125,8 @@ huginn/
 │   ├── settings/
 │   │   ├── base.py
 │   │   ├── local.py
-│   │   └── production.py
+│   │   ├── production.py
+│   │   └── test.py      # pytest: SQLite + locmem + eager Celery
 │   ├── urls.py
 │   └── celery.py
 ├── docs/
@@ -237,7 +242,7 @@ class IngestionRun(Model):
 
 **CI gate:** all tests must pass before merge to `main`.
 
-**Makefile targets:** `make test`, `make test-unit`, `make test-integration`. **CDK stack tests:** `tests/infra/` synthesise CDK stacks and assert on CloudFormation templates (no AWS calls); included in `make test` once `infra/requirements.txt` is installed (pulled via root `requirements.txt`).
+**Makefile targets:** `make test`, `make test-unit`, `make test-integration`. **CDK stack tests:** `tests/infra/` synthesise CDK stacks and assert on CloudFormation templates (no AWS calls); included in `make test` once `infra/requirements.txt` is installed (pulled via root `requirements.txt`). **Pytest** uses `huginn.settings.test` per `pyproject.toml` — not Postgres/Redis.
 
 ---
 
@@ -250,8 +255,8 @@ class IngestionRun(Model):
 - Read-heavy: dashboards read far more than ingestion writes
 
 **Async processing:**
-- Celery Beat: one scheduled task per source, hourly
-- Celery workers: 2 workers sufficient for v1
+- Celery Beat: **15-minute** fan-out — `ingestion.sync_due_projects` (see migration `ingestion/0007_beat_sync_due_projects.py`) enqueues per-project `ingestion.sync_project` when due; `Project.sync_schedule` controls minimum spacing (hourly / every 6h / daily).
+- Celery worker: **one** `worker` container in `docker-compose.prod.yml` with **`--concurrency=2`** (two concurrent tasks), sufficient for v1; GitLab API sync load may warrant a larger EB instance type later.
 - Priority queues: not needed for v1 (all jobs equal priority)
 
 **Caching:**
@@ -367,7 +372,7 @@ lint (ruff) → test (pytest + CDK stack tests) → infra (child pipeline, main 
 | Stage | Image | Triggers | What it does |
 |---|---|---|---|
 | `lint` | `python:3.12-slim` | every push, every branch | `ruff check` + `ruff format --check` |
-| `test` | `python:3.12-slim` + postgres + redis services | every push, every branch | `pip install` app + `infra/requirements.txt`; `PYTHONPATH=.`; `pytest --tb=short -q` (includes `tests/infra/` CDK template assertions) |
+| `test` | `python:3.12-slim` | every push, every branch | `pip install -r requirements.txt` (includes CDK libs); Node.js for jsii/CDK during collection; `pytest --tb=short -q` uses `huginn.settings.test` (SQLite in-memory, locmem cache, eager Celery per `pyproject.toml` — no Postgres/Redis service containers) |
 | `build` | `gcr.io/kaniko-project/executor:v1.23.2-debug` | `main` only | builds Docker image without daemon; pushes `:<sha>` and `:latest` to ECR |
 | `deploy` | `python:3.12-slim` + AWS CLI v2 | `main` only, after build | runs `scripts/deploy.sh` — deploys to inactive EB env, waits, smoke-tests `/health/` |
 | `swap` | `python:3.12-slim` + AWS CLI v2 | `main`, **manual click** | calls `eb swap` to rotate `huginn-prod` CNAME to the freshly deployed env |
@@ -474,6 +479,8 @@ push to main
 | `JIRA_TOKEN` | Jira API token | SSM → EB env property |
 | `LLM_API_KEY` | LLM API key for Gjallarhorn | SSM → EB env property |
 | `DEBUG` | `False` in prod | EB env property |
+
+**Sync engine on EB:** ensure `0007_beat_sync_due_projects` has run (`web` runs `migrate` on deploy) so `PeriodicTask` `ingestion-sync-due-projects` exists; `beat` reads it from RDS via `DatabaseScheduler`. Set connector env vars on **both** `huginn-blue` and `huginn-green` (`GITLAB_*`, `JIRA_*`, `LLM_API_KEY`, etc.) so either env is valid after a swap. A single `t3.small` runs web + worker + beat + redis — heavy GitLab sync may warrant a larger instance later.
 
 **Feature flags:** not needed for v1.
 
@@ -586,6 +593,7 @@ Write an ADR for every significant technology or architecture choice. This SAO.m
 | Charts | Apache ECharts | 5.x | CDN — no install | CDN — no install | loaded in base template |
 | Design system | Bootstrap | 5.x | CDN — no install | CDN — no install | loaded in base template |
 | Connector | python-gitlab | 8.x | `pip install python-gitlab` | `pip install python-gitlab` | `pip show python-gitlab` |
+| HTTP retries | tenacity | 9.x | `pip install tenacity` | `pip install tenacity` | `pip show tenacity` |
 | Connector | jira (pycontribs) | latest | `pip install jira` | `pip install jira` | `pip show jira` |
 | AI interface | FastMCP | latest | `pip install fastmcp` | `pip install fastmcp` | `pip show fastmcp` |
 | Test runner | pytest + pytest-django | 8.x | `pip install pytest pytest-django` | `pip install pytest pytest-django` | `pytest --version` |
@@ -628,7 +636,7 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | CI builds | Kaniko | Shared runners are Alpine; Kaniko is daemonless, no glibc needed |
 | Image registry | AWS ECR | Co-located with EB/IAM; no extra auth needed |
 | Secrets | AWS SSM → EB env properties | Credentials never in git or image |
-| Async | Celery + Redis + `django_celery_beat` | Hourly ingestion; DatabaseScheduler persists beat schedule in RDS |
+| Async | Celery + Redis + `django_celery_beat` | 15-minute `sync_due_projects` fan-out + per-Project `sync_schedule`; DatabaseScheduler persists periodic tasks in RDS |
 | Connectors v1 | python-gitlab + jira (pycontribs) | Both actively maintained; `jira` preferred over `atlassian-python-api` for Jira-specific coverage |
 | Testing | pytest + Django test client, no E2E | Internal tool; browser E2E overhead not justified; ECharts tested via JSON endpoints |
 | Observability | AWS CloudWatch | Co-located with EB; no additional tooling needed |
@@ -640,6 +648,9 @@ The following sources are planned but connector libs not yet selected. Resolve b
 ## Discovered Patterns & Lessons Learned
 
 ### Critical Discoveries
+
+**`pytest` / CI test job uses `huginn.settings.test`; no Postgres or Redis containers needed.**
+`pyproject.toml` sets `DJANGO_SETTINGS_MODULE=huginn.settings.test` for pytest (SQLite `:memory:`, locmem cache, `CELERY_TASK_ALWAYS_EAGER`). The GitLab `test` job installs Node.js only for CDK/jsii during `tests/infra/` collection — not for app runtime.
 
 **EB AL2023: `env_file:` does not work.**
 `env_file: /opt/elasticbeanstalk/deployment/env` fails with "file not found" on Amazon Linux 2023. EB exports environment properties as shell env vars *before* running Docker Compose. The correct pattern is explicit `environment:` blocks with `${VAR}` substitution in `docker-compose.prod.yml`.

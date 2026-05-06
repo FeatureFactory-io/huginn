@@ -110,7 +110,7 @@ def test_increments_06_table_columns_and_row_testid(commander_client):
     r = commander_client.get(_detail_url(p.pk, tab="increments", range="last_14d"))
     body = r.content.decode()
     assert 'data-testid="increments-table"' in body
-    for label in ("Occurred at", "Author", "Kind", "Summary", "Branches", "Source"):
+    for label in ("Occurred at", "Author", "Kind", "Commit", "Source"):
         assert label in body
     assert f'data-testid="increments-row-commit-{sha[:12]}"' in body
 
