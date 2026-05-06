@@ -1,11 +1,15 @@
 """Operational DataSource routes (Acts 1)."""
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
@@ -19,18 +23,59 @@ def _create_post_context(**kwargs) -> dict:
     return ctx
 
 
+def _datasources_filtered_get_queryset(*, type_filter: str, status_filter: str):
+    qs = DataSource.objects.all().order_by("name")
+    if type_filter in (DataSource.Type.GITLAB, DataSource.Type.JIRA):
+        qs = qs.filter(datasource_type=type_filter)
+    now = timezone.now()
+    expires_soon_limit = now + timedelta(days=30)
+    if status_filter == DataSource.Status.CONNECTION_ERROR:
+        qs = qs.filter(status=DataSource.Status.CONNECTION_ERROR)
+    elif status_filter == DataSource.Status.TOKEN_EXPIRED:
+        qs = qs.filter(token_expires_at__lt=now)
+    elif status_filter == DataSource.Status.TOKEN_EXPIRING:
+        qs = qs.filter(token_expires_at__lte=expires_soon_limit, token_expires_at__gte=now)
+    elif status_filter == DataSource.Status.CONNECTED:
+        qs = qs.filter(status=DataSource.Status.CONNECTED).filter(
+            Q(token_expires_at__isnull=True) | Q(token_expires_at__gt=expires_soon_limit)
+        )
+    return qs
+
+
 @method_decorator(login_required, name="dispatch")
 class DataSourcesListView(View):
     template_name = "ui/datasources/list.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        datasources = list(DataSource.objects.all())
+        active_type = (request.GET.get("type") or "").strip()
+        active_status = (request.GET.get("status") or "").strip()
+        qs = _datasources_filtered_get_queryset(type_filter=active_type, status_filter=active_status)
+        datasources = list(qs)
+        has_any_datasource = DataSource.objects.exists()
+        filtered_empty = has_any_datasource and not datasources
+        type_choices = [
+            ("", "All"),
+            (DataSource.Type.GITLAB, "GitLab"),
+            (DataSource.Type.JIRA, "Jira"),
+        ]
+        status_choices = [
+            ("", "All"),
+            (DataSource.Status.CONNECTED, "Connected"),
+            (DataSource.Status.TOKEN_EXPIRING, "Token expiring"),
+            (DataSource.Status.TOKEN_EXPIRED, "Token expired"),
+            (DataSource.Status.CONNECTION_ERROR, "Connection error"),
+        ]
         return render(
             request,
             self.template_name,
             {
                 "active_nav": "datasources",
                 "datasources": datasources,
+                "type_choices": type_choices,
+                "status_choices": status_choices,
+                "active_type": active_type,
+                "active_status": active_status,
+                "filtered_empty": filtered_empty,
             },
         )
 

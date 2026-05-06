@@ -1,35 +1,130 @@
 {% extends "base.html" %}
 {% block title %}Data Sources · Huginn{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h3 m-0" data-testid="datasources-page-title">Data Sources</h1>
-  <span class="badge bg-secondary" data-testid="datasources-count-badge">{{ datasources|length }} total</span>
-</div>
-<p class="text-muted">Skeleton list — management actions land in F03–F06.</p>
-{% if not datasources %}
-  <div class="alert alert-info" data-testid="datasources-empty-state">No data sources connected.</div>
-{% else %}
-  <div class="table-responsive">
-    <table class="table table-striped table-sm">
-      <thead>
-        <tr>
-          <th scope="col">Type</th>
-          <th scope="col">Name</th>
-          <th scope="col">Base URL</th>
-          <th scope="col">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ds in datasources %}
-          <tr data-testid="datasource-row-{{ ds.pk }}">
-            <td>{{ ds.get_datasource_type_display }}</td>
-            <td>{{ ds.name }}</td>
-            <td><code>{{ ds.base_url }}</code></td>
-            <td><span class="badge bg-secondary">{{ ds.get_status_display }}</span></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
+  <div>
+    <span class="badge bg-secondary rounded-pill me-2" data-testid="datasources-count-badge">Data Sources ({{ datasources|length }})</span>
+    <h1 class="hg-page-title d-inline" data-testid="page-title">Data Sources</h1>
+    <p class="text-muted small mb-0">Manage GitLab connections (Jira coming soon).</p>
   </div>
-{% endif %}
+  <a class="btn btn-primary btn-sm"
+     href="{% url 'datasources-create' %}"
+     data-bs-toggle="tooltip" title="Add a GitLab PAT connection"
+     data-testid="add-datasource-btn">
+    <i class="fa-solid fa-plus me-1"></i> Add Data Source
+  </a>
+</section>
+
+<form class="row g-3 mb-3" method="get" data-testid="datasources-filter-form">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="filter-type">Type</label>
+    <select class="form-select form-select-sm" id="filter-type" name="type" data-testid="filter-type">
+      {% for val, label in type_choices %}
+        <option value="{{ val }}" {% if val == active_type %}selected{% endif %} {% if val == "jira" %}disabled{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="filter-status">Status</label>
+    <select class="form-select form-select-sm" id="filter-status" name="status" data-testid="filter-status">
+      {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if val == active_status %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4 d-flex align-items-end">
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply</button>
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body">
+    {% if datasources %}
+      <div class="table-responsive" data-testid="datasources-table-wrap">
+        <table class="table table-hover align-middle mb-0" data-testid="datasources-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Type</th>
+              <th scope="col">Name</th>
+              <th scope="col">Base URL</th>
+              <th scope="col">Token expires</th>
+              <th scope="col">Status</th>
+              <th scope="col">Last activity</th>
+              <th class="text-end" scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ds in datasources %}
+              <tr data-testid="datasource-row-{{ ds.pk }}">
+                <td><span class="badge bg-light text-dark border">{{ ds.get_datasource_type_display }}</span></td>
+                <td class="fw-medium">{{ ds.name }}</td>
+                <td class="small text-break">{{ ds.base_url }}</td>
+                <td class="small">
+                  {% if ds.token_expires_at %}
+                    {{ ds.token_expires_at|date:"Y-m-d H:i" }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td data-testid="datasource-status-{{ ds.pk }}">
+                  {% with cs=ds.computed_status %}
+                    {% if cs == "connected" %}
+                      <span class="badge rounded-pill bg-success">Connected</span>
+                    {% elif cs == "token_expiring" %}
+                      <span class="badge bg-warning text-dark">Token expiring in {{ ds.token_expires_in_days }} days</span>
+                    {% elif cs == "token_expired" or cs == "connection_error" %}
+                      <span class="badge bg-danger">
+                        {% if cs == "token_expired" %}Token expired{% else %}Connection error{% endif %}
+                      </span>
+                    {% else %}
+                      <span class="badge bg-secondary">{{ ds.get_status_display }}</span>
+                    {% endif %}
+                  {% endwith %}
+                </td>
+                <td class="small text-muted">
+                  {% if ds.last_activity_at %}{{ ds.last_activity_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a class="btn btn-outline-secondary" href="{% url 'datasource-detail' pk=ds.pk %}"
+                       data-bs-toggle="tooltip" title="View" data-testid="datasource-action-view-{{ ds.pk }}">
+                      <i class="fa-solid fa-eye"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{% url 'datasource-edit' pk=ds.pk %}"
+                       data-bs-toggle="tooltip" title="Edit" data-testid="datasource-action-edit-{{ ds.pk }}">
+                      <i class="fa-solid fa-pen"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{% url 'projects-import' %}?datasource={{ ds.pk }}"
+                       {% if ds.computed_status != "connected" %}tabindex="-1" aria-disabled="true"{% endif %}
+                       data-bs-toggle="tooltip" title="Import projects"
+                       data-testid="datasource-action-import-{{ ds.pk }}">
+                      <i class="fa-solid fa-download"></i>
+                    </a>
+                    <a class="btn btn-outline-danger" href="{% url 'datasource-delete' pk=ds.pk %}"
+                       data-bs-toggle="tooltip" title="Disconnect" data-testid="datasource-action-delete-{{ ds.pk }}">
+                      <i class="fa-solid fa-plug-circle-xmark"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% elif filtered_empty %}
+      <div class="text-center py-5 text-muted" data-testid="datasources-filter-empty">
+        <p class="mb-0">No data sources match the current filters.</p>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted" data-testid="datasources-empty-state">
+        <i class="fa-solid fa-plug fa-2x mb-3 d-block text-secondary"></i>
+        <p class="mb-1 fw-medium">No data sources connected</p>
+        <p class="small mb-3">Add a GitLab connection to start importing projects.</p>
+        <a href="{% url 'datasources-create' %}" class="btn btn-primary" data-testid="add-datasource-btn-empty">
+          <i class="fa-solid fa-plus me-1"></i> Add Data Source
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}
