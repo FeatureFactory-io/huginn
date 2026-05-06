@@ -65,48 +65,63 @@
   <div class="card-body">
     {% if active_tab == 'vitals' %}
     <div id="project-pane-vitals" role="tabpanel" aria-labelledby="project-tab-vitals" tabindex="0">
-      <section class="hg-vitals-section">
-        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
-        <dl class="row small mb-0" data-testid="project-widget-transparency">
-          <dt class="col-sm-4 text-muted">Last sync</dt>
-          <dd class="col-sm-8" data-testid="project-transparency-last-sync">
-            {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
-          </dd>
-          <dt class="col-sm-4 text-muted">Last commits</dt>
-          <dd class="col-sm-8" data-testid="project-transparency-last-commits">
-            {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
-          </dd>
-        </dl>
-      </section>
-      <hr class="my-4" />
-      <section class="hg-vitals-section">
-        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
-        <dl class="row small mb-0">
-          <dt class="col-sm-4 text-muted">Source path</dt>
-          <dd class="col-sm-8"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
-          <dt class="col-sm-4 text-muted">Imported on</dt>
-          <dd class="col-sm-8" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
-          <dt class="col-sm-4 text-muted">Imported by</dt>
-          <dd class="col-sm-8" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
-        </dl>
-      </section>
-      <hr class="my-4" />
-      <section class="hg-vitals-section">
-        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2>
-        <div data-testid="project-playbook-section">
-          {% if project.playbook_slug %}
-            <p class="mb-0">{{ project.playbook_slug }}</p>
-          {% else %}
-            <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
-          {% endif %}
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+        <div class="col">
+          <article class="card h-100 hg-vitals-card">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
+              <dl class="row small mb-0" data-testid="project-widget-transparency">
+                <dt class="col-5 text-muted">Last sync</dt>
+                <dd class="col-7" data-testid="project-transparency-last-sync">
+                  {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
+                </dd>
+                <dt class="col-5 text-muted">Last commits</dt>
+                <dd class="col-7 mb-0" data-testid="project-transparency-last-commits">
+                  {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
+                </dd>
+              </dl>
+            </div>
+          </article>
         </div>
-      </section>
-      <hr class="my-4" />
-      <section class="hg-vitals-section">
-        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
-        <p class="mb-2">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
-        <p class="mb-0 text-muted small">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
-      </section>
+        <div class="col">
+          <article class="card h-100 hg-vitals-card">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
+              <dl class="row small mb-0">
+                <dt class="col-5 text-muted">Source path</dt>
+                <dd class="col-7 text-break"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
+                <dt class="col-5 text-muted">Imported on</dt>
+                <dd class="col-7" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
+                <dt class="col-5 text-muted">Imported by</dt>
+                <dd class="col-7 mb-0 text-break" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
+              </dl>
+            </div>
+          </article>
+        </div>
+        <div class="col">
+          <article class="card h-100 hg-vitals-card">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2>
+              <div class="small" data-testid="project-playbook-section">
+                {% if project.playbook_slug %}
+                  <p class="mb-0">{{ project.playbook_slug }}</p>
+                {% else %}
+                  <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
+                {% endif %}
+              </div>
+            </div>
+          </article>
+        </div>
+        <div class="col">
+          <article class="card h-100 hg-vitals-card">
+            <div class="card-body">
+              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
+              <p class="small mb-1">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
+              <p class="small text-muted mb-0">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
+            </div>
+          </article>
+        </div>
+      </div>
     </div>
     {% else %}
     <div id="project-pane-increments" role="tabpanel" aria-labelledby="project-tab-increments" tabindex="0">
