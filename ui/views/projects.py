@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from ingestion.models import DataSource, Project
 from ui.services.increments_service import RANGE_LABELS, IncrementsService, normalize_range_key
+from ui.services.project_vitals_service import ProjectVitalsService
 from ui.services.projects_service import ProjectsService
 
 
@@ -178,12 +179,11 @@ class ProjectsDetailView(View):
         tab = (request.GET.get("tab") or "vitals").strip().lower()
         if tab not in {"vitals", "increments"}:
             tab = "vitals"
-        range_key = normalize_range_key(request.GET.get("range") if tab == "increments" else None)
-        increments = []
-        if tab == "increments":
-            increments = list(IncrementsService().increments_for_project(project.pk, range_key))
+        inc_range = normalize_range_key(request.GET.get("range"))
+        increments = list(IncrementsService().increments_for_project(project.pk, inc_range))
         range_order = ["today", "yesterday", "this_week", "last_week", "last_14d"]
         time_range_choices = [(k, RANGE_LABELS[k]) for k in range_order]
+        latest_commit_at = ProjectVitalsService().latest_increment_occurred_at(project.pk)
         return render(
             request,
             self.template_name,
@@ -191,9 +191,10 @@ class ProjectsDetailView(View):
                 "active_nav": "projects",
                 "project": project,
                 "active_tab": tab,
-                "time_range": range_key if tab == "increments" else "last_14d",
+                "time_range": inc_range,
                 "time_range_choices": time_range_choices,
                 "increments": increments,
+                "latest_commit_at": latest_commit_at,
             },
         )
 

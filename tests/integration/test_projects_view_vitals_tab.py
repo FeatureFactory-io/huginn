@@ -10,6 +10,15 @@ def _csrf(client):
 
 
 @pytest.mark.django_db
+def test_transparency_widget_marker_on_project_detail(commander_client):
+    """PROJECTS-VIEW_VITALS: Transparency card is rendered on Vitals tab."""
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    r = commander_client.get(reverse("projects-detail", args=[p.pk]))
+    assert r.status_code == 200
+    assert 'data-testid="project-widget-transparency"' in r.content.decode()
+
+
+@pytest.mark.django_db
 def test_project_detail_renders(commander_client):
     ds = DataSource.objects.create(
         name="gitlab-co",
