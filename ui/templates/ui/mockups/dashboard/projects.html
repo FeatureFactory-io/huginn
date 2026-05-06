@@ -1,13 +1,13 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}Projects Dashboard · Huginn{% endblock %}
+{% block title %}Tactical Plot · Huginn{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="DASHBOARD-PROJECTS-1" screen_testid="dashboard-projects-loaded" %}
 
 <section class="hg-page-header rounded-2 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-2">
   <div>
-    <h1 class="hg-page-title mb-1" data-testid="page-title">Projects</h1>
+    <h1 class="hg-page-title mb-1" data-testid="page-title">Tactical Plot</h1>
     <p class="text-muted mb-0 small">Last refreshed <strong>today 09:25</strong></p>
     <div class="mt-2 small">
       {% for hue, qty in summary_strip.items %}

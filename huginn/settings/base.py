@@ -5,6 +5,8 @@ Huginn — base settings shared across all environments.
 import os
 from pathlib import Path
 
+from .db_config import postgres_connection_from_environ, redis_url_from_environ
+
 # BASE_DIR is the project root (two levels up from this file)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -25,6 +27,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "django_celery_beat",
     # Huginn apps
+    "accounts",
     "ingestion",
     "analytics",
     "sitrep",
@@ -63,20 +66,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "huginn.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "huginn"),
-        "USER": os.environ.get("POSTGRES_USER", "huginn"),
-        "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
-        "HOST": os.environ.get("POSTGRES_HOST", "db"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-        "CONN_MAX_AGE": 60,
-    }
-}
+DATABASES = {"default": postgres_connection_from_environ()}
 
 # Redis / Celery
-REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+REDIS_URL = redis_url_from_environ()
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
@@ -115,8 +108,10 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+AUTH_USER_MODEL = "accounts.User"
+
 LOGIN_URL = "/"
-LOGIN_REDIRECT_URL = "/projects/"
+LOGIN_REDIRECT_URL = "/"
 
 # Structured JSON logging to stdout — collected by CloudWatch on EB
 LOGGING = {
@@ -146,6 +141,7 @@ LOGGING = {
         "analytics": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "sitrep": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "huginn.auth": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
 

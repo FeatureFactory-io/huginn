@@ -1,53 +1,137 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Import projects · Huginn{% endblock %}
 {% block content %}
-<h1 class="h3 mb-2" data-testid="projects-import-title">Import projects</h1>
-{% if form_error %}
-  <div class="alert alert-warning" data-testid="projects-import-feedback">{{ form_error }}</div>
-{% endif %}
 <nav aria-label="breadcrumb" class="mb-3">
   <ol class="breadcrumb mb-0">
     <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
     <li class="breadcrumb-item active">Import</li>
   </ol>
 </nav>
-{% if datasources %}
-  {% if not catalog %}
-    <div class="alert alert-info" data-testid="projects-import-empty-datasources">Load the remote catalog before importing.</div>
-  {% endif %}
-{% else %}
-  <div class="alert alert-info" data-testid="projects-import-empty-datasources">
-    Connect a GitLab data source first, then return here.
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title" data-testid="projects-import-title">Import Projects from Data Source</h1>
+  <p class="small text-muted mb-0">Select projects your token can see.</p>
+</section>
+
+{% if form_error %}
+  <div class="alert alert-warning" data-testid="projects-import-feedback" role="alert">{{ form_error }}</div>
+{% endif %}
+{% if catalog and catalog.error %}
+  <div class="alert alert-warning" data-testid="projects-import-catalog-error" role="alert">
+    Could not load the remote catalog: {{ catalog.error }}
   </div>
 {% endif %}
-<form method="post" style="max-width:520px;" data-testid="projects-import-form">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label class="form-label" for="id_ds">Data source</label>
-    <select name="datasource_id" id="id_ds" class="form-select" required data-testid="projects-import-datasource">
-      <option value="">— Choose —</option>
-      {% for ds in datasources %}
-        <option value="{{ ds.pk }}" {% if catalog and catalog.datasource_id == ds.pk %}selected{% endif %}>{{ ds.name }}</option>
-      {% endfor %}
-    </select>
+
+{% if no_connected_gitlab %}
+  <div class="alert alert-info" data-testid="projects-import-no-connected" role="alert">
+    No GitLab data sources are connected. Fix the connection or add a token, then return here.
+    <a href="{% url 'datasources-list' %}" class="alert-link">Manage data sources</a>
   </div>
-  <div class="d-flex gap-2 mb-3">
+{% elif not datasources %}
+  <div class="alert alert-info" data-testid="projects-import-empty-datasources" role="alert">
+    Connect a GitLab data source first, then return here.
+    <a href="{% url 'datasources-create' %}" class="alert-link">Add data source</a>
+  </div>
+{% else %}
+  {% if not catalog %}
+    <div class="alert alert-info" data-testid="projects-import-hint-load-catalog" role="alert">
+      Load the remote catalog after choosing a data source.
+    </div>
+  {% elif catalog.entries and not catalog.error %}
+    <div class="alert alert-secondary py-2 small mb-3" data-testid="projects-import-catalog-login">
+      Signed in to GitLab as <strong>{{ catalog.login }}</strong>
+    </div>
+    {% if catalog.all_imported %}
+    <div class="alert alert-info" data-testid="projects-import-all-imported" role="alert">
+      All available projects have already been imported.
+    </div>
+    {% endif %}
+  {% endif %}
+{% endif %}
+
+{% if datasources %}
+<form method="post" class="projects-import-shell" data-testid="projects-import-form">
+  {% csrf_token %}
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <label class="form-label" for="id_ds">Data source</label>
+      <select name="datasource_id" id="id_ds" class="form-select" required data-testid="projects-import-datasource">
+        <option value="">— Choose —</option>
+        {% for ds in datasources %}
+          <option value="{{ ds.pk }}" {% if catalog and catalog.datasource_id == ds.pk %}selected{% endif %}>{{ ds.name }} (Connected)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="id_find_proj">Find project</label>
+      <input type="search" id="id_find_proj" class="form-control" placeholder="Filter by path or description" autocomplete="off" data-testid="projects-import-search" {% if not catalog or not catalog.entries %}disabled{% endif %}>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mb-3">
     <button type="submit" name="action" value="refresh-catalog" class="btn btn-outline-primary" data-testid="projects-import-refresh">Refresh catalog</button>
   </div>
-  {% if catalog and catalog.entries %}
-    <fieldset class="mb-3">
-      <legend class="form-label">Remote projects</legend>
-      {% for e in catalog.entries %}
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="remote_keys" value="{{ e.key }}" id="rk-{{ forloop.counter }}">
-          <label class="form-check-label" for="rk-{{ forloop.counter }}">{{ e.name }} ({{ e.key }})</label>
-        </div>
-      {% endfor %}
-    </fieldset>
+
+  <div class="sticky-top shadow-sm rounded-3 mb-3 d-none align-items-center gap-3 px-3 py-2 bg-body-secondary border" style="top:76px;z-index:1020" data-testid="projects-import-bulk-bar" role="status" aria-live="polite">
+    <span class="badge text-bg-dark" data-testid="projects-import-bulk-count">0 selected</span>
+    <button type="submit" name="action" value="import" class="btn btn-primary btn-sm" id="projects-import-selected-btn" disabled data-testid="projects-import-selected"><i class="fa-solid fa-download me-1"></i>Import selected</button>
+  </div>
+
+  {% if catalog and catalog.entries and not catalog.error %}
+  <div class="card border-0 shadow-sm rounded-3 mb-3">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0" data-testid="projects-import-upstream-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" class="w-1">
+                <input class="form-check-input" type="checkbox" aria-label="Select all importable projects" data-testid="projects-import-select-all">
+              </th>
+              <th scope="col">Path / name</th>
+              <th scope="col">Description</th>
+              <th scope="col">Imported?</th>
+              <th scope="col">Last activity</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in catalog.entries %}
+            <tr data-import-row data-search-text="{{ e.path|default:'' }} {{ e.name|default:'' }} {{ e.description|default:'' }}">
+              <td>
+                {% if e.already_imported %}
+                  <input class="form-check-input" type="checkbox" disabled aria-disabled="true" data-testid="projects-import-row-check-{{ e.key }}">
+                {% else %}
+                  <input class="form-check-input js-import-row-check" type="checkbox" name="remote_keys" value="{{ e.key }}" id="rk-{{ e.key }}" data-testid="projects-import-row-check-{{ e.key }}" aria-label="{{ e.short_name|default:e.name }}">
+                {% endif %}
+              </td>
+              <td>
+                <label class="fw-medium mb-0" {% if not e.already_imported %}for="rk-{{ e.key }}"{% endif %}>{{ e.name }}</label>
+                <div class="font-monospace small text-muted">{{ e.path }}</div>
+              </td>
+              <td class="small text-muted">{{ e.description|default:"—" }}</td>
+              <td>
+                {% if e.already_imported %}
+                  <span class="badge text-bg-secondary" data-testid="projects-import-badge-imported-{{ e.key }}">Already imported</span>
+                {% else %}
+                  <span class="badge border text-muted">Not yet</span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ e.last_activity_at|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% elif catalog and not catalog.error and not catalog.entries %}
+  <div class="alert alert-info" data-testid="projects-import-catalog-empty">No projects returned for this token.</div>
   {% endif %}
-  <button type="submit" name="action" value="import" class="btn btn-primary"
-          {% if not catalog %}disabled title="Refresh catalog after choosing a data source"{% endif %}
-          data-testid="projects-import-submit">Import selected</button>
-  <a href="{% url 'projects-list' %}" class="btn btn-link">Cancel</a>
+
+  <div class="d-flex flex-wrap gap-2">
+    <button type="submit" name="action" value="import" class="btn btn-primary" id="projects-import-submit-footer" disabled data-testid="projects-import-submit"><i class="fa-solid fa-download me-1"></i>Import selected</button>
+    <a href="{% url 'projects-list' %}" class="btn btn-link" data-testid="projects-import-cancel">Cancel</a>
+  </div>
 </form>
+<script src="{% static 'js/projects_import.js' %}"></script>
+{% endif %}
 {% endblock %}

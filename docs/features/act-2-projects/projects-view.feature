@@ -1,12 +1,13 @@
 Feature: PROJECTS-VIEW_PROJECT-1 View Project details
   As Commander Donland
-  I want to inspect a project's configuration, sync status, and recent activity
+  I want to inspect a project's configuration, sync status, and Increments
   So that I can confirm import succeeded and take management actions
 
   Background:
     Given I am authenticated as "donland@example.com"
     And a Project "atlas-backend" imported from DataSource "company-gitlab" exists
     And I am on the screen "PROJECTS-VIEW_PROJECT-1" for "atlas-backend"
+    And I have opened the "Vitals" tab
 
   # ---------------------------------------------------------------------------
   # Layout — header
@@ -62,13 +63,12 @@ Feature: PROJECTS-VIEW_PROJECT-1 View Project details
     And I see the error message "Connection refused"
 
   # ---------------------------------------------------------------------------
-  # V0.1 — recent activity is empty for placeholder sync
+  # Vitals tab — no legacy Recent activity placeholder
   # ---------------------------------------------------------------------------
 
-  Scenario: PROJECTS-VIEW_PROJECT-08 Recent activity section is empty after V0.1 placeholder sync
-    Given the initial sync completed as a V0.1 placeholder (metadata only)
-    Then the Recent activity section shows an empty state
-    And no UoW or Increment records are shown
+  Scenario: PROJECTS-VIEW_PROJECT-08 Vitals tab does not show V0.1 Recent activity placeholder
+    Then I do not see data-testid "projects-placeholder-activity"
+    And Increments are browsed on the Increments tab per "projects-view-increments-tab.feature"
 
   # ---------------------------------------------------------------------------
   # Actions

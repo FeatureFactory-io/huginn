@@ -86,7 +86,7 @@ def test_view_06_post_test_connection_updates_model(commander_client) -> None:
         status=DataSource.Status.CONNECTION_ERROR,
     )
     commander_client.get(reverse("datasource-detail", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok()):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok()):
         r = commander_client.post(
             reverse("datasource-test-connection", args=[ds.pk]),
             {"csrfmiddlewaretoken": _csrf_token(commander_client)},
@@ -106,7 +106,7 @@ def test_view_07_post_test_connection_failure_state(commander_client) -> None:
         status=DataSource.Status.CONNECTED,
     )
     commander_client.get(reverse("datasource-detail", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=ConnectionError("down")):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=ConnectionError("down")):
         r = commander_client.post(
             reverse("datasource-test-connection", args=[ds.pk]),
             {"csrfmiddlewaretoken": _csrf_token(commander_client)},
@@ -121,7 +121,9 @@ def test_view_07_post_test_connection_failure_state(commander_client) -> None:
 def test_view_08_partial_success_body(commander_client) -> None:
     ds = DataSourceFactory(base_url="https://gitlab.example.com/", encrypted_token_ciphertext="t")
     commander_client.get(reverse("datasource-detail", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"u8"}', "9")):
+    with patch(
+        "ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"u8"}', "9")
+    ):
         r = commander_client.post(
             reverse("datasource-test-connection", args=[ds.pk]),
             {"csrfmiddlewaretoken": _csrf_token(commander_client)},

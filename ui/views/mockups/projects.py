@@ -1,5 +1,7 @@
 from django.shortcuts import render
 
+from ui.services.increments_service import RANGE_LABELS
+
 MOCK_PROJECT = {
     "id": 1,
     "name": "atlas-backend",
@@ -67,9 +69,45 @@ def projects_import(request):
 
 
 def projects_view(request, pk: int):  # noqa: ARG001
+    tab = (request.GET.get("tab") or "vitals").strip().lower()
+    if tab not in ("vitals", "increments"):
+        tab = "vitals"
+    range_key = (request.GET.get("range") or "last_14d").strip().lower()
+    valid_ranges = {"today", "yesterday", "this_week", "last_week", "last_14d"}
+    if range_key not in valid_ranges:
+        range_key = "last_14d"
+    range_order = ["today", "yesterday", "this_week", "last_week", "last_14d"]
+    time_range_choices = [(k, RANGE_LABELS[k]) for k in range_order]
+    time_range = range_key if tab == "increments" else "last_14d"
+    increments = []
+    if tab == "increments":
+        increments = [
+            {
+                "kind": "commit",
+                "external_id": "a" * 40,
+                "occurred_at": "2026-05-06 14:30",
+                "author": "Ada Lovelace",
+                "summary": "Harden token refresh path",
+                "branches": ["main", "release"],
+                "web_url": "https://gitlab.example.com/co/atlas-backend/-/commit/" + "a" * 40,
+            },
+            {
+                "kind": "commit",
+                "external_id": "b" * 40,
+                "occurred_at": "2026-05-05 09:15",
+                "author": "billing-bot@example.com",
+                "summary": "Invoice export retry backoff",
+                "branches": ["main"],
+                "web_url": "https://gitlab.example.com/co/atlas-backend/-/commit/" + "b" * 40,
+            },
+        ]
     ctx = {
         "active_nav": "projects",
         "pk": pk,
+        "active_tab": tab,
+        "time_range": time_range,
+        "time_range_choices": time_range_choices,
+        "increments": increments,
         "p": {
             **MOCK_PROJECT,
             "imported_on": "2026-05-01",
@@ -78,8 +116,8 @@ def projects_view(request, pk: int):  # noqa: ARG001
             "playbook_display": "Standard Engineering · v12 (auto-track latest)",
             "sync_last": "8 min ago",
             "sync_next": "scheduled hourly",
+            "sync_schedule_display": "Hourly",
             "sync_state": "Active",
-            "recent_activity": [],
         },
     }
     return render(request, "ui/mockups/projects/view.html", ctx)

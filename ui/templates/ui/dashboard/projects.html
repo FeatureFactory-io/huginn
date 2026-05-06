@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Tactical Plot · Huginn{% endblock %}
+{% block content %}
+<div data-testid="tactical-plot-loaded" class="visually-hidden">Tactical Plot</div>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-2">
+  <div>
+    <h1 class="hg-page-title mb-1" data-testid="tactical-plot-page-title">Tactical Plot</h1>
+    <p class="text-muted mb-0 small">Last refreshed <strong>today 09:25</strong> <span class="text-muted">(mock)</span></p>
+    <div class="mt-2 small">
+      {% for hue, qty in summary_strip.items %}
+        <span class="me-3"><strong>{{ qty }}</strong> <span style="color:var(--hg-{{ hue }})">{{ hue }}</span></span>
+      {% endfor %}
+      <span class="text-muted">(mock summary)</span>
+    </div>
+  </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Refresh (not wired)" disabled aria-disabled="true">
+    <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+  </button>
+</section>
+
+<div class="row">
+  <div class="col-lg-9">
+    <div class="row g-3 mb-5">
+      {% if dashboard_projects %}
+        {% for card in dashboard_projects %}
+        <div class="col-md-6 col-xl-4 d-flex" data-testid="dashboard-project-card-{{ card.pk }}">
+          <article class="hg-card h-100 w-100 position-relative" tabindex="0" role="article">
+            <div class="color-bar green"></div>
+            <div class="card-body">
+              <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
+                <h2 class="h5 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center">
+                  <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 position-relative z-2" aria-hidden="false">
+                    {% for src in card.sources %}
+                      <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
+                           width="18"
+                           height="18"
+                           alt="{{ src.label }}"
+                           loading="lazy"
+                           decoding="async"
+                           referrerpolicy="no-referrer"
+                           data-testid="dashboard-card-{{ card.pk }}-source-{{ src.key }}">
+                    {% endfor %}
+                    {% if not card.sources %}
+                      <span class="text-muted small" title="No data source">—</span>
+                    {% endif %}
+                  </span>
+                  <span data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
+                </h2>
+              </div>
+              <p class="small text-muted mb-0" data-testid="dashboard-card-{{ card.pk }}-description">
+                <span class="fw-medium text-body-secondary">Description</span>
+                <span class="d-block mt-1 font-monospace">{{ card.description }}</span>
+              </p>
+            </div>
+            <a class="stretched-link" href="{% url 'projects-detail' pk=card.pk %}" aria-label="Open project {{ card.name }}"></a>
+          </article>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-12" data-testid="dashboard-empty-projects">
+          <p class="text-muted mb-2">No active projects on the Tactical Plot yet.</p>
+          <p class="mb-0">
+            <a href="{% url 'projects-import' %}" class="fw-medium">Import a project</a>
+            or
+            <a href="{% url 'projects-list' %}">manage projects</a>.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <aside class="col-lg-3">
+    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-sitaware">
+      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
+        <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
+        <span>Situational Awareness</span>
+      </div>
+      <div class="card-body pb-3">
+        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(mock)</span></p>
+        <ul class="list-unstyled mb-0 small">
+          {% for ev in rail_situational_awareness %}
+            <li class="mb-2">
+              <a href="{% url 'mockup-sitawareness-view' %}"
+                 class="text-decoration-none fw-medium"
+                 data-bs-toggle="tooltip"
+                 title="Reference mockup — Situational Awareness"
+                 data-testid="dashboard-sitaware-{{ forloop.counter }}">
+                {{ ev.text }}
+              </a>
+              {% if ev.severity == 'warning' %}
+                <span class="d-none d-xl-inline ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-fragos">
+      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
+        <i class="fa-solid fa-puzzle me-2 text-primary" aria-hidden="true"></i>
+        <span>FRAGOs</span>
+      </div>
+      <ul class="list-group list-group-flush small">
+        {% for fg in rail_fragos %}
+          <li class="list-group-item">
+            {% if fg.fragos_project %}
+              <a href="{% url 'mockup-fragos-list' %}?project={{ fg.fragos_project|urlencode }}"
+                 class="d-block fw-medium mb-1"
+                 data-bs-toggle="tooltip"
+                 title="Reference mockup — FRAGOs"
+                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
+            {% else %}
+              <a href="{% url 'mockup-fragos-list' %}"
+                 class="d-block fw-medium mb-1"
+                 data-bs-toggle="tooltip"
+                 title="Reference mockup — FRAGOs (all)"
+                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
+            {% endif %}
+            <div class="text-muted fst-italic" style="font-size:0.75rem;">({{ fg.scope_label }}) <span class="text-muted">mock</span></div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="text-center mt-4">
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'projects-list' %}">Manage projects →</a>
+    </section>
+  </aside>
+</div>
+{% endblock %}

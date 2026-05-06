@@ -3,7 +3,6 @@
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from .views.auth.login_view import LoginScreenView
 from .views.auth.logout_view import LogoutScreenView
 from .views.datasources import (
     DataSourcesCreateView,
@@ -14,6 +13,7 @@ from .views.datasources import (
     DataSourcesTestConnectionView,
 )
 from .views.health import health_json, welcome
+from .views.home import HomeView
 from .views.projects import (
     ProjectsArchiveView,
     ProjectsDetailView,
@@ -25,7 +25,7 @@ from .views.projects import (
 from .views.ux_preview import palette_preview
 
 urlpatterns = [
-    path("", LoginScreenView.as_view(), name="auth-login"),
+    path("", HomeView.as_view(), name="auth-login"),
     path(
         "accounts/login/",
         RedirectView.as_view(pattern_name="auth-login"),

@@ -61,7 +61,7 @@ def test_edit_02_save_updates_fields_without_gitlab_call(commander_client) -> No
 def test_edit_03_test_connection_reuses_stored_token(commander_client) -> None:
     ds = DataSourceFactory(base_url="https://gitlab.example.com/", encrypted_token_ciphertext="glpat-1")
     commander_client.get(reverse("datasource-edit", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok()):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok()):
         r = commander_client.post(
             reverse("datasource-edit", args=[ds.pk]),
             {
@@ -104,7 +104,9 @@ def test_edit_04_replace_requires_new_token_for_test(commander_client) -> None:
 def test_edit_05_save_updates_token_when_replacing(commander_client) -> None:
     ds = DataSourceFactory(base_url="https://gitlab.example.com/", encrypted_token_ciphertext="old")
     commander_client.get(reverse("datasource-edit", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"repl"}', "3")):
+    with patch(
+        "ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"repl"}', "3")
+    ):
         r = commander_client.post(
             reverse("datasource-edit", args=[ds.pk]),
             {
@@ -169,7 +171,7 @@ def test_edit_09_token_expiry_field(commander_client) -> None:
 def test_edit_10_invalid_replace_token_surfaces_error(commander_client) -> None:
     ds = DataSourceFactory(base_url="https://gitlab.example.com/", encrypted_token_ciphertext="old")
     commander_client.get(reverse("datasource-edit", args=[ds.pk]))
-    with patch("urllib.request.urlopen", side_effect=ConnectionError("nope")):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=ConnectionError("nope")):
         r = commander_client.post(
             reverse("datasource-edit", args=[ds.pk]),
             {

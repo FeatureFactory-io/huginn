@@ -79,7 +79,7 @@ def test_create_04_test_connection_success_message(commander_client) -> None:
         {"csrfmiddlewaretoken": _csrf_token(commander_client), "type": "gitlab"},
     )
     tok = _csrf_token(commander_client)
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok()):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok()):
         r = commander_client.post(
             reverse("datasources-create"),
             {
@@ -105,7 +105,7 @@ def test_create_05_test_connection_shows_error(commander_client) -> None:
         reverse("datasources-create"),
         {"csrfmiddlewaretoken": _csrf_token(commander_client), "type": "gitlab"},
     )
-    with patch("urllib.request.urlopen", side_effect=ConnectionError("fail")):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=ConnectionError("fail")):
         r = commander_client.post(
             reverse("datasources-create"),
             {
@@ -129,7 +129,7 @@ def test_create_06_save_redirects_to_projects_import(commander_client) -> None:
         {"csrfmiddlewaretoken": _csrf_token(commander_client), "type": "gitlab"},
     )
     tok = _csrf_token(commander_client)
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok(total="2")):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok(total="2")):
         r = commander_client.post(
             reverse("datasources-create"),
             {
@@ -183,7 +183,7 @@ def test_create_08_duplicate_name_shows_error(commander_client) -> None:
         reverse("datasources-create"),
         {"csrfmiddlewaretoken": _csrf_token(commander_client), "type": "gitlab"},
     )
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok()):
+    with patch("ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok()):
         r = commander_client.post(
             reverse("datasources-create"),
             {
@@ -283,7 +283,9 @@ def test_create_16_persists_gitlab_metadata(commander_client) -> None:
         reverse("datasources-create"),
         {"csrfmiddlewaretoken": _csrf_token(commander_client), "type": "gitlab"},
     )
-    with patch("urllib.request.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"persist"}', "6")):
+    with patch(
+        "ingestion.integrations.gitlab_client.urlopen", side_effect=_gitlab_urlopen_ok(b'{"username":"persist"}', "6")
+    ):
         commander_client.post(
             reverse("datasources-create"),
             {

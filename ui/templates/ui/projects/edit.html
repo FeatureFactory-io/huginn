@@ -1,19 +1,51 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ project.name }}{% endblock %}
 {% block content %}
-<h1 class="h4 mb-3">Edit project</h1>
-<p class="text-muted small">Skeleton — playbook and schedule fields deferred to MIT.</p>
-<form method="post" style="max-width:520px;">
-  {% csrf_token %}
-  <div class="mb-3">
-    <label class="form-label" for="id_display_name">Display name</label>
-    <input id="id_display_name" name="display_name" class="form-control" value="{{ project.display_name|default:project.name }}" required>
+<nav aria-label="breadcrumb" class="mb-3">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects-detail' pk=project.pk %}">{{ project.display_name|default:project.name }}</a></li>
+    <li class="breadcrumb-item active">Edit</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title" data-testid="projects-edit-title">Edit Project</h1>
+</section>
+
+{% if form_error %}
+  <div class="alert alert-warning" role="alert" data-testid="projects-edit-error">{{ form_error }}</div>
+{% endif %}
+
+<div class="row justify-content-center">
+  <div class="col-lg-8 col-xl-6">
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <form method="post" data-testid="projects-edit-form">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label" for="id_display_name">Display name</label>
+            <input id="id_display_name" name="display_name" class="form-control" value="{{ project.display_name|default:project.name }}" required data-testid="projects-edit-display-name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_sync_schedule">Sync schedule</label>
+            <select id="id_sync_schedule" name="sync_schedule" class="form-select" required data-testid="projects-edit-sync-schedule">
+              <option value="hourly" {% if project.sync_schedule == "hourly" %}selected{% endif %}>Hourly</option>
+              <option value="every_6h" {% if project.sync_schedule == "every_6h" %}selected{% endif %}>Every 6h</option>
+              <option value="daily" {% if project.sync_schedule == "daily" %}selected{% endif %}>Daily</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <span class="form-label text-muted">Source path (read-only)</span>
+            <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><code data-testid="projects-edit-source-path">{{ project.source_path|default:"—" }}</code></p>
+          </div>
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'projects-detail' pk=project.pk %}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" data-testid="project-save">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <span class="form-label text-muted">Source path (read-only in MIT)</span>
-    <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><code>{{ project.source_path|default:"—" }}</code></p>
-  </div>
-  <button type="submit" class="btn btn-primary" data-testid="project-save">Save changes</button>
-  <a href="{% url 'projects-detail' pk=project.pk %}" class="btn btn-link">Cancel</a>
-</form>
+</div>
 {% endblock %}

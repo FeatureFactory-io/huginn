@@ -1,23 +1,97 @@
 {% extends "base.html" %}
 {% block title %}Projects · Huginn{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between align-items-start gap-3">
   <div>
-    <h1 class="h3 mb-1" data-testid="projects-page-title">Projects</h1>
-    <p class="text-muted small mb-0">Skeleton — listing deferred to MIT wiring.</p>
+    <span class="badge bg-secondary rounded-pill me-2" data-testid="projects-count-badge">{{ projects|length }} projects</span>
+    <h1 class="hg-page-title d-inline" data-testid="projects-page-title">Projects</h1>
+    <p class="text-muted small mb-0">Imported from connected data sources.</p>
   </div>
-  <div class="d-flex align-items-center gap-2">
-    <span class="badge bg-secondary" data-testid="projects-count-badge">{{ projects|length }} total</span>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'projects-import' %}" data-testid="projects-import-link">Import projects</a>
+  <a class="btn btn-primary btn-sm" href="{% url 'projects-import' %}" data-testid="projects-import-btn">
+    <i class="fa-solid fa-download me-1"></i> Import Projects
+  </a>
+</section>
+
+{% if imported_banner %}
+  <div class="alert alert-success alert-dismissible fade show" data-testid="projects-list-import-banner" role="alert">
+    Import completed. New rows appear below once sync finishes.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
   </div>
-</div>
+{% endif %}
+
+<form method="get" class="row g-2 align-items-end mb-3" data-testid="projects-list-filters">
+  <div class="col-md-3">
+    <label class="form-label small mb-0" for="flt_ds">Data source</label>
+    <select name="datasource" id="flt_ds" class="form-select form-select-sm" data-testid="projects-filter-datasource">
+      <option value="">All</option>
+      {% for ds in filter_datasources %}
+        <option value="{{ ds.pk }}" {% if filter_datasource == ds.pk|stringformat:"s" %}selected{% endif %}>{{ ds.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small mb-0" for="flt_st">Row status</label>
+    <select name="status" id="flt_st" class="form-select form-select-sm" data-testid="projects-filter-status">
+      <option value="" {% if not filter_status %}selected{% endif %}>All</option>
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>Active</option>
+      <option value="archived" {% if filter_status == "archived" %}selected{% endif %}>Archived</option>
+      <option value="orphaned" {% if filter_status == "orphaned" %}selected{% endif %}>Orphaned</option>
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small mb-0" for="flt_pb">Playbook (slug contains)</label>
+    <input type="search" name="playbook" id="flt_pb" value="{{ filter_playbook }}" class="form-control form-control-sm" placeholder="stub filter" data-testid="projects-filter-playbook">
+  </div>
+  <div class="col-md-3 d-flex gap-2">
+    <button type="submit" class="btn btn-sm btn-primary" data-testid="projects-filter-apply">Apply</button>
+    <a href="{% url 'projects-list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+  </div>
+</form>
+
 {% if not projects %}
-  <div class="alert alert-info mt-3" data-testid="projects-empty-state">No projects imported yet.</div>
+  <div class="card border-0 shadow-sm rounded-3 mt-3" data-testid="projects-empty-state">
+    <div class="card-body text-center py-5">
+      <p class="mb-2 fw-medium">No projects match these filters yet.</p>
+      <p class="text-muted small mb-3">Import a GitLab project to get started.</p>
+      <a class="btn btn-primary" href="{% url 'projects-import' %}" data-testid="projects-empty-cta-import">Import projects</a>
+    </div>
+  </div>
 {% else %}
-  <ul class="list-group mt-3">
-    {% for p in projects %}
-      <li class="list-group-item" data-testid="project-row-{{ p.pk }}">{{ p.name }} — {{ p.datasource.name }}</li>
-    {% endfor %}
-  </ul>
+  <div class="card border-0 shadow-sm rounded-3 mt-3">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" data-testid="projects-list-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Data source</th>
+              <th scope="col">Playbook</th>
+              <th scope="col">Last sync</th>
+              <th scope="col">Status</th>
+              <th class="text-end" scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in projects %}
+            <tr data-testid="project-row-{{ p.pk }}">
+              <td class="fw-medium">{{ p.display_name|default:p.name }}</td>
+              <td>{{ p.datasource.name|default:"—" }}</td>
+              <td>{% if p.playbook_slug %}{{ p.playbook_slug }}{% else %}Not assigned{% endif %}</td>
+              <td>{% if p.last_sync_at %}{{ p.last_sync_at }}{% else %}Never{% endif %}</td>
+              <td><span class="badge text-bg-light border" data-testid="project-sync-state-{{ p.pk }}">{{ p.get_sync_state_display }}</span></td>
+              <td class="text-end btn-group-wrap">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Row actions for {{ p.display_name|default:p.name }}">
+                  <a class="btn btn-outline-secondary" href="{% url 'projects-detail' pk=p.pk %}" title="View" data-testid="projects-row-view-{{ p.pk }}"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="visually-hidden">View</span></a>
+                  <a class="btn btn-outline-secondary" href="{% url 'projects-edit' pk=p.pk %}" title="Edit" data-testid="projects-row-edit-{{ p.pk }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
+                  <a class="btn btn-outline-warning" href="{% url 'projects-archive' pk=p.pk %}" title="Archive" data-testid="projects-row-archive-{{ p.pk }}"><i class="fa-solid fa-box-archive" aria-hidden="true"></i><span class="visually-hidden">Archive</span></a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 {% endif %}
 {% endblock %}

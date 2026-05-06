@@ -14,7 +14,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/settings/*.py" = ["F405", "F403"]
-"*/migrations/*.py" = ["N806", "E501"]
+"*/migrations/*.py" = ["N806", "E501", "I001"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "huginn.settings.test"

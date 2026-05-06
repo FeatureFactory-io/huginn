@@ -2,8 +2,11 @@
 
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
+
+from ingestion.domain.increments import IncrementKind
 
 
 class DataSource(models.Model):
@@ -76,6 +79,30 @@ class DataSource(models.Model):
         return "••••••••" + raw[-4:]
 
 
+class Contributor(models.Model):
+    """Developer identity keyed by DataSource + email (MVP reconciliation)."""
+
+    datasource = models.ForeignKey(
+        DataSource,
+        on_delete=models.CASCADE,
+        related_name="contributors",
+    )
+    email = models.EmailField(max_length=254)
+    name = models.CharField(max_length=255, blank=True)
+    handle = models.CharField(max_length=255, blank=True)
+    first_seen_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["datasource_id", "email"]
+        constraints = [
+            models.UniqueConstraint(fields=["datasource", "email"], name="ingestion_contributor_ds_email_uniq"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.email} @ {self.datasource_id}"
+
+
 class Project(models.Model):
     """Imported engineering project bound to a DataSource."""
 
@@ -83,6 +110,17 @@ class Project(models.Model):
         ACTIVE = "active", "Active"
         ARCHIVED = "archived", "Archived"
         ORPHANED = "orphaned", "Orphaned"
+
+    class SyncState(models.TextChoices):
+        INITIAL_SYNC_QUEUED = "initial_sync_queued", "Initial sync queued"
+        SYNCING = "syncing", "Syncing"
+        ACTIVE = "active", "Active"
+        ERROR = "error", "Error"
+
+    class SyncSchedule(models.TextChoices):
+        HOURLY = "hourly", "Hourly"
+        EVERY_6H = "every_6h", "Every 6h"
+        DAILY = "daily", "Daily"
 
     datasource = models.ForeignKey(
         DataSource,
@@ -96,6 +134,26 @@ class Project(models.Model):
     display_name = models.CharField(max_length=255, blank=True)
     source_path = models.CharField(max_length=512, blank=True)
     playbook_slug = models.CharField(max_length=255, blank=True)
+    gitlab_project_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+    source_url = models.URLField(max_length=1024, blank=True)
+    sync_state = models.CharField(
+        max_length=32,
+        choices=SyncState.choices,
+        default=SyncState.INITIAL_SYNC_QUEUED,
+        db_index=True,
+    )
+    sync_schedule = models.CharField(
+        max_length=16,
+        choices=SyncSchedule.choices,
+        default=SyncSchedule.HOURLY,
+    )
+    imported_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="imported_projects",
+    )
     status = models.CharField(
         max_length=32,
         choices=Status.choices,
@@ -108,6 +166,98 @@ class Project(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["datasource", "gitlab_project_id"],
+                condition=models.Q(gitlab_project_id__isnull=False),
+                name="ingestion_project_ds_gitlab_id_uniq",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.name
+
+
+class Increment(models.Model):
+    """Ingested discrete contribution (commit; post-MVP kinds register here)."""
+
+    class Kind(models.TextChoices):
+        COMMIT = IncrementKind.COMMIT, "Commit"
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="increments",
+    )
+    datasource = models.ForeignKey(
+        DataSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="increments_records",
+    )
+    kind = models.CharField(max_length=32, choices=Kind.choices, db_index=True)
+    external_id = models.CharField(max_length=128, db_index=True)
+    occurred_at = models.DateTimeField(db_index=True)
+    contributor = models.ForeignKey(
+        Contributor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="increments",
+    )
+    summary = models.CharField(max_length=512, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "kind", "external_id"],
+                name="ingestion_increment_proj_kind_ext_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "occurred_at"]),
+            models.Index(fields=["project", "kind", "occurred_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.kind}:{self.external_id[:12]}"
+
+
+class IngestionRun(models.Model):
+    """One execution of sync for a project."""
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        RUNNING = "running", "Running"
+        SUCCESS = "success", "Success"
+        ERROR = "error", "Error"
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="ingestion_runs",
+    )
+    datasource = models.ForeignKey(
+        DataSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ingestion_runs_records",
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
+    cursor_to = models.DateTimeField(null=True, blank=True)
+    increments_ingested = models.IntegerField(default=0)
+    contributors_touched = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-started_at", "id"]
+
+    def __str__(self) -> str:
+        return f"run #{self.pk} project={self.project_id} {self.status}"

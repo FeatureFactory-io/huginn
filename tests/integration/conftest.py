@@ -7,9 +7,9 @@ from django.test import Client
 def commander_user(db):
     user_model = get_user_model()
     return user_model.objects.create_user(
-        username="donland",
         email="donland@example.com",
         password="s3cr3t",
+        full_name="Commander Donland",
     )
 
 

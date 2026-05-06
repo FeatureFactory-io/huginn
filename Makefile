@@ -90,6 +90,17 @@ lint-fix: ## Run ruff linter with auto-fix
 
 ##@ Database
 
+# Local Docker Postgres (matches docker-compose defaults). Override if your .env differs.
+POSTGRES_DB ?= huginn
+POSTGRES_USER ?= huginn
+
+.PHONY: db-reset-dev
+db-reset-dev: ## DROP local DB and migrate (destroys data; fixes inconsistent migration history)
+	docker compose exec -T db psql -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$(POSTGRES_DB)' AND pid <> pg_backend_pid();"
+	docker compose exec -T db psql -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $(POSTGRES_DB);"
+	docker compose exec -T db psql -U $(POSTGRES_USER) -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $(POSTGRES_DB) OWNER $(POSTGRES_USER);"
+	$(PYTHON) manage.py migrate --noinput
+
 .PHONY: backup
 backup: ## Dump PostgreSQL to S3 (set S3_BUCKET env var)
 	docker compose exec db pg_dump -U huginn huginn | aws s3 cp - s3://$(S3_BUCKET)/huginn-$(shell date +%Y%m%d-%H%M%S).sql

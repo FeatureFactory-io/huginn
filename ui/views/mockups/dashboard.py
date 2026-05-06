@@ -154,7 +154,7 @@ def dashboard_projects(request):
         },
     ]
     context = {
-        "active_nav": "dashboard",
+        "active_nav": "tactical_plot",
         "summary_strip": {"red": 2, "orange": 1, "yellow": 4, "green": 6},
         "rail_situational_awareness": [
             {"text": "Gitlab outage in progress", "severity": "warning"},
@@ -163,7 +163,7 @@ def dashboard_projects(request):
         "rail_fragos": [
             {
                 "title": (
-                    "Project X is in refactoring sprint — most of commits will fix(*) and refactor(*) — " "this is ok"
+                    "Project X is in refactoring sprint — most of commits will fix(*) and refactor(*) — this is ok"
                 ),
                 "scope_label": "project affected: X",
                 "fragos_project": "project-x",

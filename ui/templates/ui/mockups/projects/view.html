@@ -27,12 +27,80 @@
   <a class="btn btn-primary btn-sm" href="{% url 'mockup-sitrep-list' %}?project={{ p.name }}" data-testid="projects-view-sitreps"><i class="fa-solid fa-file-waveform me-1"></i> Open SitReps</a>
 </div>
 
+<ul class="nav nav-pills mb-4 gap-2" role="tablist">
+  <li class="nav-item" role="presentation">
+    <a
+      class="nav-link {% if active_tab == 'vitals' %}active{% endif %}"
+      href="{% url 'mockup-projects-view' pk %}?tab=vitals"
+      role="tab"
+      aria-selected="{% if active_tab == 'vitals' %}true{% else %}false{% endif %}"
+      data-testid="project-tab-vitals"
+    >Vitals</a>
+  </li>
+  <li class="nav-item" role="presentation">
+    <a
+      class="nav-link {% if active_tab == 'increments' %}active{% endif %}"
+      href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ time_range }}"
+      role="tab"
+      aria-selected="{% if active_tab == 'increments' %}true{% else %}false{% endif %}"
+      data-testid="project-tab-increments"
+    >Increments</a>
+  </li>
+</ul>
+
+{% if active_tab == 'vitals' %}
 <div class="row g-4">
   <div class="col-lg-8 vstack gap-4">
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2><dl class="row small mb-0"><dt class="col-sm-4">Source path</dt><dd class="col-sm-8">{{ p.source_path }}</dd><dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd></dl></div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2><dl class="row small mb-0"><dt class="col-sm-4">Source path</dt><dd class="col-sm-8"><code>{{ p.source_path }}</code></dd><dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd><dt class="col-sm-4">Imported by</dt><dd class="col-sm-8">{{ p.imported_by }}</dd></dl></div></article>
     <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2><p>{{ p.playbook_display }}</p></div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2><p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p><p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p></div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Recent activity</h2>{% if p.recent_activity %}<p>TODO</p>{% else %}<p class="text-muted mb-0" data-testid="projects-placeholder-activity">V0.1 placeholder — no UoW/Increment feeds yet.</p>{% endif %}</div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2><p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p><p class="mb-2">Schedule: <span>{{ p.sync_schedule_display }}</span></p><p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p></div></article>
   </div>
 </div>
+{% else %}
+<div class="mb-3 d-flex flex-wrap gap-2" role="group" aria-label="Increments time range">
+  {% for key, label in time_range_choices %}
+  <a
+    href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ key }}"
+    class="btn btn-sm {% if time_range == key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+    data-testid="increments-range-{{ key }}"
+    aria-label="Show Increments from {{ label }}"
+  >{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if increments %}
+<div class="table-responsive">
+  <table class="table table-sm align-middle" data-testid="increments-table">
+    <thead>
+      <tr>
+        <th scope="col">Occurred at</th>
+        <th scope="col">Author</th>
+        <th scope="col">Kind</th>
+        <th scope="col">Summary</th>
+        <th scope="col">Branches</th>
+        <th scope="col">Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inc in increments %}
+      <tr data-testid="increments-row-{{ inc.kind }}-{{ inc.external_id|slice:':12' }}">
+        <td>{{ inc.occurred_at }}</td>
+        <td>{{ inc.author }}</td>
+        <td><span class="badge text-bg-secondary text-lowercase">{{ inc.kind }}</span></td>
+        <td>{{ inc.summary }}</td>
+        <td>{% if inc.branches %}{{ inc.branches|join:", " }}{% else %}—{% endif %}</td>
+        <td>
+          {% if inc.web_url %}
+          <a href="{{ inc.web_url }}" target="_blank" rel="noopener noreferrer" data-testid="increment-source-link">Open</a>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted" data-testid="increments-empty-state">No Increments in this range yet.</p>
+{% endif %}
+{% endif %}
 {% endblock %}

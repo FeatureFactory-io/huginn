@@ -48,6 +48,14 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - `gjallarhorn/` → reads from `sitrep/` and `analytics/`
 - `ingestion/` → no internal dependencies
 
+**Ingestion sync engine (foundation):**
+- **`ingestion/domain/`** — pure-Python DTOs (dataclasses + ABCs): `IncrementDTO`, `ContributorDTO`, concrete `CommitIncrementDTO`. No Django imports.
+- **`ingestion/adapters/`** — `DataSourceAdapter` ABC; per-source modules (e.g. `gitlab_commits.py`) stream `IncrementDTO` instances. Registered in `ADAPTER_REGISTRY` keyed by `DataSource.Type`.
+- **`ingestion/services/sync_engine.py`** — `SyncEngine.run_for_project(project_id)` orchestrates: open `IngestionRun`, resolve adapters for the project's `DataSource`, upsert `Contributor` / `Increment` rows idempotently on `(project, kind, external_id)`, close run with counts and cursor, update `Project.last_sync_at` and `sync_state`.
+- **Idempotency:** re-running sync is safe — upserts only; duplicate external IDs do not create second rows.
+- **Audit:** every run appends an `IngestionRun` row (success or error) for TRANSPARENCY and ops visibility.
+- **Acceptance:** `docs/features/act-2-projects/projects-sync-engine.feature` encodes scheduling, idempotency, error, concurrency, and archived-skip behavior.
+
 ---
 
 ## 2. Integration & API Design
@@ -87,8 +95,11 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 ```
 huginn/
 ├── ingestion/
+│   ├── domain/          # pure-Python DTOs (IncrementDTO, etc.)
 │   ├── models/
-│   ├── services/        # connector clients, extraction logic
+│   ├── adapters/        # DataSourceAdapter ABC + per-source extractors
+│   ├── integrations/    # HTTP clients (GitlabClient, …)
+│   ├── services/        # SyncEngine orchestration, extraction logic
 │   ├── tasks.py         # Celery tasks
 │   └── tests/
 ├── analytics/
@@ -156,6 +167,45 @@ class IssueStatusEvent(Model):
     status      = CharField()   # "backlog", "planned", "in_progress", "done"
     recorded_at = DateTimeField()
     source      = CharField()   # "jira", "gitlab"
+```
+
+*Ingestion — Contributors, Increments, sync runs:*
+
+```python
+class Contributor(Model):
+    """Reconciled developer identity per DataSource (git author email as key for MVP)."""
+    datasource  = ForeignKey(DataSource, on_delete=CASCADE, related_name="contributors")
+    email       = EmailField()
+    name        = CharField(blank=True)
+    handle      = CharField(blank=True)  # optional GitLab username
+    first_seen_at = DateTimeField(auto_now_add=True)
+    last_seen_at  = DateTimeField(auto_now=True)
+    # UniqueConstraint(datasource, email)
+
+class Increment(Model):
+    """Discrete ingested contribution; kind discriminator + JSON payload for source-specific fields."""
+    project     = ForeignKey(Project, on_delete=CASCADE, related_name="increments")
+    datasource  = ForeignKey(DataSource, on_delete=SET_NULL, null=True, blank=True)
+    kind        = CharField(max_length=32)  # e.g. "commit"; post-MVP: merge_request, review
+    external_id = CharField(max_length=128)  # stable id from source (e.g. commit sha)
+    occurred_at = DateTimeField(db_index=True)
+    contributor = ForeignKey(Contributor, on_delete=SET_NULL, null=True, blank=True)
+    summary     = CharField(max_length=512, blank=True)
+    payload     = JSONField(default=dict)  # sha, web_url, branches[], stats, parent_shas
+    created_at  = DateTimeField(auto_now_add=True)
+    # UniqueConstraint(project, kind, external_id); indexes on (project, occurred_at)
+
+class IngestionRun(Model):
+    """One execution of sync for a Project — append-only outcome record."""
+    project     = ForeignKey(Project, on_delete=CASCADE, related_name="ingestion_runs")
+    datasource  = ForeignKey(DataSource, on_delete=SET_NULL, null=True, blank=True)
+    started_at  = DateTimeField(auto_now_add=True)
+    finished_at = DateTimeField(null=True, blank=True)
+    status      = CharField(max_length=16)  # pending, running, success, error
+    cursor_to   = DateTimeField(null=True, blank=True)  # high-water mark (occurred_at) for this run
+    increments_ingested = IntegerField(default=0)
+    contributors_touched = IntegerField(default=0)
+    error_message = TextField(blank=True)
 ```
 
 **Data access:**
@@ -234,6 +284,10 @@ class IssueStatusEvent(Model):
 **Graceful degradation:** TRANSPARENCY Master Variable explicitly tracks data freshness. Stale sources are visible on the dashboard — the PM knows to check the source directly.
 
 **Idempotency:** ingestion tasks are idempotent — upsert pattern on external IDs, safe to re-run.
+
+**Sync failure surfacing:** when `SyncEngine` exhausts retries or catches an unrecoverable API error, the task records `IngestionRun.status=error` and `error_message`, sets `Project.sync_state=error`, and does not partially corrupt existing `Increment` rows. The PM sees sync health on **PROJECTS-VIEW_PROJECT-1** and stale data is visible via the TRANSPARENCY Master Variable once analytics consumes `IngestionRun` / `last_sync_at`.
+
+**Concurrent sync requests:** a second sync for the same Project while an `IngestionRun` is `running` must not create overlapping writers — coalesce or no-op the duplicate (see `projects-sync-engine.feature` scenario PROJECTS-SYNC-06).
 
 ---
 

@@ -24,5 +24,5 @@
 ## Checkpoint
 
 ```bash
-.venv/bin/python -m pytest tests/integration/test_projects_view.py -x -q
+.venv/bin/python -m pytest tests/integration/test_projects_view_vitals_tab.py tests/integration/test_projects_view_increments_tab.py -x -q
 ```

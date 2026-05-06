@@ -229,13 +229,17 @@ Donland clicks [+ Import Projects] (from this screen, Act 1's shortcut, or Act 0
 
 #### Screen: PROJECTS-VIEW_PROJECT-1
 
-**Layout**:
+**Layout** (tabbed page — **Vitals** | **Increments**):
 - **Header**: Project name + status badge + DataSource
-- **Sections**:
+- **Vitals tab**:
   - **Identity**: source path, source URL, imported on, imported by
   - **Playbook**: name + version (or "Not assigned" — link to assign)
   - **Sync**: last sync time, next scheduled, current status (idle / syncing / error)
-  - **Recent activity**: last N UoW state changes / Increments
+- **Increments tab**:
+  - Time-range filter: Today · Yesterday · This week · Last week · Last 14 days (default: Last 14 days)
+  - Table of ingested Increments (commits from GitLab in MVP): occurred at, author, kind, summary, branches, link to source
+  - Deep-link: `?tab=increments&range=last_14d` (and other `range` values)
+- Sync engine behavior (beat, idempotency, error states) is specified in `docs/features/act-2-projects/projects-sync-engine.feature`; architecture in `docs/architecture/SAO.md` §1 (Ingestion sync engine), §4, §7.
 - **Top Actions**: [Edit] | [Sync Now] | [Archive] | [Open SitReps] (→ Act 5)
 
 #### Screen: PROJECTS-EDIT_PROJECT-1

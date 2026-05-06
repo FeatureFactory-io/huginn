@@ -1,0 +1,228 @@
+/* Huginn design system — shared with canonical base and mockup preview */
+
+:root {
+  --hg-primary: #1f3a5f;
+  --hg-primary-700: #16294a;
+  --hg-primary-100: #e7eef7;
+  --hg-accent: #c9a227;
+  --hg-accent-700: #8e7012;
+  --hg-bg-body: #f5f7fa;
+  --hg-bg-surface: #ffffff;
+  --hg-ink: #1a1f2e;
+  --hg-ink-muted: #5a6478;
+  --hg-border: #e3e7ee;
+  --hg-red: #dc3545;
+  --hg-orange: #fd7e14;
+  --hg-yellow: #ffc107;
+  --hg-green: #198754;
+  --hg-blue: #0dcaf0;
+  --hg-grey: #6c757d;
+  --bs-primary: var(--hg-primary);
+  --bs-primary-rgb: 31, 58, 95;
+  --bs-font-sans-serif: "Montserrat", system-ui, -apple-system, sans-serif;
+  --bs-body-font-family: var(--bs-font-sans-serif);
+  --bs-body-bg: var(--hg-bg-body);
+  --bs-body-color: var(--hg-ink);
+  --bs-border-color: var(--hg-border);
+  --bs-link-color: var(--hg-primary);
+  --bs-link-hover-color: var(--hg-primary-700);
+  --hg-card-padding-y: 1.15rem;
+  --hg-card-padding-x: 1.35rem;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--hg-primary);
+  --bs-btn-border-color: var(--hg-primary);
+  --bs-btn-hover-bg: var(--hg-primary-700);
+  --bs-btn-hover-border-color: var(--hg-primary-700);
+  --bs-btn-active-bg: var(--hg-primary-700);
+  --bs-btn-active-border-color: var(--hg-primary-700);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--hg-primary);
+  --bs-btn-border-color: var(--hg-primary);
+  --bs-btn-hover-bg: var(--hg-primary);
+  --bs-btn-hover-border-color: var(--hg-primary);
+  --bs-btn-active-bg: var(--hg-primary-700);
+}
+
+.hg-navbar {
+  background: var(--hg-primary);
+  border-bottom: 3px solid var(--hg-accent);
+}
+
+.hg-navbar .navbar-brand {
+  color: #fff;
+  font-weight: 600;
+}
+
+.hg-navbar .navbar-brand img {
+  object-fit: contain;
+}
+
+.hg-navbar .nav-link {
+  color: rgba(255, 255, 255, 0.82);
+  padding: 0.5rem 0.9rem;
+  border-radius: 4px;
+  transition: background 0.12s;
+  font-weight: 500;
+}
+
+.hg-navbar .nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.hg-navbar .nav-link.active,
+.hg-navbar .nav-link[aria-current="page"] {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.hg-page-header {
+  background: var(--hg-bg-surface);
+  border-bottom: 1px solid var(--hg-border);
+  padding: 0.85rem 1.5rem;
+}
+
+.hg-page-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+main.hg-main {
+  padding: 1rem 1.5rem;
+}
+
+.hg-card {
+  background: var(--hg-bg-surface);
+  border: 1px solid var(--hg-border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s, transform 0.15s;
+  cursor: pointer;
+}
+
+.hg-card:hover {
+  box-shadow: 0 4px 14px rgba(31, 58, 95, 0.12);
+  transform: translateY(-1px);
+}
+
+.hg-card .color-bar {
+  height: 6px;
+}
+
+.hg-card .color-bar.red {
+  background: var(--hg-red);
+}
+
+.hg-card .color-bar.orange {
+  background: var(--hg-orange);
+}
+
+.hg-card .color-bar.yellow {
+  background: var(--hg-yellow);
+}
+
+.hg-card .color-bar.green {
+  background: var(--hg-green);
+}
+
+.hg-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hg-card .card-body {
+  padding: var(--hg-card-padding-y) var(--hg-card-padding-x);
+  flex: 1 1 auto;
+}
+
+.hg-card .hg-headline {
+  margin-bottom: 0.55rem;
+}
+
+.hg-source-icons img {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.hg-var-chip {
+  flex-shrink: 0;
+}
+
+.hg-var-chip .hg-var-dot {
+  margin-right: 0;
+  cursor: help;
+}
+
+.hg-var-abbr {
+  cursor: help;
+}
+
+.tooltip.hg-tooltip-wide .tooltip-inner {
+  max-width: min(26rem, 92vw);
+  text-align: left;
+}
+
+.hg-card .card-foot {
+  padding: 0.75rem var(--hg-card-padding-x);
+  border-top: 1px solid var(--hg-border);
+  background: #fafbfd;
+  font-size: 0.78rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hg-var-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.hg-var-dot.red {
+  background: var(--hg-red);
+}
+
+.hg-var-dot.orange {
+  background: var(--hg-orange);
+}
+
+.hg-var-dot.yellow {
+  background: var(--hg-yellow);
+}
+
+.hg-var-dot.green {
+  background: var(--hg-green);
+}
+
+.hg-label-caps {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--hg-ink-muted);
+}
+
+.hg-chat-shell {
+  min-height: calc(100vh - 120px);
+}
+
+/* Bootstrap toggler on dark navbar — ensure contrast */
+.hg-navbar .navbar-toggler {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.hg-navbar .navbar-toggler-icon {
+  filter: invert(1) grayscale(100%);
+}

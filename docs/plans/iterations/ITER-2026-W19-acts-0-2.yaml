@@ -179,9 +179,10 @@ scenarios:
     codebase_footprint:
       - ui/services/projects_service.py
       - ui/templates/ui/projects/detail.html
-      - tests/integration/test_projects_view.py
+      - tests/integration/test_projects_view_vitals_tab.py
+      - tests/integration/test_projects_view_increments_tab.py
     checkpoint:
-      command: '.venv/bin/python -m pytest tests/integration/test_projects_view.py -x -q'
+      command: '.venv/bin/python -m pytest tests/integration/test_projects_view_vitals_tab.py tests/integration/test_projects_view_increments_tab.py -x -q'
     dependencies:
       - F07
 
