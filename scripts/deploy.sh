@@ -85,8 +85,9 @@ STAGING_CNAME=$(aws elasticbeanstalk describe-environments \
   --query 'Environments[0].CNAME' --output text)
 
 echo "Smoke testing http://${STAGING_CNAME}/health/ ..."
+# Inactive env can need extra time after EB "Ready" (compose pull, migrate, Celery/redis).
 HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" \
-  --max-time 30 --retry 10 --retry-delay 10 --retry-connrefused \
+  --max-time 30 --retry 20 --retry-delay 12 --retry-connrefused \
   "http://${STAGING_CNAME}/health/")
 
 if [ "$HTTP_STATUS" != "200" ]; then

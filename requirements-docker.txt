@@ -1,0 +1,22 @@
+# Runtime-only dependencies for the Elastic Beanstalk Docker image.
+# Full `requirements.txt` adds pytest, ruff, awsebcli, and CDK (heavy); installing
+# those in prod balloons RAM and can OOM a t3.small → nginx 502.
+
+django>=5.1,<6.0
+gunicorn>=22.0
+
+celery>=5.4
+django-celery-beat>=2.7
+redis>=5.0
+
+psycopg[binary]>=3.2
+
+fastmcp>=2.0
+
+python-gitlab>=8.0
+jira>=3.8
+
+django-htmx>=1.21
+whitenoise>=6.8
+
+tenacity>=9.0
