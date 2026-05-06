@@ -89,6 +89,9 @@ class CdnStack(Stack):
                 cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
                 origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER,
                 response_headers_policy=hsts_policy,
+                # Forms (login, HTMX POSTs) need POST/PUT/DELETE/PATCH — default
+                # is GET+HEAD only and CloudFront returns 403 on anything else.
+                allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
             ),
         )
 
