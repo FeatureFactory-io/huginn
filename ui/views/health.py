@@ -1,6 +1,7 @@
 """Health check views."""
 
 import logging
+import os
 import sys
 from datetime import datetime
 
@@ -31,6 +32,7 @@ def health_json(request):
         {
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
+            "revision": os.environ.get("HUGINN_GIT_REVISION", "unknown"),
             "python_version": sys.version.split()[0],
             "django_version": django.__version__,
         }
