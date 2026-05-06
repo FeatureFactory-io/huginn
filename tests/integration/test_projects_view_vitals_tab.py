@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
 from ingestion.models import DataSource, Project
 from tests.factories import ProjectFactory
@@ -16,6 +19,17 @@ def test_transparency_widget_marker_on_project_detail(commander_client):
     r = commander_client.get(reverse("projects-detail", args=[p.pk]))
     assert r.status_code == 200
     assert 'data-testid="project-widget-transparency"' in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_vitals_transparency_last_sync_humanized(commander_client):
+    p = ProjectFactory(
+        sync_state=Project.SyncState.ACTIVE,
+        last_sync_at=timezone.now() - timedelta(hours=2),
+    )
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-transparency-last-sync"' in body
+    assert "hours ago" in body
 
 
 @pytest.mark.django_db

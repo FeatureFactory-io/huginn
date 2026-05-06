@@ -80,6 +80,10 @@
         <section class="hg-vitals-section" aria-labelledby="project-transparency-heading">
           <h2 id="project-transparency-heading" class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
           <dl class="row small mb-0" data-testid="project-widget-transparency">
+            <dt class="col-sm-4 text-muted">Last sync</dt>
+            <dd class="col-sm-8" data-testid="project-transparency-last-sync">
+              {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
+            </dd>
           </dl>
         </section>
         <section class="hg-vitals-section">
