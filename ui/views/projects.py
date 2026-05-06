@@ -12,6 +12,7 @@ from django.views import View
 from django.views.decorators.http import require_POST
 
 from ingestion.models import DataSource, Project
+from ingestion.services.project_metadata import refresh_project_metadata
 from ui.services.increments_service import RANGE_LABELS, IncrementsService, normalize_range_key
 from ui.services.project_vitals_service import ProjectVitalsService
 from ui.services.projects_service import ProjectsService
@@ -207,6 +208,10 @@ class ProjectsSyncNowView(View):
         if project.status == Project.Status.ARCHIVED:
             messages.warning(request, "Archived projects are not synced.")
         else:
+            try:
+                refresh_project_metadata(project)
+            except ConnectionError:
+                pass
             ProjectsService().enqueue_immediate_project_sync(project.pk)
             messages.info(request, "Sync has been queued.")
         tab = (request.POST.get("tab") or "vitals").strip().lower()

@@ -88,6 +88,8 @@
             <div class="card-body">
               <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
               <dl class="row small mb-0">
+                <dt class="col-5 text-muted">Description</dt>
+                <dd class="col-7 mb-1" data-testid="project-description">{{ project.description|default:"—"|linebreaksbr }}</dd>
                 <dt class="col-5 text-muted">Source path</dt>
                 <dd class="col-7 text-break"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
                 <dt class="col-5 text-muted">Imported on</dt>

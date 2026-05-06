@@ -75,6 +75,7 @@ def test_projects_import_refresh_then_import(mock_urlopen, commander_client, db)
     assert proj.sync_state == Project.SyncState.ACTIVE
     assert proj.source_path == "acme/demo"
     assert proj.source_url == "https://gitlab.example.com/acme/demo"
+    assert proj.description == "Hi"
 
 
 @pytest.mark.django_db

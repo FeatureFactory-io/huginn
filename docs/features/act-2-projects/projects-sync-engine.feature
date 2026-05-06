@@ -68,3 +68,17 @@ Feature: Project sync engine — Celery ingestion and idempotency
     Given "atlas-backend" is Archived
     When the sync task runs for that Project
     Then no new IngestionRun is created
+
+  # ---------------------------------------------------------------------------
+  # Project metadata refresh (description) vs scheduled sync
+  # ---------------------------------------------------------------------------
+
+  Scenario: PROJECTS-SYNC-METADATA-01 Scheduled SyncEngine run does not rewrite Project.description
+    Given the Project.description in Huginn is "unchanged-by-scheduler"
+    When a scheduled ingestion run completes for that Project (possibly with zero new Increments)
+    Then Project.description remains "unchanged-by-scheduler"
+
+  Scenario: PROJECTS-SYNC-METADATA-02 Metadata refresh failure does not block Sync now enqueue
+    Given the operator triggers "Sync now" and GitLab metadata GET fails transiently
+    When the request completes
+    Then the increments sync task is still enqueued for that Project

@@ -44,6 +44,10 @@ def _sources_for_project(project: Project) -> list[dict]:
 
 
 def _description_for_project(project: Project) -> str:
+    """Prefer persisted GitLab description for the dashboard card subtitle."""
+    desc = (project.description or "").strip()
+    if desc:
+        return desc
     path = (project.source_path or "").strip()
     if path:
         return path

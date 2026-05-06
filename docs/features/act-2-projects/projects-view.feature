@@ -29,6 +29,11 @@ Feature: PROJECTS-VIEW_PROJECT-1 View Project details
     And I see the "imported on" date "2026-05-01"
     And I see the "imported by" user "donland@example.com"
 
+  Scenario: PROJECTS-VIEW_PROJECT-02a Identity section shows source description in Vitals
+    Given the Project has description "Helm for service delivery"
+    Then I see label "Description" with data-testid "project-description" showing that text in the Vitals Identity card
+    And when the description is empty I see an em dash placeholder in that cell
+
   # ---------------------------------------------------------------------------
   # Playbook section
   # ---------------------------------------------------------------------------
@@ -82,6 +87,17 @@ Feature: PROJECTS-VIEW_PROJECT-1 View Project details
     When I click "Sync Now"
     Then a sync job is dispatched for "atlas-backend"
     And the Sync section status updates to "Syncing"
+
+  Scenario: PROJECTS-VIEW_PROJECT-10a Sync Now refreshes description from GitLab before dispatching ingestion
+    Given the Project has a stale description in Huginn and GitLab exposes a newer description text
+    When I click "Sync now"
+    Then the Vitals Identity description reflects the GitLab string
+    And a sync job is dispatched for "atlas-backend"
+
+  Scenario: PROJECTS-VIEW_PROJECT-10b Sync Now still dispatches sync when GitLab metadata GET fails
+    Given GitLab rejects the single-project metadata request for this Project
+    When I click "Sync now"
+    Then a sync job is still dispatched for "atlas-backend"
 
   Scenario: PROJECTS-VIEW_PROJECT-11 Archive button opens archive confirmation modal
     When I click the "Archive" button

@@ -83,9 +83,33 @@ def test_vitals_02_deeplink_tab_vitals_active(commander_client):
 def test_vitals_06_vitals_coexistence_no_increments_table(commander_client):
     p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
-    for tid in ("project-source-path", "project-playbook-section", "project-sync-schedule"):
+    for tid in (
+        "project-description",
+        "project-source-path",
+        "project-playbook-section",
+        "project-sync-schedule",
+    ):
         assert f'data-testid="{tid}"' in body
     assert 'data-testid="increments-table"' not in body
+
+
+@pytest.mark.django_db
+def test_vitals_identity_shows_description(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, description="Alpha desc line")
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-description"' in body
+    assert "Alpha desc line" in body
+
+
+@pytest.mark.django_db
+def test_vitals_identity_shows_em_dash_for_empty_description(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, description="")
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-description"' in body
+    dd_at = body.index('data-testid="project-description"')
+    close = body.index("</dd>", dd_at)
+    snippet = body[dd_at:close]
+    assert "—" in snippet
 
 
 @pytest.mark.django_db

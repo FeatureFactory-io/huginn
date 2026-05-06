@@ -111,6 +111,42 @@ class GitlabClient:
 
         return results
 
+    def get_project(self, project_id: int) -> dict[str, Any]:
+        """Fetch ``GET /api/v4/projects/:id`` metadata (description, urls, names)."""
+        if not self._token.strip():
+            raise ValueError("Token is blank")
+
+        pid = int(project_id)
+        url = f"{self.base_url}/api/v4/projects/{pid}"
+        req = Request(url, headers={"PRIVATE-TOKEN": self._token})
+        try:
+            with urlopen(req, timeout=30) as resp:  # noqa: S310 — admin-controlled GitLab URL
+                raw_bytes = resp.read().decode()
+                data = json.loads(raw_bytes)
+        except HTTPError as exc:
+            raise ConnectionError(f"GitLab responded with HTTP {exc.code}") from exc
+        except URLError as exc:
+            raise ConnectionError("Unable to reach GitLab.") from exc
+
+        if not isinstance(data, dict):
+            raise ConnectionError("GitLab returned unexpected project payload.")
+
+        raw_desc = data.get("description")
+        if isinstance(raw_desc, str) and len(raw_desc) > 500:
+            norm_desc = raw_desc[:500] + "…"
+        elif not isinstance(raw_desc, str):
+            norm_desc = str(raw_desc) if raw_desc is not None else ""
+        else:
+            norm_desc = raw_desc or ""
+
+        return {
+            "id": int(data.get("id") or pid),
+            "name": str(data.get("name") or ""),
+            "description": norm_desc,
+            "web_url": str(data.get("web_url") or ""),
+            "path_with_namespace": str(data.get("path_with_namespace") or ""),
+        }
+
     def list_branch_names(
         self,
         project_id: int,

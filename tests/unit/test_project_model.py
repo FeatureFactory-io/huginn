@@ -22,6 +22,16 @@ def test_project_default_sync_schedule_is_hourly() -> None:
 
 
 @pytest.mark.django_db
+def test_project_has_description_field_default_empty() -> None:
+    ds = DataSourceFactory()
+    p = Project(datasource=ds, name="n", slug="n")
+    assert p.description == ""
+
+    persisted = Project.objects.create(datasource=ds, name="d", slug="slug-desc-test")
+    assert persisted.description == ""
+
+
+@pytest.mark.django_db
 def test_project_imported_by_nullable() -> None:
     ds = DataSourceFactory()
     p = Project.objects.create(datasource=ds, name="n", slug="proj-nullable")

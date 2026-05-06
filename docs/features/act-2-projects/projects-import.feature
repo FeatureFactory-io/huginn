@@ -73,6 +73,10 @@ Feature: PROJECTS-IMPORT-1 Import Projects from a Data Source
       | source_url  | https://gitlab.example.com/atlas-b |
     And the Project status changes from "Initial sync queued" to "Active"
 
+  Scenario: PROJECTS-IMPORT-09a Import persists the GitLab catalog description on the Project
+    Given I import a project whose catalog row includes description "Core API"
+    Then the created Project.description is "Core API" (truncated to 500 chars if longer)
+
   # ---------------------------------------------------------------------------
   # Re-import behaviour
   # ---------------------------------------------------------------------------

@@ -104,6 +104,8 @@ class ProjectsService:
             path = str(entry.get("path") or "")
             short_name = str(entry.get("short_name") or path.rsplit("/", maxsplit=1)[-1] or "project")
             web_url = str(entry.get("web_url") or "")
+            desc_raw = entry.get("description") or ""
+            description = (str(desc_raw) if desc_raw is not None else "")[:500]
             slug_base = slugify(path.replace("/", "-")) or slugify(short_name) or "project"
 
             slug = slug_base
@@ -119,6 +121,7 @@ class ProjectsService:
                     slug=slug,
                     source_path=path,
                     source_url=web_url,
+                    description=description,
                     gitlab_project_id=gid,
                     sync_state=Project.SyncState.INITIAL_SYNC_QUEUED,
                     imported_by_id=imported_by_id,
