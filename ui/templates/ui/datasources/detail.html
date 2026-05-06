@@ -2,14 +2,99 @@
 {% block title %}{{ datasource.name }} · Data Source{% endblock %}
 {% block content %}
 <nav aria-label="breadcrumb">
-  <ol class="breadcrumb">
+  <ol class="breadcrumb small">
     <li class="breadcrumb-item"><a href="{% url 'datasources-list' %}">Data Sources</a></li>
-    <li class="breadcrumb-item active" data-testid="datasource-detail-name">{{ datasource.name }}</li>
+    <li class="breadcrumb-item active" aria-current="page">{{ datasource.name }}</li>
   </ol>
 </nav>
-<dl class="row">
-  <dt class="col-sm-3">Type</dt><dd class="col-sm-9">{{ datasource.get_datasource_type_display }}</dd>
-  <dt class="col-sm-3">Base URL</dt><dd class="col-sm-9"><code>{{ datasource.base_url }}</code></dd>
-  <dt class="col-sm-3">Status</dt><dd class="col-sm-9">{{ datasource.get_status_display }}</dd>
-</dl>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-3">
+  <div>
+    <span class="badge bg-light border text-capitalize me-2" data-testid="ds-type-badge">{{ datasource.get_datasource_type_display }}</span>
+    <h1 class="hg-page-title d-inline" data-testid="ds-name">{{ datasource.name }}</h1>
+    <p class="text-muted mb-0 small">{{ datasource.base_url }}</p>
+  </div>
+  {% with cs=datasource.computed_status %}
+    {% if cs == "connected" %}
+      <span class="badge bg-success align-self-start">Connected</span>
+    {% elif cs == "token_expiring" %}
+      <span class="badge bg-warning text-dark align-self-start">Token expiring</span>
+    {% elif cs == "token_expired" or cs == "connection_error" %}
+      <span class="badge bg-danger align-self-start">
+        {% if cs == "token_expired" %}Token expired{% else %}Connection error{% endif %}
+      </span>
+    {% else %}
+      <span class="badge bg-secondary align-self-start">{{ datasource.get_status_display }}</span>
+    {% endif %}
+  {% endwith %}
+</section>
+
+<div class="row g-4">
+  <div class="col-xl-8">
+    <section class="card border-0 shadow-sm rounded-3 mb-4">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Connection</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-4">Token</dt>
+          <dd class="col-sm-8 font-monospace" data-testid="ds-masked-token">{{ datasource.masked_token }}</dd>
+          <dt class="col-sm-4">Expires</dt>
+          <dd class="col-sm-8" data-testid="ds-token-expiry">
+            {% if datasource.token_expires_at %}
+              {{ datasource.token_expires_at|date:"Y-m-d H:i" }}
+              {% if datasource.token_expires_in_days is not None %}
+                · <strong>{{ datasource.token_expires_in_days }} days</strong>
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+          <dt class="col-sm-4">Authenticated as</dt>
+          <dd class="col-sm-8" data-testid="ds-connected-user">{{ datasource.connected_user|default:"—" }}</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Recent sync runs</h2>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0" data-testid="ds-sync-log">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Project</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Ingested</th>
+                <th scope="col">Errors</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="5" class="text-muted text-center py-4">No sync runs recorded yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="col-xl-4">
+    <div id="ds-test-result" class="mb-3"></div>
+    <div class="d-grid gap-2">
+      <a class="btn btn-outline-primary" href="{% url 'datasource-edit' pk=datasource.pk %}" data-testid="ds-edit-btn">
+        <i class="fa-solid fa-pen me-2"></i> Edit
+      </a>
+      <button type="button"
+              class="btn btn-outline-secondary"
+              hx-post="{% url 'datasource-test-connection' pk=datasource.pk %}"
+              hx-target="#ds-test-result"
+              hx-swap="innerHTML"
+              data-testid="ds-test-connection-btn">
+        <i class="fa-solid fa-arrows-rotate me-2"></i> Test Connection Now
+      </button>
+      <a class="btn btn-outline-danger" href="{% url 'datasource-delete' pk=datasource.pk %}" data-testid="ds-delete-btn">
+        <i class="fa-solid fa-plug-circle-xmark me-2"></i> Disconnect
+      </a>
+    </div>
+  </div>
+</div>
 {% endblock %}

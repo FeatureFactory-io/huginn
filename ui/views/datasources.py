@@ -177,6 +177,53 @@ class DataSourcesDetailView(View):
 
 
 @method_decorator(login_required, name="dispatch")
+class DataSourcesTestConnectionView(View):
+    """HTMX endpoint — POST-only GitLab probe."""
+
+    http_method_names = ["post"]
+    template_name = "ui/datasources/partials/test_connection_result.html"
+
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        ds = get_object_or_404(DataSource.objects.all(), pk=pk)
+        if ds.datasource_type != DataSource.Type.GITLAB:
+            return render(
+                request,
+                self.template_name,
+                {"ok": False, "message": "Test connection is only available for GitLab data sources."},
+            )
+        svc = DataSourcesService()
+        try:
+            meta = svc.test_gitlab_connection(base_url=ds.base_url, token=ds.encrypted_token_ciphertext)
+            username = (meta.get("username") or meta.get("name") or "").strip() or "unknown"
+            count = meta.get("visible_project_count")
+            count_str = "?" if count is None else str(count)
+            ds.connected_user = username[:255]
+            ds.visible_project_count = count
+            ds.status = DataSource.Status.CONNECTED
+            ds.last_error_message = ""
+            ds.save(
+                update_fields=[
+                    "connected_user",
+                    "visible_project_count",
+                    "status",
+                    "last_error_message",
+                    "updated_at",
+                ]
+            )
+            msg = f"Connected as {username} — your token can see {count_str} projects"
+            return render(request, self.template_name, {"ok": True, "message": msg})
+        except (ConnectionError, ValueError, OSError):
+            ds.status = DataSource.Status.CONNECTION_ERROR
+            ds.last_error_message = "Test connection failed."
+            ds.save(update_fields=["status", "last_error_message", "updated_at"])
+            return render(
+                request,
+                self.template_name,
+                {"ok": False, "message": "Unable to reach GitLab or token is invalid."},
+            )
+
+
+@method_decorator(login_required, name="dispatch")
 class DataSourcesEditView(View):
     template_name = "ui/datasources/edit.html"
 

@@ -1,0 +1,5 @@
+{% if ok %}
+  <div class="alert alert-success mb-0" role="status" data-testid="ds-test-connection-result">{{ message }}</div>
+{% else %}
+  <div class="alert alert-danger mb-0" role="alert" data-testid="ds-test-connection-result">{{ message }}</div>
+{% endif %}
