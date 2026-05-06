@@ -113,7 +113,6 @@
         </section>
         <section class="hg-vitals-section">
           <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
-          <p class="mb-2">Last sync: <strong data-testid="project-last-sync">{% if project.last_sync_at %}{{ project.last_sync_at }}{% else %}—{% endif %}</strong></p>
           <p class="mb-2">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
           <p class="mb-0 text-muted small">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
         </section>
