@@ -26,3 +26,21 @@ class GitlabClient:
             raise ConnectionError(f"GitLab responded with HTTP {exc.code}") from exc
         except URLError as exc:
             raise ConnectionError("Unable to reach GitLab.") from exc
+
+    def get_visible_project_count(self) -> int:
+        """Return total visible projects for this token (membership scope)."""
+        from urllib.error import HTTPError, URLError
+        from urllib.request import Request, urlopen
+
+        url = f"{self.base_url}/api/v4/projects?membership=true&per_page=1"
+        req = Request(url, headers={"PRIVATE-TOKEN": self._token})
+        try:
+            with urlopen(req, timeout=10) as resp:  # noqa: S310
+                total = resp.headers.get("X-Total") or resp.headers.get("x-total")
+                if total is None:
+                    return 0
+                return int(total)
+        except HTTPError as exc:
+            raise ConnectionError(f"GitLab responded with HTTP {exc.code}") from exc
+        except URLError as exc:
+            raise ConnectionError("Unable to reach GitLab.") from exc

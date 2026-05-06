@@ -1,9 +1,27 @@
 """Datasource lifecycle — delegates to ingestion integrations."""
 
+from datetime import datetime
+from datetime import time as time_of_day
 from urllib.error import URLError
+
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from ingestion.integrations.gitlab_client import GitlabClient
 from ingestion.models import DataSource, Project
+
+
+def _coerce_token_expires_at(raw) -> object | None:
+    if raw is None:
+        return None
+    if not str(raw).strip():
+        return None
+    if hasattr(raw, "year"):
+        return raw
+    d = parse_date(str(raw).strip())
+    if not d:
+        return None
+    return timezone.make_aware(datetime.combine(d, time_of_day.min))
 
 
 class DataSourcesService:
@@ -11,7 +29,13 @@ class DataSourcesService:
 
     def test_gitlab_connection(self, *, base_url: str, token: str) -> dict:
         try:
-            return GitlabClient(base_url.strip(), token).verify_token()
+            client = GitlabClient(base_url.strip(), token)
+            meta = dict(client.verify_token())
+            try:
+                meta["visible_project_count"] = client.get_visible_project_count()
+            except (ConnectionError, OSError, ValueError, URLError):
+                meta["visible_project_count"] = None
+            return meta
         except ConnectionError:
             raise
         except ValueError:
@@ -27,12 +51,16 @@ class DataSourcesService:
         token: str,
         token_expires_at,
     ) -> DataSource:
-        # Validate token against GitLab when network available; persists even if unreachable in dev.
+        expires = _coerce_token_expires_at(token_expires_at)
+        connected_user = ""
+        visible_count = None
         try:
-            GitlabClient(base_url.strip(), token).verify_token()
+            meta = self.test_gitlab_connection(base_url=base_url, token=token)
             status = DataSource.Status.CONNECTED
             err = ""
-        except (ConnectionError, OSError):
+            connected_user = (meta.get("username") or meta.get("name") or "")[:255]
+            visible_count = meta.get("visible_project_count")
+        except (ConnectionError, OSError, ValueError):
             status = DataSource.Status.CONNECTION_ERROR
             err = "Could not validate token with GitLab; saved for editing later."
 
@@ -41,7 +69,9 @@ class DataSourcesService:
             datasource_type=DataSource.Type.GITLAB,
             base_url=base_url.strip(),
             encrypted_token_ciphertext=token,
-            token_expires_at=token_expires_at,
+            token_expires_at=expires,
+            connected_user=connected_user,
+            visible_project_count=visible_count,
             status=status,
             last_error_message=err,
         )

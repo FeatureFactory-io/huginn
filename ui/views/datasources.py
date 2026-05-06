@@ -20,6 +20,7 @@ from ui.services.datasources_service import DataSourcesService
 def _create_post_context(**kwargs) -> dict:
     ctx = {"active_nav": "datasources"}
     ctx.update(kwargs)
+    ctx.setdefault("step", 1)
     return ctx
 
 
@@ -85,24 +86,40 @@ class DataSourcesCreateView(View):
     template_name = "ui/datasources/create.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        return render(request, self.template_name, {"active_nav": "datasources"})
+        return render(request, self.template_name, _create_post_context())
 
     def post(self, request: HttpRequest) -> HttpResponse:
+        if request.POST.get("type") == DataSource.Type.GITLAB:
+            return render(
+                request,
+                self.template_name,
+                _create_post_context(step=2, selected_type=DataSource.Type.GITLAB),
+            )
+
+        if request.POST.get("step") != "2":
+            return redirect(reverse("datasources-create"))
+
         svc = DataSourcesService()
         base_url = request.POST.get("base_url", "").strip()
         token = request.POST.get("token", "").strip()
         name = request.POST.get("name", "").strip()
+        token_expires_raw = request.POST.get("token_expires_at", "").strip()
         base_ctx = {
+            "step": 2,
+            "selected_type": DataSource.Type.GITLAB,
             "preserve_name": name,
             "preserve_base_url": base_url,
             "preserve_token": token,
+            "preserve_token_expires_at": token_expires_raw,
         }
 
         if request.POST.get("action") == "test-connection":
             try:
                 meta = svc.test_gitlab_connection(base_url=base_url, token=token)
-                username = meta.get("username") or meta.get("name") or "ok"
-                msg = f"Connection OK ({username})."
+                username = meta.get("username") or meta.get("name") or "unknown"
+                count = meta.get("visible_project_count")
+                count_str = "?" if count is None else str(count)
+                msg = f"Connected as {username} — your token can see {count_str} projects"
                 return render(
                     request,
                     self.template_name,
@@ -115,29 +132,39 @@ class DataSourcesCreateView(View):
                     _create_post_context(**base_ctx, form_error="Unable to reach GitLab."),
                 )
 
-        try:
-            ds = svc.create_gitlab_source(
-                name=name,
-                base_url=base_url,
-                token=token,
-                token_expires_at=request.POST.get("token_expires_at") or None,
-            )
-        except ValueError as exc:
-            return render(
-                request,
-                self.template_name,
-                _create_post_context(**base_ctx, form_error=str(exc)),
-            )
-        except IntegrityError:
-            return render(
-                request,
-                self.template_name,
-                _create_post_context(
-                    **base_ctx,
-                    form_error="A data source with that name already exists.",
-                ),
-            )
-        return redirect(reverse("datasource-detail", args=[ds.pk]))
+        if request.POST.get("action") == "save":
+            if not name:
+                return render(
+                    request,
+                    self.template_name,
+                    _create_post_context(**base_ctx, form_error="Name is required."),
+                )
+            try:
+                ds = svc.create_gitlab_source(
+                    name=name,
+                    base_url=base_url,
+                    token=token,
+                    token_expires_at=token_expires_raw or None,
+                )
+            except ValueError as exc:
+                return render(
+                    request,
+                    self.template_name,
+                    _create_post_context(**base_ctx, form_error=str(exc)),
+                )
+            except IntegrityError:
+                return render(
+                    request,
+                    self.template_name,
+                    _create_post_context(
+                        **base_ctx,
+                        form_error="A data source with that name already exists.",
+                    ),
+                )
+            target = f"{reverse('projects-import')}?datasource={ds.pk}&banner=datasource_connected"
+            return redirect(target)
+
+        return redirect(reverse("datasources-create"))
 
 
 @method_decorator(login_required, name="dispatch")
