@@ -49,13 +49,13 @@ Feature: PROJECTS-VIEW_PROJECT-1 View Project details
   Scenario: PROJECTS-VIEW_PROJECT-05 Sync section shows queued status for newly imported project
     Given the project was just imported
     Then the Sync section shows current status "Initial sync queued"
-    And I see the last sync time (or "Never" if not yet run)
+    And the Transparency widget shows last sync as "Never" or a relative time (see "projects-view-vitals-tab.feature")
     And I see the next scheduled sync time
 
   Scenario: PROJECTS-VIEW_PROJECT-06 Sync section shows Active status after initial sync completes
     Given the initial sync has completed
     Then the Sync section shows current status "Active"
-    And I see the last sync timestamp
+    And the Transparency widget shows last sync as a relative time
 
   Scenario: PROJECTS-VIEW_PROJECT-07 Sync section shows error status when sync fails
     Given the last sync failed with "Connection refused"
