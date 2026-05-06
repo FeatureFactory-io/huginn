@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ingestion.models import DataSource, Project
-from tests.factories import ProjectFactory
+from tests.factories import IncrementFactory, ProjectFactory
 
 
 def _csrf(client):
@@ -29,6 +29,15 @@ def test_vitals_transparency_last_sync_humanized(commander_client):
     )
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
     assert 'data-testid="project-transparency-last-sync"' in body
+    assert "hours ago" in body
+
+
+@pytest.mark.django_db
+def test_vitals_transparency_last_commits_humanized(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    IncrementFactory(project=p, occurred_at=timezone.now() - timedelta(hours=5))
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-transparency-last-commits"' in body
     assert "hours ago" in body
 
 

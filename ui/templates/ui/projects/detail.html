@@ -84,6 +84,10 @@
             <dd class="col-sm-8" data-testid="project-transparency-last-sync">
               {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
             </dd>
+            <dt class="col-sm-4 text-muted">Last commits</dt>
+            <dd class="col-sm-8" data-testid="project-transparency-last-commits">
+              {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
+            </dd>
           </dl>
         </section>
         <section class="hg-vitals-section">
