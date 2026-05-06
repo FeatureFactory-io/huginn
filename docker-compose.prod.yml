@@ -18,7 +18,7 @@ services:
   web:
     image: ${ECR_IMAGE}
     restart: always
-    command: "sh -c 'python manage.py migrate --noinput && gunicorn huginn.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -'"
+    command: "sh -c 'python manage.py repair_accounts_migration && python manage.py migrate --noinput && gunicorn huginn.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -'"
     ports:
       - "8080:8000"
     environment:
