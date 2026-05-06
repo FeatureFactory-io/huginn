@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Tactical Plot · Huginn{% endblock %}
 {% block content %}
 <div data-testid="tactical-plot-loaded" class="visually-hidden">Tactical Plot</div>
@@ -6,13 +7,13 @@
 <section class="hg-page-header rounded-2 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-2">
   <div>
     <h1 class="hg-page-title mb-1" data-testid="tactical-plot-page-title">Tactical Plot</h1>
-    <p class="text-muted mb-0 small">Last refreshed <strong>today 09:25</strong> <span class="text-muted">(mock)</span></p>
-    <div class="mt-2 small">
-      {% for hue, qty in summary_strip.items %}
-        <span class="me-3"><strong>{{ qty }}</strong> <span style="color:var(--hg-{{ hue }})">{{ hue }}</span></span>
-      {% endfor %}
-      <span class="text-muted">(mock summary)</span>
-    </div>
+    <p class="text-muted mb-0 small" data-testid="tactical-plot-last-sync">
+      {% if plot_last_sync_at %}
+        Latest project sync <strong>{{ plot_last_sync_at|naturaltime }}</strong>
+      {% else %}
+        No completed syncs yet for projects on this plot.
+      {% endif %}
+    </p>
   </div>
   <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Refresh (not wired)" disabled aria-disabled="true">
     <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
@@ -25,11 +26,11 @@
       {% if dashboard_projects %}
         {% for card in dashboard_projects %}
         <div class="col-md-6 col-xl-4 d-flex" data-testid="dashboard-project-card-{{ card.pk }}">
-          <article class="hg-card h-100 w-100 position-relative" tabindex="0" role="article">
+          <article class="hg-card hg-plot-tile h-100 w-100 position-relative" tabindex="0" role="article">
             <div class="color-bar green"></div>
             <div class="card-body">
-              <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
-                <h2 class="h5 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center">
+              <div class="d-flex align-items-start justify-content-between gap-2">
+                <h2 class="h5 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center min-w-0">
                   <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 position-relative z-2" aria-hidden="false">
                     {% for src in card.sources %}
                       <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
@@ -45,13 +46,23 @@
                       <span class="text-muted small" title="No data source">—</span>
                     {% endif %}
                   </span>
-                  <span data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
+                  <span class="text-break" data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
                 </h2>
+                {% if card.source_path %}
+                <div class="hg-plot-tile-path text-end flex-shrink-0 position-relative z-2" data-testid="dashboard-card-{{ card.pk }}-source-path">
+                  <code class="small text-body text-break d-inline-block text-end">{{ card.source_path }}</code>
+                </div>
+                {% endif %}
               </div>
-              <p class="small text-muted mb-0" data-testid="dashboard-card-{{ card.pk }}-description">
-                <span class="fw-medium text-body-secondary">Description</span>
-                <span class="d-block mt-1 font-monospace">{{ card.description }}</span>
-              </p>
+              {% if card.description %}
+              <div class="d-flex flex-column gap-1 small pt-1" data-testid="dashboard-card-{{ card.pk }}-body">
+                <p class="mb-0 text-body-secondary lh-sm" data-testid="dashboard-card-{{ card.pk }}-gitlab-description">{{ card.description }}</p>
+              </div>
+              {% elif not card.source_path %}
+              <div class="d-flex flex-column gap-1 small pt-1" data-testid="dashboard-card-{{ card.pk }}-body">
+                <p class="mb-0 text-muted" data-testid="dashboard-card-{{ card.pk }}-empty-subtitle">—</p>
+              </div>
+              {% endif %}
             </div>
             <a class="stretched-link" href="{% url 'projects-detail' pk=card.pk %}" aria-label="Open project {{ card.name }}"></a>
           </article>
@@ -77,7 +88,7 @@
         <span>Situational Awareness</span>
       </div>
       <div class="card-body pb-3">
-        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(mock)</span></p>
+        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(sample)</span></p>
         <ul class="list-unstyled mb-0 small">
           {% for ev in rail_situational_awareness %}
             <li class="mb-2">
@@ -118,7 +129,7 @@
                  title="Reference mockup — FRAGOs (all)"
                  data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
             {% endif %}
-            <div class="text-muted fst-italic" style="font-size:0.75rem;">({{ fg.scope_label }}) <span class="text-muted">mock</span></div>
+            <div class="text-muted fst-italic" style="font-size:0.75rem;">({{ fg.scope_label }})</div>
           </li>
         {% endfor %}
       </ul>

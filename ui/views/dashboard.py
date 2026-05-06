@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from django.shortcuts import render
 from django.views import View
 
 from ingestion.models import DataSource, Project
 
-# Mock sidebar / summary (SitReps, FRAGOs, SA not wired in v1).
-MOCK_SUMMARY_STRIP = {"red": 2, "orange": 1, "yellow": 4, "green": 6}
+# Mock sidebar (SitReps, FRAGOs, SA not wired in v1); plot header uses real last-sync when available.
 MOCK_RAIL_SITUATIONAL_AWARENESS = [
     {"text": "Gitlab outage in progress", "severity": "warning"},
     {"text": "ESB to mainframes offline till tomorrow", "severity": "warning"},
@@ -43,46 +44,52 @@ def _sources_for_project(project: Project) -> list[dict]:
     return [{"key": raw, "label": raw.replace("_", " ").title(), "si_slug": raw}]
 
 
-def _description_for_project(project: Project) -> str:
-    """Prefer persisted GitLab description for the dashboard card subtitle."""
-    desc = (project.description or "").strip()
-    if desc:
-        return desc
-    path = (project.source_path or "").strip()
-    if path:
-        return path
-    return "—"
-
-
 def _project_cards(projects: list[Project]) -> list[dict]:
+    """Card payload: GitLab description (prose) and source path are separate lines."""
     out: list[dict] = []
     for p in projects:
         name = (p.display_name or "").strip() or p.name
+        desc = (p.description or "").strip()
+        path = (p.source_path or "").strip()
         out.append(
             {
                 "pk": p.pk,
                 "name": name,
-                "description": _description_for_project(p),
+                "description": desc or None,
+                "source_path": path or None,
                 "sources": _sources_for_project(p),
             }
         )
     return out
 
 
+def _max_last_sync_among(projects: list[Project]) -> datetime | None:
+    best: datetime | None = None
+    for p in projects:
+        t = p.last_sync_at
+        if t is None:
+            continue
+        if best is None or t > best:
+            best = t
+    return best
+
+
 class DashboardProjectsView(View):
-    """GET: Tactical Plot — real project cards + mock chrome."""
+    """GET: Tactical Plot — real project cards; rail chrome still placeholder."""
 
     template_name = "ui/dashboard/projects.html"
 
     def get(self, request, *args, **kwargs):
         qs = Project.objects.filter(status=Project.Status.ACTIVE).select_related("datasource").order_by("name")
-        cards = _project_cards(list(qs))
+        projects_list = list(qs)
+        cards = _project_cards(projects_list)
+        plot_last_sync_at = _max_last_sync_among(projects_list)
         return render(
             request,
             self.template_name,
             {
                 "active_nav": "tactical_plot",
-                "summary_strip": MOCK_SUMMARY_STRIP,
+                "plot_last_sync_at": plot_last_sync_at,
                 "rail_situational_awareness": MOCK_RAIL_SITUATIONAL_AWARENESS,
                 "rail_fragos": MOCK_RAIL_FRAGOS,
                 "dashboard_projects": cards,

@@ -146,6 +146,22 @@ main.hg-main {
   flex: 1 1 auto;
 }
 
+/* Tactical Plot project tiles: less vertical padding than generic hg-card */
+.hg-card.hg-plot-tile .card-body {
+  padding: 0.65rem 1rem 0.8rem;
+}
+
+.hg-plot-tile-path {
+  line-height: 1.25;
+  max-width: min(46%, 11rem);
+  padding-top: 0.125rem;
+}
+
+.hg-edit-project-source {
+  max-width: min(100%, 15rem);
+  padding-top: 0.125rem;
+}
+
 .hg-card .hg-headline {
   margin-bottom: 0.55rem;
 }

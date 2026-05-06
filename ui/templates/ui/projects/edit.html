@@ -9,8 +9,14 @@
   </ol>
 </nav>
 
-<section class="hg-page-header rounded-2 mb-3">
-  <h1 class="hg-page-title" data-testid="projects-edit-title">Edit Project</h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-start justify-content-between gap-2">
+  <h1 class="hg-page-title mb-0" data-testid="projects-edit-title">Edit Project</h1>
+  {% if project.source_path %}
+  <div class="text-end hg-edit-project-source flex-shrink-0">
+    <span class="small text-muted d-block">Source</span>
+    <code class="small text-body text-break d-inline-block text-end mt-1" data-testid="projects-edit-source-path">{{ project.source_path }}</code>
+  </div>
+  {% endif %}
 </section>
 
 {% if form_error %}
@@ -18,30 +24,34 @@
 {% endif %}
 
 <div class="row justify-content-center">
-  <div class="col-lg-8 col-xl-6">
+  <div class="col-lg-8 col-xl-7">
     <div class="card border-0 shadow-sm rounded-3">
-      <div class="card-body">
+      <div class="card-body py-3 px-3 px-md-4">
         <form method="post" data-testid="projects-edit-form">
           {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label" for="id_display_name">Display name</label>
-            <input id="id_display_name" name="display_name" class="form-control" value="{{ project.display_name|default:project.name }}" required data-testid="projects-edit-display-name">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label mb-1" for="id_display_name">Display name</label>
+              <input id="id_display_name" name="display_name" class="form-control form-control-sm" value="{{ project.display_name|default:project.name }}" required data-testid="projects-edit-display-name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label mb-1" for="id_sync_schedule">Sync schedule</label>
+              <select id="id_sync_schedule" name="sync_schedule" class="form-select form-select-sm" required data-testid="projects-edit-sync-schedule">
+                <option value="hourly" {% if project.sync_schedule == "hourly" %}selected{% endif %}>Hourly</option>
+                <option value="every_6h" {% if project.sync_schedule == "every_6h" %}selected{% endif %}>Every 6h</option>
+                <option value="daily" {% if project.sync_schedule == "daily" %}selected{% endif %}>Daily</option>
+              </select>
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label" for="id_sync_schedule">Sync schedule</label>
-            <select id="id_sync_schedule" name="sync_schedule" class="form-select" required data-testid="projects-edit-sync-schedule">
-              <option value="hourly" {% if project.sync_schedule == "hourly" %}selected{% endif %}>Hourly</option>
-              <option value="every_6h" {% if project.sync_schedule == "every_6h" %}selected{% endif %}>Every 6h</option>
-              <option value="daily" {% if project.sync_schedule == "daily" %}selected{% endif %}>Daily</option>
-            </select>
+
+          <div class="mb-3 pb-3 border-bottom" role="group" aria-label="GitLab description">
+            <p class="form-label mb-1 small text-muted">GitLab description</p>
+            <p class="small text-body-secondary mb-0 lh-sm" data-testid="projects-edit-gitlab-description">{{ project.description|default:"—"|linebreaksbr }}</p>
           </div>
-          <div class="mb-3">
-            <span class="form-label text-muted">Source path (read-only)</span>
-            <p class="form-control-plaintext border rounded px-3 py-2 bg-light mb-0"><code data-testid="projects-edit-source-path">{{ project.source_path|default:"—" }}</code></p>
-          </div>
+
           <div class="d-flex justify-content-end gap-2">
-            <a href="{% url 'projects-detail' pk=project.pk %}" class="btn btn-outline-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary" data-testid="project-save">Save changes</button>
+            <a href="{% url 'projects-detail' pk=project.pk %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm" data-testid="project-save">Save changes</button>
           </div>
         </form>
       </div>
