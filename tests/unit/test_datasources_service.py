@@ -75,3 +75,40 @@ def test_test_gitlab_connection_swallows_project_count_errors() -> None:
             token="tok",
         )
     assert out["visible_project_count"] is None
+
+
+@pytest.mark.django_db
+def test_update_gitlab_source_new_token_refreshes_metadata() -> None:
+    ds = DataSourceFactory(
+        encrypted_token_ciphertext="old",
+        base_url="https://gitlab.example.com/",
+    )
+    with (
+        patch.object(GitlabClient, "verify_token", return_value={"username": "neo"}),
+        patch.object(GitlabClient, "get_visible_project_count", return_value=4),
+    ):
+        DataSourcesService().update_gitlab_source(
+            ds.id,
+            new_token="newtok",
+            name=ds.name,
+            base_url=ds.base_url,
+            token_expires_at=None,
+        )
+    ds.refresh_from_db()
+    assert ds.encrypted_token_ciphertext == "newtok"
+    assert ds.connected_user == "neo"
+    assert ds.visible_project_count == 4
+
+
+@pytest.mark.django_db
+def test_update_gitlab_source_invalid_new_token_raises() -> None:
+    ds = DataSourceFactory(base_url="https://gitlab.example.com/", encrypted_token_ciphertext="old")
+    with patch.object(GitlabClient, "verify_token", side_effect=ConnectionError("bad")):
+        with pytest.raises(ValueError, match="validate new token"):
+            DataSourcesService().update_gitlab_source(
+                ds.id,
+                new_token="bad",
+                name=ds.name,
+                base_url=ds.base_url,
+                token_expires_at=None,
+            )

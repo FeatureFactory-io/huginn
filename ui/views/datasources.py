@@ -229,28 +229,77 @@ class DataSourcesEditView(View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         datasource = get_object_or_404(DataSource.objects.all(), pk=pk)
-        return render(request, self.template_name, {"active_nav": "datasources", "datasource": datasource})
+        return render(
+            request,
+            self.template_name,
+            {
+                "active_nav": "datasources",
+                "datasource": datasource,
+            },
+        )
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         datasource = get_object_or_404(DataSource.objects.all(), pk=pk)
         svc = DataSourcesService()
-        try:
-            svc.update_gitlab_source(
-                datasource.id,
-                name=request.POST.get("name", "").strip(),
-                base_url=request.POST.get("base_url", "").strip(),
-            )
-        except IntegrityError:
-            return render(
-                request,
-                self.template_name,
-                {
-                    "active_nav": "datasources",
-                    "datasource": datasource,
-                    "form_error": "That name is already taken.",
-                },
-            )
-        return redirect(reverse("datasource-detail", args=[datasource.pk]))
+        name = request.POST.get("name", "").strip()
+        base_url = request.POST.get("base_url", "").strip()
+        replace = request.POST.get("replace_token") == "1"
+        new_tok = request.POST.get("new_token", "").strip()
+        expires = request.POST.get("token_expires_at", "").strip()
+
+        def _ctx(**extra):
+            base = {
+                "active_nav": "datasources",
+                "datasource": datasource,
+                "preserve_name": name or datasource.name,
+                "preserve_base_url": base_url or datasource.base_url,
+                "preserve_expires": expires,
+                "preserve_replace": replace,
+                "preserve_new_token": new_tok if replace else "",
+            }
+            base.update(extra)
+            return base
+
+        if request.POST.get("action") == "test-connection":
+            if not base_url:
+                return render(request, self.template_name, _ctx(form_error="Base URL is required."))
+            if replace and not new_tok:
+                return render(request, self.template_name, _ctx(form_error="Enter a new token before testing."))
+            token_for_test = new_tok if replace else datasource.encrypted_token_ciphertext
+            try:
+                meta = svc.test_gitlab_connection(base_url=base_url, token=token_for_test)
+                username = meta.get("username") or meta.get("name") or "unknown"
+                count = meta.get("visible_project_count")
+                cstr = "?" if count is None else str(count)
+                msg = f"Connected as {username} — your token can see {cstr} projects"
+                return render(request, self.template_name, _ctx(test_success=msg))
+            except (ConnectionError, ValueError, OSError):
+                return render(request, self.template_name, _ctx(form_error="Unable to reach GitLab."))
+
+        if request.POST.get("action") == "save":
+            if not name:
+                return render(request, self.template_name, _ctx(form_error="Name is required."))
+            if replace and not new_tok:
+                return render(request, self.template_name, _ctx(form_error="New token is required when replacing."))
+            try:
+                svc.update_gitlab_source(
+                    datasource.id,
+                    name=name,
+                    base_url=base_url,
+                    token_expires_at=expires or None,
+                    new_token=new_tok if replace else None,
+                )
+            except ValueError as exc:
+                return render(request, self.template_name, _ctx(form_error=str(exc)))
+            except IntegrityError:
+                return render(
+                    request,
+                    self.template_name,
+                    _ctx(form_error="That name is already taken."),
+                )
+            return redirect(reverse("datasource-detail", args=[datasource.pk]))
+
+        return redirect(reverse("datasource-edit", args=[datasource.pk]))
 
 
 @method_decorator(login_required, name="dispatch")

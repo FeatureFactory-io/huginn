@@ -78,10 +78,23 @@ class DataSourcesService:
 
     def update_gitlab_source(self, datasource_id: int, **fields) -> DataSource:
         ds = DataSource.objects.get(pk=datasource_id)
+        new_token = fields.pop("new_token", None)
+        if "token_expires_at" in fields:
+            ds.token_expires_at = _coerce_token_expires_at(fields.pop("token_expires_at"))
         if "name" in fields and fields["name"]:
             ds.name = fields["name"].strip()
         if "base_url" in fields and fields["base_url"]:
             ds.base_url = fields["base_url"].strip()
+        if new_token:
+            try:
+                meta = self.test_gitlab_connection(base_url=ds.base_url, token=new_token)
+            except (ConnectionError, ValueError, OSError) as exc:
+                raise ValueError("Unable to validate new token with GitLab.") from exc
+            ds.encrypted_token_ciphertext = new_token
+            ds.connected_user = (meta.get("username") or meta.get("name") or "")[:255]
+            ds.visible_project_count = meta.get("visible_project_count")
+            ds.status = DataSource.Status.CONNECTED
+            ds.last_error_message = ""
         ds.save()
         return ds
 
