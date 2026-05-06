@@ -44,6 +44,8 @@ test:
     ALLOWED_HOSTS: localhost
     PYTHONPATH: "."
   before_script:
+    # aws-cdk / jsii synth tests need a Node.js runtime during pytest collection
+    - apt-get update -qq && apt-get install -y -qq nodejs
     - pip install -r requirements.txt --quiet
     - pip install -r infra/requirements.txt --quiet
   script:
