@@ -1,4 +1,4 @@
-# Generated manually — periodic sync_due_projects via django-celery-beat
+"""Periodic ingestion.sync_due_projects task via django-celery-beat (data migration)."""
 
 from django.db import migrations
 
@@ -24,7 +24,7 @@ def remove_ingestion_beat_schedule(apps, schema_editor) -> None:
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("ingestion", "0006_increment_contributor_ingestionrun"),
+        ("ingestion", "0001_initial"),
         ("django_celery_beat", "0019_alter_periodictasks_options"),
     ]
 

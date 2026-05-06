@@ -82,50 +82,11 @@ deploy:
     - if: $CI_COMMIT_BRANCH == "main"
   needs: [build]
   before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip gettext-base zip
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip gettext-base zip python3
     - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
     - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
   script:
     - bash scripts/deploy.sh
   environment:
-    name: staging
-
-# ──────────────────────────────────────────────────────────────
-# SWAP  — manual gate (you click this)
-# Calls eb swap to rotate huginn-prod CNAME from inactive to live.
-# Route53 huginn.featurefactory.io → huginn-prod.* never changes.
-# ──────────────────────────────────────────────────────────────
-swap:
-  stage: deploy
-  image: $PYTHON_IMAGE
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
-  needs: [deploy]
-  before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip
-    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
-  script:
-    - |
-      BLUE_CNAME=$(aws elasticbeanstalk describe-environments \
-        --application-name "$EB_APP_NAME" \
-        --environment-names "$EB_BLUE_ENV" \
-        --query 'Environments[0].CNAME' --output text)
-
-      if echo "$BLUE_CNAME" | grep -q "huginn-prod"; then
-        INACTIVE_ENV="$EB_GREEN_ENV"
-        LIVE_ENV="$EB_BLUE_ENV"
-      else
-        INACTIVE_ENV="$EB_BLUE_ENV"
-        LIVE_ENV="$EB_GREEN_ENV"
-      fi
-
-      echo "Swapping $INACTIVE_ENV (staging) → $LIVE_ENV (prod)"
-      aws elasticbeanstalk swap-environment-cnames \
-        --source-environment-name "$INACTIVE_ENV" \
-        --destination-environment-name "$LIVE_ENV"
-
-      echo "Swap complete. huginn.featurefactory.io now serves $INACTIVE_ENV."
-  environment:
     name: production
+    url: https://huginn.featurefactory.io

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# deploy.sh — deploys to the inactive EB environment and smoke-tests it.
-# Called by the GitLab CI 'deploy' job (main branch only).
-# The 'swap' CI job is the separate manual gate that rotates prod.
+# deploy.sh — deploys to inactive EB env, smoke-tests, then auto-swaps to prod.
 #
 # Required env vars (set as GitLab CI project variables):
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
-#   ECR_REGISTRY, ECR_IMAGE (set to $ECR_REGISTRY/huginn:$CI_COMMIT_SHORT_SHA)
-#   EB_APP_NAME, EB_BLUE_ENV, EB_GREEN_ENV
+#   ECR_REGISTRY, EB_APP_NAME, EB_BLUE_ENV, EB_GREEN_ENV
 #   CI_COMMIT_SHORT_SHA
+#
+# Optional:
+#   HUGINN_PROD_URL  — full URL to verify after swap (default: derived from prod CNAME)
 
 set -euo pipefail
 
@@ -38,10 +38,8 @@ echo "Inactive env: $INACTIVE_ENV  ← deploying here"
 echo "Image:        $ECR_IMAGE"
 
 # ── 2. Bake ECR image tag into compose file, bundle for EB ──
-# EB Docker platform requires the file to be named exactly 'docker-compose.yml'
 envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.yml
 zip -q deploy.zip docker-compose.yml
-# Include .ebextensions so post-deploy hooks run on the instance
 if [ -d .ebextensions ]; then
   zip -qr deploy.zip .ebextensions/
 fi
@@ -54,7 +52,7 @@ S3_KEY="huginn/${CI_COMMIT_SHORT_SHA}.zip"
 aws s3 cp deploy.zip "s3://${EB_BUCKET}/${S3_KEY}" --quiet
 echo "Uploaded s3://${EB_BUCKET}/${S3_KEY}"
 
-# ── 4. Create EB application version (idempotent — skip if already exists) ──
+# ── 4. Create EB application version (idempotent) ──
 aws elasticbeanstalk create-application-version \
   --application-name "$EB_APP_NAME" \
   --version-label "$CI_COMMIT_SHORT_SHA" \
@@ -72,29 +70,74 @@ aws elasticbeanstalk update-environment \
   --output text > /dev/null
 echo "Deployment triggered on $INACTIVE_ENV — waiting..."
 
-# ── 6. Wait for deployment to complete (EB default timeout: 10 min) ──
 aws elasticbeanstalk wait environment-updated \
   --application-name "$EB_APP_NAME" \
   --environment-names "$INACTIVE_ENV"
 echo "Environment $INACTIVE_ENV updated."
 
-# ── 7. Smoke test ──
+# ── 6. Smoke test staging (inactive env) ──
 STAGING_CNAME=$(aws elasticbeanstalk describe-environments \
   --application-name "$EB_APP_NAME" \
   --environment-names "$INACTIVE_ENV" \
   --query 'Environments[0].CNAME' --output text)
 
 echo "Smoke testing http://${STAGING_CNAME}/health/ ..."
-# Inactive env can need extra time after EB "Ready" (compose pull, migrate, Celery/redis).
-HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}" \
-  --max-time 30 --retry 20 --retry-delay 12 --retry-connrefused \
+HTTP_STATUS=$(curl -o /tmp/health.json -s -w "%{http_code}" \
+  --max-time 30 --retry 25 --retry-delay 12 --retry-connrefused \
   "http://${STAGING_CNAME}/health/")
 
 if [ "$HTTP_STATUS" != "200" ]; then
-  echo "Smoke test FAILED — HTTP $HTTP_STATUS"
+  echo "Staging smoke test FAILED — HTTP $HTTP_STATUS"
+  cat /tmp/health.json || true
   exit 1
 fi
 
-echo "Smoke test PASSED (HTTP 200)."
+REVISION=$(python3 -c 'import json,sys; print(json.load(open("/tmp/health.json")).get("revision","unknown"))')
+echo "Staging /health/ revision: $REVISION  (expected: $CI_COMMIT_SHORT_SHA)"
+if [ "$REVISION" != "$CI_COMMIT_SHORT_SHA" ]; then
+  echo "Staging smoke test FAILED — revision mismatch."
+  exit 1
+fi
+
+# ── 7. Clear HUGINN_RESET_DB on inactive env BEFORE swap (don't reset on next deploy) ──
+echo "Clearing HUGINN_RESET_DB on $INACTIVE_ENV ..."
+aws elasticbeanstalk update-environment \
+  --application-name "$EB_APP_NAME" \
+  --environment-name "$INACTIVE_ENV" \
+  --options-to-remove 'Namespace=aws:elasticbeanstalk:application:environment,OptionName=HUGINN_RESET_DB' \
+  --output text > /dev/null || echo "No HUGINN_RESET_DB to clear (ok)."
+
+aws elasticbeanstalk wait environment-updated \
+  --application-name "$EB_APP_NAME" \
+  --environment-names "$INACTIVE_ENV" || true
+
+# ── 8. Swap CNAMEs: inactive → prod, live → staging ──
+echo "Swapping $INACTIVE_ENV (staging) <-> $LIVE_ENV (prod) ..."
+aws elasticbeanstalk swap-environment-cnames \
+  --source-environment-name "$INACTIVE_ENV" \
+  --destination-environment-name "$LIVE_ENV"
+echo "Swap requested. Waiting for CNAMEs to propagate..."
+sleep 20
+
+# ── 9. Smoke prod URL and verify revision ──
+PROD_URL="${HUGINN_PROD_URL:-https://huginn.featurefactory.io}"
+echo "Smoke testing ${PROD_URL}/health/ ..."
+PROD_STATUS=$(curl -o /tmp/health-prod.json -s -w "%{http_code}" \
+  --max-time 30 --retry 30 --retry-delay 10 --retry-all-errors \
+  "${PROD_URL}/health/")
+
+if [ "$PROD_STATUS" != "200" ]; then
+  echo "Prod smoke test FAILED — HTTP $PROD_STATUS"
+  cat /tmp/health-prod.json || true
+  exit 1
+fi
+
+PROD_REVISION=$(python3 -c 'import json; print(json.load(open("/tmp/health-prod.json")).get("revision","unknown"))')
+echo "Prod /health/ revision: $PROD_REVISION  (expected: $CI_COMMIT_SHORT_SHA)"
+if [ "$PROD_REVISION" != "$CI_COMMIT_SHORT_SHA" ]; then
+  echo "Prod smoke test FAILED — revision mismatch."
+  exit 1
+fi
+
 echo ""
-echo "Ready. Trigger the 'swap' job in GitLab CI to promote $INACTIVE_ENV to production."
+echo "DEPLOY SUCCESS: ${PROD_URL}/health/ -> 200, revision=${PROD_REVISION}."
