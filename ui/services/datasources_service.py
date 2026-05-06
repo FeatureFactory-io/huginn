@@ -2,10 +2,8 @@
 
 from urllib.error import URLError
 
-from django.db.models import ProtectedError
-
 from ingestion.integrations.gitlab_client import GitlabClient
-from ingestion.models import DataSource
+from ingestion.models import DataSource, Project
 
 
 class DataSourcesService:
@@ -58,7 +56,6 @@ class DataSourcesService:
         return ds
 
     def soft_delete_gitlab_source(self, datasource_id: int) -> None:
-        try:
-            DataSource.objects.get(pk=datasource_id).delete()
-        except ProtectedError as exc:
-            raise ValueError("Cannot delete data source with dependent projects — remove projects first.") from exc
+        ds = DataSource.objects.get(pk=datasource_id)
+        ds.projects.update(status=Project.Status.ORPHANED)
+        ds.delete()

@@ -1,5 +1,6 @@
 """Operational DataSource routes (Acts 1)."""
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse
@@ -8,7 +9,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from ingestion.models import DataSource
+from ingestion.models import DataSource, Project
 from ui.services.datasources_service import DataSourcesService
 
 
@@ -139,17 +140,21 @@ class DataSourcesDeleteView(View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         datasource = get_object_or_404(DataSource.objects.all(), pk=pk)
-        return render(request, self.template_name, {"active_nav": "datasources", "datasource": datasource})
+        project_count = datasource.projects.filter(status=Project.Status.ACTIVE).count()
+        return render(
+            request,
+            self.template_name,
+            {
+                "active_nav": "datasources",
+                "datasource": datasource,
+                "project_count": project_count,
+            },
+        )
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         datasource = get_object_or_404(DataSource.objects.all(), pk=pk)
+        name = datasource.name
         svc = DataSourcesService()
-        try:
-            svc.soft_delete_gitlab_source(datasource.id)
-        except ValueError as exc:
-            return render(
-                request,
-                self.template_name,
-                {"active_nav": "datasources", "datasource": datasource, "form_error": str(exc)},
-            )
+        svc.soft_delete_gitlab_source(datasource.id)
+        messages.success(request, f"{name} has been disconnected.")
         return redirect(reverse("datasources-list"))

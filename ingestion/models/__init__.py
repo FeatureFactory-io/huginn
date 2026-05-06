@@ -1,6 +1,9 @@
 """Ingestion ORM models."""
 
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 
 
 class DataSource(models.Model):
@@ -26,6 +29,8 @@ class DataSource(models.Model):
     base_url = models.URLField(max_length=512)
     encrypted_token_ciphertext = models.TextField(blank=True)
     token_expires_at = models.DateTimeField(null=True, blank=True)
+    connected_user = models.CharField(max_length=255, blank=True)
+    visible_project_count = models.IntegerField(null=True, blank=True)
     status = models.CharField(
         max_length=32,
         choices=Status.choices,
@@ -43,6 +48,33 @@ class DataSource(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    @property
+    def computed_status(self) -> str:
+        """Derive UI status from expiry window when applicable."""
+        if self.token_expires_at:
+            now = timezone.now()
+            if self.token_expires_at < now:
+                return self.Status.TOKEN_EXPIRED
+            if self.token_expires_at <= now + timedelta(days=30):
+                return self.Status.TOKEN_EXPIRING
+        return self.status
+
+    @property
+    def token_expires_in_days(self) -> int | None:
+        if self.token_expires_at:
+            delta = self.token_expires_at - timezone.now()
+            return max(0, delta.days)
+        return None
+
+    @property
+    def masked_token(self) -> str:
+        raw = self.encrypted_token_ciphertext
+        if not raw:
+            return "—"
+        if len(raw) <= 4:
+            return "••••"
+        return "••••••••" + raw[-4:]
+
 
 class Project(models.Model):
     """Imported engineering project bound to a DataSource."""
@@ -54,7 +86,9 @@ class Project(models.Model):
 
     datasource = models.ForeignKey(
         DataSource,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="projects",
     )
     name = models.CharField(max_length=255)

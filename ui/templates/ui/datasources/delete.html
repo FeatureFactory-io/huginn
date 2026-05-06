@@ -1,11 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Delete {{ datasource.name }}{% endblock %}
+{% block title %}Disconnect {{ datasource.name }} · Huginn{% endblock %}
 {% block content %}
-<h1 class="h5 text-danger">Delete data source?</h1>
-<p>{{ datasource.name }}</p>
-<form method="post">
-  {% csrf_token %}
-  <button type="submit" class="btn btn-danger" data-testid="confirm-delete-datasource">Delete</button>
-  <a href="{% url 'datasource-detail' pk=datasource.pk %}" class="btn btn-link">Cancel</a>
-</form>
+<div class="modal fade show" id="disconnectModal" tabindex="-1" aria-modal="true" role="dialog" style="display:block;" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h1 class="modal-title fs-5" id="disconnectLabel" data-testid="delete-modal-title">Disconnect '{{ datasource.name }}'?</h1>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" data-testid="delete-project-warning">
+          <strong>{{ project_count }}</strong> Project(s) currently use this data source.
+          Disconnecting will stop syncs and mark them as orphaned.
+        </p>
+      </div>
+      <div class="modal-footer border-0 pt-0 d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'datasource-detail' pk=datasource.pk %}" data-testid="cancel-disconnect-btn">Cancel</a>
+        <form method="post" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger" autofocus data-testid="confirm-disconnect-btn">Disconnect</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show"></div>
 {% endblock %}
