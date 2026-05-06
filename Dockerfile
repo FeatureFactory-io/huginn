@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# Root requirements include `-r infra/requirements.txt`; copy it before pip install.
+COPY infra/requirements.txt infra/requirements.txt
 RUN pip install -r requirements.txt
 
 COPY . .
