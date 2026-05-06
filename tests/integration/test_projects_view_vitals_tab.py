@@ -42,6 +42,54 @@ def test_vitals_transparency_last_commits_humanized(commander_client):
 
 
 @pytest.mark.django_db
+def test_vitals_04_never_synced_shows_never(commander_client):
+    p = ProjectFactory(last_sync_at=None, sync_state=Project.SyncState.ACTIVE)
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-transparency-last-sync"' in body
+    assert "Never" in body
+
+
+@pytest.mark.django_db
+def test_vitals_05_no_commits_shows_empty_copy(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-transparency-last-commits"' in body
+    assert "No commits yet" in body
+
+
+@pytest.mark.django_db
+def test_vitals_01_tab_labels_and_testids(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="project-tab-vitals"' in body
+    assert 'data-testid="project-tab-increments"' in body
+    assert ">Vitals</button>" in body or "Vitals</button>" in body
+    assert "Increments" in body
+
+
+@pytest.mark.django_db
+def test_vitals_02_deeplink_tab_vitals_active(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    body = commander_client.get(reverse("projects-detail", args=[p.pk]) + "?tab=vitals").content.decode()
+    pane_at = body.index('id="project-pane-vitals"')
+    pane_open = body[pane_at - 80 : pane_at + 40]
+    assert "show active" in pane_open
+    nav_at = body.index('id="project-tab-vitals"')
+    nav_snippet = body[nav_at - 120 : nav_at + 400]
+    assert "active" in nav_snippet
+    assert 'aria-selected="true"' in nav_snippet
+
+
+@pytest.mark.django_db
+def test_vitals_06_vitals_coexistence_no_increments_table(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    for tid in ("project-source-path", "project-playbook-section", "project-sync-schedule"):
+        assert f'data-testid="{tid}"' in body
+    assert 'data-testid="increments-table"' not in body
+
+
+@pytest.mark.django_db
 def test_project_detail_renders(commander_client):
     ds = DataSource.objects.create(
         name="gitlab-co",
