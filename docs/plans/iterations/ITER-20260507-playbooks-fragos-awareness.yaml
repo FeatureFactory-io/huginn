@@ -1,0 +1,300 @@
+# Execution manifest — FG01–FG04 + SA01–SA03 (GitLab #42–#48). Embed verbatim under <!-- MANIFEST --> on milestone 7419452.
+
+iteration:
+  id: ITER-20260507-playbooks-fragos-awareness
+  branch: iteration/20260507-playbooks-fragos-awareness
+  goal: >-
+    Deliver Act 6 FRAGO and Act 12 Situational Awareness behind pytest checkpoints per GitLab issues #42–#48,
+    mirroring HTML mockups under ui/templates/ui/mockups/ and persistence under sitrep/ per SAO.md.
+  doctrine_version: "2.0"
+  platform: gitlab
+  created_at: "2026-05-07T12:00:00Z"
+
+parallel_groups:
+  A: [ACT6_FRAGO_01_DOMAIN]
+  B: [ACT12_SA_01_DOMAIN]
+  C: [ACT6_FRAGO_02_LIST]
+  D: [ACT6_FRAGO_03_CREATE_EDIT]
+  E: [ACT6_FRAGO_04_VIEW_REVOKE]
+  F: [ACT12_SA_02_VIEW]
+  G: [ACT12_SA_03_EDIT]
+
+conflict_map:
+  - pair: [ACT6_FRAGO_01_DOMAIN, ACT12_SA_01_DOMAIN]
+    overlap_risk: [sitrep/models/__init__.py, sitrep/admin.py, sitrep/migrations/]
+  - pair: [ACT6_FRAGO_02_LIST, ACT6_FRAGO_03_CREATE_EDIT]
+    overlap_risk: [ui/views/fragos.py, ui/urls.py]
+
+drift_thresholds:
+  skeleton_commit_doc_sync: forbid GitLab issue checkpoints drifting from docs/plans/.gitlab-issue-bodies/*.md without MR note
+
+implementation_plan_path: docs/plans/ACT6_ACT12_BPE01_IMPLEMENTATION_PLAN.md
+
+gitlab_issue:
+  ACT6_FRAGO_01_DOMAIN: 42
+  ACT6_FRAGO_02_LIST: 43
+  ACT6_FRAGO_03_CREATE_EDIT: 44
+  ACT6_FRAGO_04_VIEW_REVOKE: 45
+  ACT12_SA_01_DOMAIN: 46
+  ACT12_SA_02_VIEW: 47
+  ACT12_SA_03_EDIT: 48
+
+scenarios:
+  ACT6_FRAGO_01_DOMAIN:
+    title: "ACT6-FRAGO-01 — sitrep Frago model + admin + unit tests"
+    github_issue: 42
+    gitlab_issue: 42
+    parallel_group: A
+    skeleton_commit: 124116009ae7a3349097be8bea1f43fca3e3cc6f
+    codebase_footprint:
+      - sitrep/models/frago.py
+      - sitrep/models/__init__.py
+      - sitrep/admin.py
+      - sitrep/migrations/__init__.py
+      - sitrep/migrations/0001_frago_initial.py
+      - tests/unit/test_frago_models.py
+      - tests/factories.py
+    checkpoint:
+      command: "pytest tests/unit/test_frago_models.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§1 Application Blocks"
+      - "§4 Data Architecture"
+      - "§5 Test Strategy"
+    context_map:
+      - file: docs/architecture/SAO.md
+        lines: "1-160"
+        note: sitrep owns FRAGO store (§1 Application Blocks)
+      - file: ingestion/models/__init__.py
+        lines: "106-280"
+        note: Project FK target for Frago.project
+      - file: playbooks/models.py
+        lines: "1-120"
+        note: PlaybookVariable optional FK for affected_variable
+      - file: sitrep/models/frago.py
+        lines: "1-200"
+        note: Schema and constraints for Frago
+    do_not_do:
+      - "Do NOT persist FRAGO under playbooks/ — belongs in sitrep/"
+      - "Do NOT implement HTTP/views in this issue"
+      - "Do NOT add REST API"
+    dependencies: []
+
+  ACT12_SA_01_DOMAIN:
+    title: "ACT12-SA-01 — sitrep SA + version models + admin + tests"
+    github_issue: 46
+    gitlab_issue: 46
+    parallel_group: B
+    skeleton_commit: e892cf82b3bf1e4672a9d678f581803353752c87
+    codebase_footprint:
+      - sitrep/models/situational_awareness.py
+      - sitrep/models/__init__.py
+      - sitrep/admin.py
+      - sitrep/migrations/0002_situational_awareness.py
+      - tests/unit/test_situational_awareness_models.py
+      - tests/factories.py
+    checkpoint:
+      command: "pytest tests/unit/test_situational_awareness_models.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§1 Application Blocks"
+      - "§4 Data Architecture"
+    context_map:
+      - file: docs/architecture/SAO.md
+        lines: "1-160"
+        note: sitrep owns SA snapshots
+      - file: playbooks/models.py
+        lines: "31-58"
+        note: Version snapshot pattern for SituationalAwarenessVersion
+      - file: sitrep/models/situational_awareness.py
+        lines: "1-200"
+        note: OneToOne Project + version rows
+    do_not_do:
+      - "Do NOT implement VIEW/EDIT templates in this issue"
+      - "Do NOT allow multiple SA rows per Project — OneToOne"
+    dependencies:
+      - ACT6_FRAGO_01_DOMAIN
+
+  ACT6_FRAGO_02_LIST:
+    title: "ACT6-FRAGO-02 — FRAGO LIST+FIND production UI"
+    github_issue: 43
+    gitlab_issue: 43
+    parallel_group: C
+    skeleton_commit: c246e5f703085a11010392396e6f72fa158eac7e
+    codebase_footprint:
+      - ui/views/fragos.py
+      - ui/templates/ui/fragos/list.html
+      - ui/urls.py
+      - tests/integration/test_fragos_list.py
+      - tests/integration/conftest.py
+      - templates/base.html
+    checkpoint:
+      command: "pytest tests/integration/test_fragos_list.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§1 Application Blocks"
+      - "§2 Integration & API Design"
+    context_map:
+      - file: ui/templates/ui/mockups/fragos/list.html
+        lines: "1-180"
+        note: UX parity — data-testids and layout
+      - file: ui/views/playbooks.py
+        lines: "76-110"
+        note: Login-required list view pattern
+      - file: ui/views/mockups/fragos.py
+        lines: "1-130"
+        note: Mock context keys for rows/filters
+      - file: sitrep/models/frago.py
+        lines: "1-200"
+        note: Query model for list
+    do_not_do:
+      - "Do NOT duplicate mock-only routes — production paths in ui/urls.py"
+      - "Do NOT implement CREATE/EDIT/VIEW in this issue"
+    dependencies:
+      - ACT6_FRAGO_01_DOMAIN
+
+  ACT6_FRAGO_03_CREATE_EDIT:
+    title: "ACT6-FRAGO-03 — FRAGO CREATE + EDIT"
+    github_issue: 44
+    gitlab_issue: 44
+    parallel_group: D
+    skeleton_commit: c246e5f703085a11010392396e6f72fa158eac7e
+    codebase_footprint:
+      - ui/views/fragos.py
+      - ui/templates/ui/fragos/create.html
+      - ui/templates/ui/fragos/edit.html
+      - ui/urls.py
+      - tests/integration/test_fragos_create_edit.py
+      - tests/integration/conftest.py
+      - sitrep/models/frago.py
+      - playbooks/models.py
+      - templates/base.html
+    checkpoint:
+      command: "pytest tests/integration/test_fragos_create_edit.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§1 Application Blocks"
+      - "§2 Integration & API Design"
+    context_map:
+      - file: ui/templates/ui/mockups/fragos/create.html
+        lines: "1-120"
+        note: Create form parity
+      - file: ui/templates/ui/mockups/fragos/edit.html
+        lines: "1-120"
+        note: Edit form parity
+      - file: playbooks/markdown_utils.py
+        lines: "1-80"
+        note: Optional preview — body stored as markdown
+      - file: ingestion/models/__init__.py
+        lines: "106-220"
+        note: Project / playbook assignment for variable picklist
+    do_not_do:
+      - "Do NOT add day-of-week or Sprint/Milestone scope UI — effective from/to only"
+    dependencies:
+      - ACT6_FRAGO_01_DOMAIN
+      - ACT6_FRAGO_02_LIST
+
+  ACT6_FRAGO_04_VIEW_REVOKE:
+    title: "ACT6-FRAGO-04 — FRAGO VIEW + REVOKE + enable/disable"
+    github_issue: 45
+    gitlab_issue: 45
+    parallel_group: E
+    skeleton_commit: c246e5f703085a11010392396e6f72fa158eac7e
+    codebase_footprint:
+      - ui/views/fragos.py
+      - ui/templates/ui/fragos/view.html
+      - ui/templates/ui/fragos/revoke.html
+      - ui/urls.py
+      - tests/integration/test_fragos_view_revoke.py
+      - tests/integration/conftest.py
+      - sitrep/models/frago.py
+      - playbooks/markdown_utils.py
+      - templates/base.html
+    checkpoint:
+      command: "pytest tests/integration/test_fragos_view_revoke.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§1 Application Blocks"
+      - "§2 Integration & API Design"
+    context_map:
+      - file: ui/templates/ui/mockups/fragos/view.html
+        lines: "1-120"
+        note: Detail parity — body, effective window
+      - file: ui/templates/ui/mockups/fragos/revoke.html
+        lines: "1-80"
+        note: Revoke confirmation parity
+      - file: playbooks/markdown_utils.py
+        lines: "1-40"
+        note: workflow_md_to_html for body render
+    do_not_do:
+      - "Do NOT hard-delete FRAGO — revoke is soft-delete (revoked_at)"
+    dependencies:
+      - ACT6_FRAGO_01_DOMAIN
+      - ACT6_FRAGO_03_CREATE_EDIT
+
+  ACT12_SA_02_VIEW:
+    title: "ACT12-SA-02 — SA VIEW (Document | Versions tabs)"
+    github_issue: 47
+    gitlab_issue: 47
+    parallel_group: F
+    skeleton_commit: c246e5f703085a11010392396e6f72fa158eac7e
+    codebase_footprint:
+      - ui/views/situational_awareness.py
+      - ui/templates/ui/situational_awareness/view.html
+      - ui/urls.py
+      - tests/integration/test_situational_awareness_view.py
+      - tests/integration/conftest.py
+      - sitrep/models/situational_awareness.py
+      - playbooks/markdown_utils.py
+      - templates/base.html
+    checkpoint:
+      command: "pytest tests/integration/test_situational_awareness_view.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§2 Integration & API Design"
+    context_map:
+      - file: ui/templates/ui/mockups/sitawareness/view.html
+        lines: "1-140"
+        note: Tabs + Document/Versions parity
+      - file: ui/templates/ui/mockups/playbooks/view.html
+        lines: "1-80"
+        note: hg-detail-tabs-card pattern reference
+      - file: sitrep/models/situational_awareness.py
+        lines: "1-200"
+        note: Load head version + version list
+    do_not_do:
+      - "Do NOT add Recent entries section — removed from specs/mocks"
+    dependencies:
+      - ACT12_SA_01_DOMAIN
+
+  ACT12_SA_03_EDIT:
+    title: "ACT12-SA-03 — SA EDIT (Save Version)"
+    github_issue: 48
+    gitlab_issue: 48
+    parallel_group: G
+    skeleton_commit: c246e5f703085a11010392396e6f72fa158eac7e
+    codebase_footprint:
+      - ui/views/situational_awareness.py
+      - ui/templates/ui/situational_awareness/edit.html
+      - ui/urls.py
+      - tests/integration/test_situational_awareness_edit.py
+      - tests/integration/conftest.py
+      - sitrep/models/situational_awareness.py
+      - templates/base.html
+    checkpoint:
+      command: "pytest tests/integration/test_situational_awareness_edit.py -x -q"
+      expected_exit_code: 0
+    sao_sections:
+      - "§2 Integration & API Design"
+    context_map:
+      - file: ui/templates/ui/mockups/sitawareness/edit.html
+        lines: "1-140"
+        note: Document/Versions edit parity + change summary
+      - file: playbooks/models.py
+        lines: "31-58"
+        note: Immutable append version pattern reference
+    do_not_do:
+      - "Do NOT allow deleting SA instance from edit screen"
+      - "Do NOT skip required change summary validation"
+    dependencies:
+      - ACT12_SA_02_VIEW

@@ -1,0 +1,11 @@
+Foundation for Gjallarhorn: ship the doctrine layer the AI will read at SitRep time. Three Huginn-owned, human-authored entity surfaces — all CRUDLF — plus the seed Playbook content.
+
+**Scope:**
+
+* **Act 3 — Playbook** CRUDLF (versioned). Workflow markdown + ordered `PlaybookVariables` + ordered `PlaybookTables`. Includes seed Playbook with the seven starter Variables (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution) and default Tables.
+* **Act 6 — FRAGO** CRUDLF + activate/deactivate toggle + revoke (soft-delete). Optional `PlaybookVariable` tag; effective **from / to** dates only for time scope (per `docs/features/act-6-fragos/*.feature` and journey — no day-of-week or Sprint/Milestone picker).
+* **Act 12 — SituationalAwareness** VIEW + EDIT, versioned, one per Project.
+
+**Why now:** Per `docs/ideation/vision.md` ("OO Procedure (Gjallarhorn internal)") step 0, the agent loads Playbook + active FRAGOs + SituationalAwareness _before_ assessing anything. Without this milestone there is nothing for the AI to evaluate against.
+
+**Out of scope:** any AI generation, SitRep production, Variables Deep-Dive. Doctrine is _authored_ here; nothing reads it yet (that comes in the next milestone).
