@@ -12,6 +12,13 @@ from .views.datasources import (
     DataSourcesListView,
     DataSourcesTestConnectionView,
 )
+from .views.fragos import (
+    FragosCreateView,
+    FragosDetailView,
+    FragosEditView,
+    FragosListView,
+    FragosRevokeView,
+)
 from .views.health import health_json, welcome
 from .views.home import HomeView
 from .views.playbooks import (
@@ -29,6 +36,7 @@ from .views.projects import (
     ProjectsListView,
     ProjectsSyncNowView,
 )
+from .views.situational_awareness import SituationalAwarenessEditView, SituationalAwarenessView
 from .views.ux_preview import palette_preview
 
 urlpatterns = [
@@ -56,6 +64,13 @@ urlpatterns = [
     path("playbooks/<int:pk>/", PlaybooksDetailView.as_view(), name="playbooks-detail"),
     path("playbooks/<int:pk>/edit/", PlaybooksEditView.as_view(), name="playbooks-edit"),
     path("playbooks/<int:pk>/delete/", PlaybooksDeleteView.as_view(), name="playbooks-delete"),
+    path("fragos/", FragosListView.as_view(), name="fragos-list"),
+    path("fragos/create/", FragosCreateView.as_view(), name="fragos-create"),
+    path("fragos/<int:pk>/", FragosDetailView.as_view(), name="fragos-detail"),
+    path("fragos/<int:pk>/edit/", FragosEditView.as_view(), name="fragos-edit"),
+    path("fragos/<int:pk>/revoke/", FragosRevokeView.as_view(), name="fragos-revoke"),
+    path("sitawareness/", SituationalAwarenessView.as_view(), name="sitawareness-view"),
+    path("sitawareness/edit/", SituationalAwarenessEditView.as_view(), name="sitawareness-edit"),
     path("projects/", ProjectsListView.as_view(), name="projects-list"),
     path("projects/import/", ProjectsImportView.as_view(), name="projects-import"),
     path("projects/<int:pk>/archive/", ProjectsArchiveView.as_view(), name="projects-archive"),

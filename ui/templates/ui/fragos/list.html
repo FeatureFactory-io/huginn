@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{# Operational FRAGO list: parity source ui/templates/ui/mockups/fragos/list.html — keep markup & data-testids aligned. #}
+
+{% block title %}FRAGOs · {{ project_slug }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-LIST+FIND-1" screen_testid="fragos-list-find-loaded" %}
+
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item active text-muted" aria-current="page">{{ project_slug }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="fragos-page-title">
+      <span class="badge bg-secondary rounded-pill">{{ row_count }}</span>
+      <span>FRAGOs — {{ project_slug }}</span>
+    </h1>
+    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn when generating SitReps.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
+    <a class="btn btn-primary btn-sm" href="{% url 'fragos-create' %}?project={{ project_slug }}" data-testid="fragos-new-btn">
+      <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> New FRAGO
+    </a>
+  </div>
+</section>
+
+<div class="row g-3 mb-3 align-items-end">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="flt-frago-status">Status</label>
+    <select id="flt-frago-status" name="status" class="form-select form-select-sm" data-testid="fragos-filter-status">
+      <option>All</option>
+      <option>Active</option>
+      <option>Inactive</option>
+      <option>Scheduled</option>
+      <option>Expired</option>
+      <option>Revoked</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="flt-frago-var">Affected Variable</label>
+    <select id="flt-frago-var" name="variable" class="form-select form-select-sm" data-testid="fragos-filter-variable-tag">
+      <option value="">All Variables</option>
+      <option>Active Bug Count (ABC)</option>
+      <option>Cycle Time Median (CTM)</option>
+      <option>Quality</option>
+      <option>Global narrative</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <div class="form-check mb-0">
+      <input class="form-check-input" type="checkbox" id="flt-in-effect" data-testid="fragos-filter-in-effect-now">
+      <label class="form-check-label small" for="flt-in-effect">In effect now</label>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body p-0">
+    <div class="table-responsive" data-testid="fragos-table-wrap">
+      <table class="table table-hover align-middle mb-0" data-testid="fragos-table">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" class="text-center" style="width:4rem;">Toggle</th>
+            <th scope="col">Title</th>
+            <th scope="col">Affected Variable</th>
+            <th scope="col">Effective window</th>
+            <th scope="col">Status</th>
+            <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+              <span class="visually-hidden">Row actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr data-testid="frago-row-{{ r.id }}" {% if r.revoked %}class="text-muted"{% endif %}>
+            <td class="text-center">
+              <div class="form-check form-switch d-inline-block">
+                <input class="form-check-input"
+                       type="checkbox"
+                       {% if r.enabled %}checked{% endif %}
+                       {% if r.revoked %}disabled aria-disabled="true"{% else %}disabled{% endif %}
+                       aria-label="Enable FRAGO {{ r.title }}"
+                       data-testid="frago-toggle-{{ r.id }}">
+              </div>
+            </td>
+            <td>
+              <a href="{% url 'fragos-detail' r.id %}"
+                 class="hg-list-name-link fw-semibold d-inline-block {% if r.revoked %}text-decoration-line-through{% endif %}"
+                 data-testid="fragos-row-title-{{ r.id }}">{{ r.title }}</a>
+            </td>
+            <td class="small">{{ r.tag }}</td>
+            <td class="small">{{ r.effective }}</td>
+            <td><span class="badge bg-{{ r.status_class }}">{{ r.status }}</span></td>
+            <td class="text-end ps-3 align-middle">
+              <div class="dropdown d-inline-block">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary border-0 px-2"
+                        id="fragos-row-menu-{{ r.id }}"
+                        data-bs-toggle="dropdown"
+                        data-bs-popper-config='{"strategy":"fixed"}'
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        aria-label="Actions for {{ r.title }}"
+                        data-testid="fragos-row-actions-{{ r.id }}">
+                  <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="fragos-row-menu-{{ r.id }}">
+                  <li>
+                    <a class="dropdown-item" href="{% url 'fragos-detail' r.id %}" data-testid="fragos-row-view-{{ r.id }}">
+                      <i class="fa-solid fa-eye fa-fw me-2 text-muted" aria-hidden="true"></i>View
+                    </a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{% url 'fragos-edit' r.id %}" data-testid="fragos-row-edit-{{ r.id }}">
+                      <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit
+                    </a>
+                  </li>
+                  <li>
+                    {% if r.enabled %}
+                    <span class="dropdown-item disabled small text-muted">Deactivate</span>
+                    {% else %}
+                    <span class="dropdown-item disabled small text-muted">Activate</span>
+                    {% endif %}
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    {% if r.revoked %}
+                    <span class="dropdown-item disabled text-muted small">Revoked</span>
+                    {% else %}
+                    <a class="dropdown-item text-danger" href="{% url 'fragos-revoke' r.id %}" data-testid="fragos-row-revoke-{{ r.id }}">
+                      <i class="fa-solid fa-ban fa-fw me-2" aria-hidden="true"></i>Revoke
+                    </a>
+                    {% endif %}
+                  </li>
+                </ul>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="border-top px-3 py-4 text-center text-muted d-none" data-testid="fragos-empty-state">
+      <p class="mb-1 fw-medium">No FRAGOs.</p>
+      <p class="small mb-3">Create one to override Playbook expectations for known temporary conditions.</p>
+      <a href="{% url 'fragos-create' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

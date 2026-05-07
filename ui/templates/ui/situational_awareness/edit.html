@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{# Operational SA edit: parity source ui/templates/ui/mockups/sitawareness/edit.html #}
+
+{% block title %}Edit Situational Awareness{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-EDIT-1" screen_testid="sitawareness-edit-loaded" %}
+
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document">{{ project_slug }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Edit Sit Awareness</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-1 flex-wrap">
+      <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
+      <span>Edit Situational Awareness · {{ project_slug }}</span>
+    </h1>
+    <p class="small text-muted mb-0">Every save creates a new version with your change summary visible on the Versions tab.</p>
+  </div>
+</section>
+
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
+    <div class="card-header border-0 pt-3 px-3 pb-0">
+      <ul class="nav nav-tabs card-header-tabs" role="tablist" id="sitawareness-edit-tabs" data-testid="sitawareness-edit-tablist">
+        <li class="nav-item" role="presentation">
+          <a class="nav-link {% if active_tab == 'document' %}active{% endif %}"
+             href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+             role="tab"
+             aria-selected="{% if active_tab == 'document' %}true{% else %}false{% endif %}"
+             id="sitawareness-edit-tab-document"
+             data-testid="sitawareness-edit-tab-document">
+            <i class="fa-solid fa-file-lines me-1" aria-hidden="true"></i>Document
+          </a>
+        </li>
+        <li class="nav-item" role="presentation">
+          <a class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
+             href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=versions"
+             role="tab"
+             aria-selected="{% if active_tab == 'versions' %}true{% else %}false{% endif %}"
+             id="sitawareness-edit-tab-versions"
+             data-testid="sitawareness-edit-tab-versions">
+            <i class="fa-solid fa-clock-rotate-left me-1" aria-hidden="true"></i>Versions
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="card-body">
+      {% if active_tab == 'document' %}
+      <div id="sitawareness-edit-pane-document" role="tabpanel" aria-labelledby="sitawareness-edit-tab-document" tabindex="0" data-testid="sitawareness-edit-document-pane">
+        <div class="vstack gap-4">
+          <section class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white border-bottom py-2 px-3">
+              <label class="fw-semibold mb-0" for="sitawareness-edit-standing">Standing context</label>
+            </div>
+            <div class="card-body">
+              <textarea id="sitawareness-edit-standing"
+                        class="form-control font-monospace small"
+                        rows="8"
+                        data-testid="sitawareness-edit-standing">{{ standing_text }}</textarea>
+            </div>
+          </section>
+
+          <section class="card border-0 shadow-sm rounded-3">
+            <div class="card-header bg-white border-bottom py-2 px-3">
+              <label class="fw-semibold mb-0" for="sitawareness-edit-active">Active situations</label>
+            </div>
+            <div class="card-body">
+              <textarea id="sitawareness-edit-active"
+                        class="form-control font-monospace small"
+                        rows="6"
+                        data-testid="sitawareness-edit-active">{{ active_text }}</textarea>
+            </div>
+          </section>
+
+          <section class="card border-0 shadow-sm rounded-3">
+            <div class="card-body">
+              <label class="form-label" for="sitawareness-edit-summary">Change summary <span class="text-danger">*</span></label>
+              <input id="sitawareness-edit-summary"
+                     type="text"
+                     class="form-control form-control-sm"
+                     placeholder="Describe what changed for version history…"
+                     autocomplete="off"
+                     data-testid="sitawareness-edit-change-summary">
+              <p class="form-text mb-0">Listed on the Versions tab next to author and date.</p>
+            </div>
+          </section>
+
+          <div class="d-flex flex-wrap justify-content-end gap-2 pb-2">
+            <a class="btn btn-outline-secondary btn-sm"
+               href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
+               data-testid="sitawareness-edit-cancel">Cancel</a>
+            <button type="button"
+                    class="btn btn-primary btn-sm disabled"
+                    disabled
+                    data-testid="sitawareness-edit-save">
+              <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save Version
+            </button>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div id="sitawareness-edit-pane-versions" role="tabpanel" aria-labelledby="sitawareness-edit-tab-versions" tabindex="0" data-testid="sitawareness-edit-versions-panel">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span class="badge bg-secondary">Head</span>
+          <span class="small text-muted">v{{ head_version_n }}</span>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for v in versions %}
+          <div class="list-group-item py-3" data-testid="sitawareness-edit-version-row-{{ v.n }}">
+            <span class="fw-semibold">v{{ v.n }}</span>
+            <span class="text-muted"> · {{ v.on }} · {{ v.author }}</span>
+            <span class="d-block mt-1">{{ v.summary }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <p class="small text-muted mt-3 mb-0">
+          <a href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document">Switch to Document</a> to edit content.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+</div>
+{% endblock %}

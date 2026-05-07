@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{# Operational SA view: parity source ui/templates/ui/mockups/sitawareness/view.html #}
+
+{% block title %}Situational Awareness · {{ project_slug }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
+
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item text-muted" aria-current="page">{{ project_slug }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-1 flex-wrap" data-testid="sitawareness-view-heading">
+      <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
+      <span>Situational Awareness · {{ project_slug }}</span>
+    </h1>
+    <p class="small text-muted mb-0">Durable narrative memory merged with the Playbook when Gjallarhorn generates SitReps.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Situational Awareness actions">
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+       data-testid="sitawareness-view-edit-btn">
+      <i class="fa-solid fa-pen me-1" aria-hidden="true"></i> Edit
+    </a>
+  </div>
+</section>
+
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
+  <div class="card-header border-0 pt-3 px-3 pb-0">
+    <ul class="nav nav-tabs card-header-tabs" role="tablist" id="sitawareness-view-tabs" data-testid="sitawareness-view-tablist">
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'document' %}active{% endif %}"
+           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
+           role="tab"
+           aria-selected="{% if active_tab == 'document' %}true{% else %}false{% endif %}"
+           id="sitawareness-tab-document"
+           data-testid="sitawareness-tab-document">
+          <i class="fa-solid fa-file-lines me-1" aria-hidden="true"></i>Document
+        </a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
+           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=versions"
+           role="tab"
+           aria-selected="{% if active_tab == 'versions' %}true{% else %}false{% endif %}"
+           id="sitawareness-tab-versions"
+           data-testid="sitawareness-tab-versions">
+          <i class="fa-solid fa-clock-rotate-left me-1" aria-hidden="true"></i>Versions
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card-body">
+    {% if active_tab == 'document' %}
+    <div id="sitawareness-pane-document" role="tabpanel" aria-labelledby="sitawareness-tab-document" tabindex="0" data-testid="sitawareness-document-pane">
+      <div class="vstack gap-4">
+        <section class="card border-0 shadow-sm rounded-3" aria-labelledby="sitawareness-standing-heading">
+          <div class="card-header bg-white border-bottom py-2 px-3">
+            <h2 id="sitawareness-standing-heading" class="h6 mb-0 fw-semibold">Standing context</h2>
+          </div>
+          <div class="card-body vstack gap-3">
+            {% for e in standing_entries %}
+            <article class="border-bottom pb-3 {% if not forloop.last %}mb-1{% endif %}" data-testid="sitawareness-standing-entry-{{ forloop.counter }}">
+              <h3 class="h6 mb-1">{{ e.title }}</h3>
+              <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
+              <div class="small hg-markdown-workflow" data-testid="sitawareness-standing-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
+              {% if e.decision_pk %}
+              {# parity: mock used mockup-decisions-view #}
+              <a href="#" class="small d-inline-block mt-2 text-muted" data-testid="sitawareness-standing-decision-link-{{ e.decision_pk }}" title="Decision VIEW TBD">
+                Source Decision {{ e.decision_id }}
+              </a>
+              {% endif %}
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="card border-0 shadow-sm rounded-3" aria-labelledby="sitawareness-active-heading">
+          <div class="card-header bg-white border-bottom py-2 px-3">
+            <h2 id="sitawareness-active-heading" class="h6 mb-0 fw-semibold">Active situations</h2>
+          </div>
+          <div class="card-body vstack gap-3">
+            {% for e in active_entries %}
+            <article data-testid="sitawareness-active-entry-{{ forloop.counter }}">
+              <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                <h3 class="h6 mb-0">{{ e.title }}</h3>
+                {% if e.temporal_note %}
+                <span class="badge bg-info text-dark align-self-start">{{ e.temporal_note }}</span>
+                {% endif %}
+              </div>
+              <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
+              <div class="small hg-markdown-workflow" data-testid="sitawareness-active-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
+              {% if e.decision_pk %}
+              {# parity: mock used mockup-decisions-view #}
+              <a href="#" class="small d-inline-block mt-2 text-muted" data-testid="sitawareness-active-decision-link-{{ e.decision_pk }}" title="Decision VIEW TBD">
+                Source Decision {{ e.decision_id }}
+              </a>
+              {% endif %}
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+    </div>
+    {% else %}
+    <div id="sitawareness-pane-versions" role="tabpanel" aria-labelledby="sitawareness-tab-versions" tabindex="0" data-testid="sitawareness-versions-panel">
+      <div class="list-group list-group-flush">
+        {% for v in versions %}
+        <button type="button"
+                class="list-group-item list-group-item-action text-start py-3"
+                data-testid="sitawareness-version-row-{{ v.n }}">
+          <span class="fw-semibold">v{{ v.n }}</span>
+          <span class="text-muted"> · {{ v.on }} · {{ v.author }}</span>
+          <span class="d-block mt-1 text-body">{{ v.summary }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <p class="small text-muted mt-3 mb-0">Selecting a version would load a read-only snapshot on the Document tab (prototype).</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

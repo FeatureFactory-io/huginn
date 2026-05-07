@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{# Operational FRAGO detail: parity source ui/templates/ui/mockups/fragos/view.html #}
+
+{% block title %}FRAGO — {{ fg.title|truncatechars:48 }}{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-VIEW_FRAGO-1" screen_testid="fragos-view-frago-loaded" %}
+
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'fragos-list' %}">FRAGOs</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ fg.title|truncatechars:40 }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-2" data-testid="fragos-view-title">
+      <i class="fa-solid fa-flag text-primary" aria-hidden="true"></i>
+      <span>{{ fg.title }}</span>
+    </h1>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="badge bg-{{ fg.status_class }}">{{ fg.status }}</span>
+      {% if fg.tag and fg.tag != "—" %}
+      <span class="badge bg-secondary">Affected Variable · {{ fg.tag }}</span>
+      {% else %}
+      <span class="badge bg-secondary">Global narrative</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO actions">
+    <div class="form-check form-switch mb-0">
+      <input class="form-check-input"
+             type="checkbox"
+             {% if fg.enabled %}checked{% endif %}
+             disabled
+             {% if fg.revoked %}aria-disabled="true"{% endif %}
+             id="fragoEnabled"
+             data-testid="fragos-view-enable-toggle">
+      <label class="form-check-label {% if fg.revoked %}text-muted{% endif %}" for="fragoEnabled">
+        {% if fg.enabled %}Enabled{% else %}Disabled{% endif %}
+        <span class="visually-hidden">(read-only prototype)</span>
+      </label>
+    </div>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'fragos-edit' fg.id %}">
+      <i class="fa-solid fa-pen me-1" aria-hidden="true"></i> Edit
+    </a>
+    {% if not fg.revoked %}
+    <a class="btn btn-outline-warning btn-sm" href="{% url 'fragos-revoke' fg.id %}">
+      <i class="fa-solid fa-ban me-1" aria-hidden="true"></i> Revoke
+    </a>
+    {% endif %}
+  </div>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold small">Body</div>
+  <div class="card-body small hg-markdown-workflow text-body-secondary" data-testid="frago-rendered-body">{{ fg.markdown_body_html|safe }}</div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold small">Effective window</div>
+  <div class="card-body small" data-testid="frago-effective-window">{{ fg.effective }}</div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold">Application history</div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light"><tr><th>SitRep</th><th>Generated</th><th></th></tr></thead>
+        <tbody>
+          {% for a in fg.applications %}
+          <tr>
+            <td>#{{ a.sitrep_id }}</td>
+            <td class="text-muted small">{{ a.generated_at }}</td>
+            <td class="text-end">
+              {# parity: mock linked mockup-sitrep-view — bind when SitRep VIEW ships #}
+              <a href="#" class="small text-muted" data-testid="frago-app-sitrep-{{ a.sitrep_id }}" title="SitRep deep-link TBD">Open SitRep</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if fg.revoked %}
+    <p class="small text-muted mb-0 px-3 py-2 border-top">Revoked FRAGOs do not appear on newer SitRep evaluations.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold">State change log</div>
+  <ul class="list-group list-group-flush small">
+    {% for c in fg.changelog %}
+    <li class="list-group-item d-flex justify-content-between gap-2">
+      <span><strong>{{ c.action }}</strong></span>
+      <span class="text-muted text-end">{{ c.actor }} · {{ c.at }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

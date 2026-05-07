@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{# Operational FRAGO revoke: parity source ui/templates/ui/mockups/fragos/revoke.html #}
+
+{% block title %}Revoke FRAGO{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-REVOKE_FRAGO-1" screen_testid="fragos-revoke-frago-loaded" %}
+
+<div class="modal fade show d-block py-5" tabindex="-1" aria-modal="true" role="dialog" data-testid="frago-revoke-modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="revokeFragoTitle">Revoke “{{ title }}”?</h2>
+        <button type="button" class="btn-close" onclick="history.back()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">Future SitReps will evaluate the underlying Playbook expectation as written.</p>
+        <p class="text-muted small mb-0">Existing SitReps that referenced this FRAGO are unchanged.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" onclick="history.back()" data-testid="frago-revoke-cancel">Cancel</button>
+        <a class="btn btn-warning" href="{% url 'fragos-list' %}" data-testid="frago-revoke-confirm">
+          <i class="fa-solid fa-ban me-1" aria-hidden="true"></i> Revoke
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+{% endblock %}
