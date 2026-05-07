@@ -166,6 +166,29 @@ main.hg-main {
   text-align: end;
 }
 
+@media (min-width: 1200px) {
+  .hg-tactical-plot-grid .hg-plot-work-queue {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* Split fourth column vertically so Decisions + Tasks match height of sibling rails */
+  .hg-tactical-plot-grid .hg-plot-queue-split-card {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .hg-tactical-plot-grid .hg-plot-queue-split-body {
+    align-items: center;
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 4.5rem;
+  }
+}
+
 .hg-edit-project-source {
   max-width: min(100%, 15rem);
   padding-top: 0.125rem;

@@ -20,15 +20,15 @@
   </button>
 </section>
 
-<div class="row g-3 hg-tactical-plot-grid">
-  {# Mobile / tablet stack: SitAware → FRAGOs → Projects → Decisions → Actions. xl+: four columns. #}
-  <div class="col-12 col-xl-3 order-1" data-testid="dashboard-plot-col-situational-awareness">
-    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-sitaware">
+<div class="row g-3 align-items-stretch hg-tactical-plot-grid">
+  {# Mobile / tablet stack: SitAware → FRAGOs → Projects → Decisions → Actions. xl+: four equal-height columns. #}
+  <div class="col-12 col-xl-3 order-1 d-flex" data-testid="dashboard-plot-col-situational-awareness">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card flex-grow-1 w-100 d-flex flex-column" data-testid="dashboard-rail-sitaware">
       <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
         <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
         <span>Situational Awareness</span>
       </div>
-      <div class="card-body py-3 px-3 pb-3">
+      <div class="card-body py-3 px-3 pb-3 flex-grow-1">
         <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(stub)</span></p>
         <ul class="list-unstyled mb-0 small">
           {% for ev in rail_situational_awareness %}
@@ -44,12 +44,13 @@
     </section>
   </div>
 
-  <div class="col-12 col-xl-3 order-2" data-testid="dashboard-plot-col-fragos">
-    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-fragos">
+  <div class="col-12 col-xl-3 order-2 d-flex" data-testid="dashboard-plot-col-fragos">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card flex-grow-1 w-100 d-flex flex-column" data-testid="dashboard-rail-fragos">
       <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
         <i class="fa-solid fa-puzzle me-2 text-primary" aria-hidden="true"></i>
         <span>FRAGOs in effect</span>
       </div>
+      <div class="flex-grow-1 d-flex flex-column min-vh-0">
       <div class="list-group list-group-flush small">
         {% for fg in rail_fragos %}
           <div class="list-group-item px-3 py-2">
@@ -58,16 +59,18 @@
           </div>
         {% endfor %}
       </div>
+      </div>
     </section>
   </div>
 
-  <div class="col-12 col-xl-3 order-3" data-testid="dashboard-plot-col-projects">
-    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-projects">
+  <div class="col-12 col-xl-3 order-3 d-flex" data-testid="dashboard-plot-col-projects">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card flex-grow-1 w-100 d-flex flex-column" data-testid="dashboard-rail-projects">
       <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
         <i class="fa-solid fa-folder-open me-2 text-primary" aria-hidden="true"></i>
         <span>Projects</span>
       </div>
       {% if dashboard_projects %}
+      <div class="flex-grow-1 d-flex flex-column min-vh-0">
       <div class="list-group list-group-flush small">
         {% for card in dashboard_projects %}
         <a class="list-group-item list-group-item-action px-3 py-2 border-start border-3 {{ card.sync_border_class }} text-decoration-none text-reset"
@@ -112,8 +115,9 @@
         </a>
         {% endfor %}
       </div>
+      </div>
       {% else %}
-      <div class="card-body py-3 px-3 small" data-testid="dashboard-empty-projects">
+      <div class="card-body py-3 px-3 small flex-grow-1 d-flex flex-column" data-testid="dashboard-empty-projects">
         <p class="text-muted mb-2">No active projects on the Tactical Plot yet.</p>
         <p class="mb-0 mt-2">
           <a href="{% url 'projects-import' %}" class="fw-medium">Import a project</a>
@@ -125,26 +129,28 @@
     </section>
   </div>
 
-  <div class="col-12 col-xl-3 order-4 vstack gap-3" data-testid="dashboard-plot-col-work-queue">
-    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card" data-testid="dashboard-plot-decisions-stub">
-      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
-        <i class="fa-solid fa-gavel me-2 text-primary" aria-hidden="true"></i>
-        <span>Decisions to make</span>
-      </div>
-      <div class="card-body py-3 px-3 small text-muted mb-0">
-        <p class="mb-0">Nothing queued yet.</p>
-      </div>
-    </section>
+  <div class="col-12 col-xl-3 order-4 d-flex" data-testid="dashboard-plot-col-work-queue">
+    <div class="hg-plot-work-queue d-flex flex-column gap-3 flex-grow-1 w-100">
+      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card" data-testid="dashboard-plot-decisions-stub">
+        <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center flex-shrink-0">
+          <i class="fa-solid fa-gavel me-2 text-primary" aria-hidden="true"></i>
+          <span>Decisions to make</span>
+        </div>
+        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body mb-0">
+          <p class="mb-0">Nothing queued yet.</p>
+        </div>
+      </section>
 
-    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card" data-testid="dashboard-plot-actions-stub">
-      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
-        <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
-        <span>Tasks assigned to you</span>
-      </div>
-      <div class="card-body py-3 px-3 small text-muted mb-0">
-        <p class="mb-0">No assignments yet.</p>
-      </div>
-    </section>
+      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card" data-testid="dashboard-plot-actions-stub">
+        <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center flex-shrink-0">
+          <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
+          <span>Tasks assigned to you</span>
+        </div>
+        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body mb-0">
+          <p class="mb-0">No assignments yet.</p>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
 {% endblock %}
