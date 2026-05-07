@@ -28,38 +28,41 @@
   </div>
 </section>
 
-<div class="row g-3 mb-3 align-items-end">
+<form method="get" action="{% url 'fragos-list' %}" class="row g-3 mb-3 align-items-end">
+  <input type="hidden" name="project" value="{{ project_slug }}">
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="flt-frago-status">Status</label>
     <select id="flt-frago-status" name="status" class="form-select form-select-sm" data-testid="fragos-filter-status">
-      <option>All</option>
-      <option>Active</option>
-      <option>Inactive</option>
-      <option>Scheduled</option>
-      <option>Expired</option>
-      <option>Revoked</option>
+      <option value="All" {% if filter_status == "All" %}selected{% endif %}>All</option>
+      <option value="Active" {% if filter_status == "Active" %}selected{% endif %}>Active</option>
+      <option value="Inactive" {% if filter_status == "Inactive" %}selected{% endif %}>Inactive</option>
+      <option value="Scheduled" {% if filter_status == "Scheduled" %}selected{% endif %}>Scheduled</option>
+      <option value="Expired" {% if filter_status == "Expired" %}selected{% endif %}>Expired</option>
+      <option value="Revoked" {% if filter_status == "Revoked" %}selected{% endif %}>Revoked</option>
     </select>
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="flt-frago-var">Affected Variable</label>
     <select id="flt-frago-var" name="variable" class="form-select form-select-sm" data-testid="fragos-filter-variable-tag">
-      <option value="">All Variables</option>
-      <option>Active Bug Count (ABC)</option>
-      <option>Cycle Time Median (CTM)</option>
-      <option>Quality</option>
-      <option>Global narrative</option>
+      {% for abbrev, label in variable_choices %}
+      <option value="{{ abbrev }}" {% if abbrev == filter_variable %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
     </select>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-4 d-flex flex-wrap align-items-center gap-3">
     <div class="form-check mb-0">
-      <input class="form-check-input" type="checkbox" id="flt-in-effect" data-testid="fragos-filter-in-effect-now">
+      <input class="form-check-input" type="checkbox" id="flt-in-effect" name="in_effect" value="1"
+             {% if filter_in_effect %}checked{% endif %}
+             data-testid="fragos-filter-in-effect-now">
       <label class="form-check-label small" for="flt-in-effect">In effect now</label>
     </div>
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply</button>
   </div>
-</div>
+</form>
 
 <div class="card border-0 shadow-sm rounded-3">
   <div class="card-body p-0">
+    {% if row_count %}
     <div class="table-responsive" data-testid="fragos-table-wrap">
       <table class="table table-hover align-middle mb-0" data-testid="fragos-table">
         <thead class="table-light">
@@ -78,11 +81,19 @@
           {% for r in rows %}
           <tr data-testid="frago-row-{{ r.id }}" {% if r.revoked %}class="text-muted"{% endif %}>
             <td class="text-center">
+              {% if not r.revoked %}
+              <form id="toggle-form-{{ r.id }}" method="post" action="{% url 'fragos-list' %}?{{ request.GET.urlencode }}">
+                {% csrf_token %}
+                <input type="hidden" name="toggle_frago" value="1">
+                <input type="hidden" name="frago_id" value="{{ r.id }}">
+              </form>
+              {% endif %}
               <div class="form-check form-switch d-inline-block">
                 <input class="form-check-input"
                        type="checkbox"
+                       {% if not r.revoked %}form="toggle-form-{{ r.id }}"{% endif %}
                        {% if r.enabled %}checked{% endif %}
-                       {% if r.revoked %}disabled aria-disabled="true"{% else %}disabled{% endif %}
+                       {% if r.revoked %}disabled aria-disabled="true"{% else %}onchange="document.getElementById('toggle-form-{{ r.id }}').requestSubmit()"{% endif %}
                        aria-label="Enable FRAGO {{ r.title }}"
                        data-testid="frago-toggle-{{ r.id }}">
               </div>
@@ -144,11 +155,13 @@
         </tbody>
       </table>
     </div>
-    <div class="border-top px-3 py-4 text-center text-muted d-none" data-testid="fragos-empty-state">
+    {% else %}
+    <div class="border-top px-3 py-4 text-center text-muted" data-testid="fragos-empty-state">
       <p class="mb-1 fw-medium">No FRAGOs.</p>
       <p class="small mb-3">Create one to override Playbook expectations for known temporary conditions.</p>
-      <a href="{% url 'fragos-create' %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+      <a href="{% url 'fragos-create' %}?project={{ project_slug }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
     </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

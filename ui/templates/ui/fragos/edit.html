@@ -8,7 +8,8 @@
 
 <nav aria-label="breadcrumb" class="mb-2">
   <ol class="breadcrumb small mb-0">
-    <li class="breadcrumb-item"><a href="{% url 'fragos-list' %}">FRAGOs</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'fragos-list' %}?project={{ project_slug }}">FRAGOs</a></li>
     <li class="breadcrumb-item"><a href="{% url 'fragos-detail' fg.id %}">{{ fg.title|truncatechars:24 }}</a></li>
     <li class="breadcrumb-item active" aria-current="page">Edit</li>
   </ol>
@@ -26,40 +27,42 @@
 
 <div class="row justify-content-center">
   <div class="col-lg-8 col-xl-7">
-    <form class="card border-0 shadow-sm rounded-3 card-body vstack gap-3">
+    <form method="post" class="card border-0 shadow-sm rounded-3 card-body vstack gap-3">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger small mb-0">{{ form.non_field_errors }}</div>
+      {% endif %}
       <div>
-        <label class="form-label" for="edit-frago-title">Title <span class="text-danger">*</span></label>
-        <input id="edit-frago-title" class="form-control form-control-sm" value="{{ fg.title }}" data-testid="frago-edit-title-input">
+        <label class="form-label" for="{{ form.title.id_for_label }}">Title <span class="text-danger">*</span></label>
+        {{ form.title }}
+        {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors }}</div>{% endif %}
       </div>
       <div>
-        <label class="form-label" for="edit-frago-body">Body <span class="text-muted small">(markdown)</span></label>
-        <textarea id="edit-frago-body" class="form-control font-monospace small" rows="10" data-testid="frago-edit-body-input">{{ fg.markdown_body }}</textarea>
+        <label class="form-label" for="{{ form.body_md.id_for_label }}">Body <span class="text-muted small">(markdown)</span></label>
+        {{ form.body_md }}
+        {% if form.body_md.errors %}<div class="invalid-feedback d-block">{{ form.body_md.errors }}</div>{% endif %}
       </div>
       <div>
-        <label class="form-label" for="edit-frago-tag">Affected Variable</label>
-        <select id="edit-frago-tag" class="form-select form-select-sm" data-testid="frago-edit-variable-tag">
-          <option value="" {% if not fg.tag or fg.tag == "—" %}selected{% endif %}>— Global narrative —</option>
-          {% if fg.tag and fg.tag != "—" %}
-          <option selected>{{ fg.tag }}</option>
-          {% endif %}
-        </select>
+        <label class="form-label" for="{{ form.affected_variable.id_for_label }}">Affected Variable</label>
+        {{ form.affected_variable }}
+        {% if form.affected_variable.errors %}<div class="invalid-feedback d-block">{{ form.affected_variable.errors }}</div>{% endif %}
       </div>
       <fieldset class="rounded-3 border p-3 bg-light">
         <legend class="hg-label-caps float-none w-auto px-1 mb-2">Effective window <span class="text-muted fw-normal">(optional)</span></legend>
         <div class="row g-2">
           <div class="col-md-6">
-            <label class="form-label small mb-0" for="edit-frago-effective-from">Effective from</label>
-            <input type="date" id="edit-frago-effective-from" class="form-control form-control-sm" value="{{ fg.scope_start }}" data-testid="frago-edit-scope-start">
+            <label class="form-label small mb-0" for="{{ form.effective_from.id_for_label }}">Effective from</label>
+            {{ form.effective_from }}
           </div>
           <div class="col-md-6">
-            <label class="form-label small mb-0" for="edit-frago-effective-to">Effective to</label>
-            <input type="date" id="edit-frago-effective-to" class="form-control form-control-sm" value="{{ fg.scope_end }}" data-testid="frago-edit-scope-end">
+            <label class="form-label small mb-0" for="{{ form.effective_to.id_for_label }}">Effective to</label>
+            {{ form.effective_to }}
           </div>
         </div>
       </fieldset>
       <div class="d-flex gap-2 justify-content-end pt-2 border-top">
         <a class="btn btn-outline-secondary btn-sm" href="{% url 'fragos-detail' fg.id %}">Cancel</a>
-        <button type="button" class="btn btn-primary btn-sm disabled" disabled data-testid="frago-edit-save">
+        <button type="submit" class="btn btn-primary btn-sm" data-testid="frago-edit-save">
           <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save Changes
         </button>
       </div>

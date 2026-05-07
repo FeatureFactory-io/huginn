@@ -53,13 +53,17 @@
     <div class="card-body">
       {% if active_tab == 'document' %}
       <div id="sitawareness-edit-pane-document" role="tabpanel" aria-labelledby="sitawareness-edit-tab-document" tabindex="0" data-testid="sitawareness-edit-document-pane">
-        <div class="vstack gap-4">
+        <form method="post"
+              action="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+              class="vstack gap-4">
+          {% csrf_token %}
           <section class="card border-0 shadow-sm rounded-3">
             <div class="card-header bg-white border-bottom py-2 px-3">
               <label class="fw-semibold mb-0" for="sitawareness-edit-standing">Standing context</label>
             </div>
             <div class="card-body">
               <textarea id="sitawareness-edit-standing"
+                        name="standing_md"
                         class="form-control font-monospace small"
                         rows="8"
                         data-testid="sitawareness-edit-standing">{{ standing_text }}</textarea>
@@ -72,6 +76,7 @@
             </div>
             <div class="card-body">
               <textarea id="sitawareness-edit-active"
+                        name="active_md"
                         class="form-control font-monospace small"
                         rows="6"
                         data-testid="sitawareness-edit-active">{{ active_text }}</textarea>
@@ -82,6 +87,7 @@
             <div class="card-body">
               <label class="form-label" for="sitawareness-edit-summary">Change summary <span class="text-danger">*</span></label>
               <input id="sitawareness-edit-summary"
+                     name="change_summary"
                      type="text"
                      class="form-control form-control-sm"
                      placeholder="Describe what changed for version history…"
@@ -95,14 +101,13 @@
             <a class="btn btn-outline-secondary btn-sm"
                href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
                data-testid="sitawareness-edit-cancel">Cancel</a>
-            <button type="button"
-                    class="btn btn-primary btn-sm disabled"
-                    disabled
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
                     data-testid="sitawareness-edit-save">
               <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save Version
             </button>
           </div>
-        </div>
+        </form>
       </div>
       {% else %}
       <div id="sitawareness-edit-pane-versions" role="tabpanel" aria-labelledby="sitawareness-edit-tab-versions" tabindex="0" data-testid="sitawareness-edit-versions-panel">

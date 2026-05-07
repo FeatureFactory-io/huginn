@@ -9,7 +9,7 @@
 <nav aria-label="breadcrumb" class="mb-2">
   <ol class="breadcrumb small mb-0">
     <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
-    <li class="breadcrumb-item"><a href="{% url 'fragos-list' %}">FRAGOs</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'fragos-list' %}?project={{ project_slug }}">FRAGOs</a></li>
     <li class="breadcrumb-item active" aria-current="page">{{ fg.title|truncatechars:40 }}</li>
   </ol>
 </nav>

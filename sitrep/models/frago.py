@@ -1,6 +1,7 @@
 """FRAGO (fragmentary order) rows — project-scoped doctrine overrides."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -47,3 +48,8 @@ class Frago(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+    def clean(self) -> None:
+        super().clean()
+        if self.revoked_at is not None and self.enabled:
+            raise ValidationError("A revoked FRAGO cannot remain enabled.")

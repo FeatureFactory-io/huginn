@@ -8,6 +8,7 @@ from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
 from playbooks.models import Playbook, PlaybookTable, PlaybookVariable, PlaybookVersion
+from sitrep.models import Frago, SituationalAwareness, SituationalAwarenessVersion
 
 
 class UserFactory(DjangoModelFactory):
@@ -78,6 +79,34 @@ class ProjectFactory(DjangoModelFactory):
     slug = factory.Sequence(lambda n: f"project-{n}")
     status = Project.Status.ACTIVE
     sync_state = Project.SyncState.ACTIVE
+
+
+class FragoFactory(DjangoModelFactory):
+    class Meta:
+        model = Frago
+
+    project = factory.SubFactory(ProjectFactory)
+    title = factory.Sequence(lambda n: f"Frago {n}")
+    body_md = ""
+    enabled = True
+
+
+class SituationalAwarenessFactory(DjangoModelFactory):
+    class Meta:
+        model = SituationalAwareness
+
+    project = factory.SubFactory(ProjectFactory)
+
+
+class SituationalAwarenessVersionFactory(DjangoModelFactory):
+    class Meta:
+        model = SituationalAwarenessVersion
+
+    awareness = factory.SubFactory(SituationalAwarenessFactory)
+    version_number = 1
+    standing_md = ""
+    active_md = ""
+    change_summary = ""
 
 
 class ContributorFactory(DjangoModelFactory):

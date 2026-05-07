@@ -28,46 +28,43 @@
   <div class="col-lg-8 col-xl-7">
     <div class="card border-0 shadow-sm rounded-3">
       <div class="card-body p-3 p-md-4">
-        <form class="vstack gap-3">
+        <form method="post" class="vstack gap-3" action="{% url 'fragos-create' %}?project={{ project_slug }}">
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger small mb-0">{{ form.non_field_errors }}</div>
+          {% endif %}
           <div>
-            <label class="form-label" for="frago-title">Title <span class="text-danger">*</span></label>
-            <input id="frago-title" class="form-control form-control-sm" placeholder="Belay Active Bug Count = 0 on Fridays" data-testid="frago-title-input">
+            <label class="form-label" for="{{ form.title.id_for_label }}">Title <span class="text-danger">*</span></label>
+            {{ form.title }}
+            {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors }}</div>{% endif %}
           </div>
           <div>
-            <label class="form-label" for="frago-body">Body <span class="text-muted small">(markdown)</span></label>
-            <textarea id="frago-body" class="form-control font-monospace small" rows="10" placeholder="Free-form natural language for Gjallarhorn…" data-testid="frago-body-input"></textarea>
+            <label class="form-label" for="{{ form.body_md.id_for_label }}">Body <span class="text-muted small">(markdown)</span></label>
+            {{ form.body_md }}
+            {% if form.body_md.errors %}<div class="invalid-feedback d-block">{{ form.body_md.errors }}</div>{% endif %}
           </div>
           <div>
-            <label class="form-label" for="frago-tag">Affected Variable <span class="text-muted small">(optional)</span></label>
-            <select id="frago-tag" class="form-select form-select-sm" data-testid="frago-variable-tag-select">
-              <option value="">— Global narrative override —</option>
-              <option>Active Bug Count (ABC)</option>
-              <option>Cycle Time Median (CTM)</option>
-              <option>Transparency</option>
-              <option>Throughput</option>
-              <option>Rework</option>
-              <option>Quality</option>
-              <option>Complexity</option>
-              <option>Contribution</option>
-            </select>
+            <label class="form-label" for="{{ form.affected_variable.id_for_label }}">Affected Variable <span class="text-muted small">(optional)</span></label>
+            {{ form.affected_variable }}
+            {% if form.affected_variable.errors %}<div class="invalid-feedback d-block">{{ form.affected_variable.errors }}</div>{% endif %}
             <div class="form-text">When set, retunes that Variable’s interpreting rule for the effective window. Cannot introduce new Variables.</div>
           </div>
           <fieldset class="rounded-3 border p-3 bg-light">
             <legend class="hg-label-caps float-none w-auto px-1 mb-2">Effective window <span class="text-muted fw-normal">(optional)</span></legend>
             <div class="row g-2">
               <div class="col-md-6">
-                <label class="form-label small mb-0" for="scope-start">Effective from</label>
-                <input type="date" id="scope-start" class="form-control form-control-sm" data-testid="frago-scope-start">
+                <label class="form-label small mb-0" for="{{ form.effective_from.id_for_label }}">Effective from</label>
+                {{ form.effective_from }}
               </div>
               <div class="col-md-6">
-                <label class="form-label small mb-0" for="scope-end">Effective to</label>
-                <input type="date" id="scope-end" class="form-control form-control-sm" data-testid="frago-scope-end">
+                <label class="form-label small mb-0" for="{{ form.effective_to.id_for_label }}">Effective to</label>
+                {{ form.effective_to }}
               </div>
             </div>
           </fieldset>
           <div class="d-flex gap-2 justify-content-end pt-2 border-top">
             <a class="btn btn-outline-secondary btn-sm" href="{% url 'fragos-list' %}?project={{ project_slug }}">Cancel</a>
-            <button type="button" class="btn btn-primary btn-sm disabled" disabled data-testid="frago-save-btn">
+            <button type="submit" class="btn btn-primary btn-sm" data-testid="frago-save-btn">
               <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save FRAGO
             </button>
           </div>

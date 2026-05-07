@@ -19,9 +19,12 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" onclick="history.back()" data-testid="frago-revoke-cancel">Cancel</button>
-        <a class="btn btn-warning" href="{% url 'fragos-list' %}" data-testid="frago-revoke-confirm">
-          <i class="fa-solid fa-ban me-1" aria-hidden="true"></i> Revoke
-        </a>
+        <form method="post" action="{% url 'fragos-revoke' frago.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-warning" data-testid="frago-revoke-confirm">
+            <i class="fa-solid fa-ban me-1" aria-hidden="true"></i> Revoke
+          </button>
+        </form>
       </div>
     </div>
   </div>
