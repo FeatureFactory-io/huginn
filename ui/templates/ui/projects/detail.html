@@ -69,24 +69,39 @@
         <div class="col">
           <article class="card h-100 hg-vitals-card">
             <div class="card-body">
-              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Transparency</h2>
-              <dl class="row small mb-0" data-testid="project-widget-transparency">
-                <dt class="col-5 text-muted">Last sync</dt>
-                <dd class="col-7" data-testid="project-transparency-last-sync">
-                  {% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}<span class="text-muted">Never</span>{% endif %}
-                </dd>
-                <dt class="col-5 text-muted">Last commits</dt>
-                <dd class="col-7 mb-0" data-testid="project-transparency-last-commits">
-                  {% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}<span class="text-muted">No commits yet</span>{% endif %}
-                </dd>
-              </dl>
+              <h2 id="vitals-transparency-heading" class="hg-vitals-card-heading">
+                Transparency
+                <span class="hg-metric-help" role="img" tabindex="0" title="Recency of data ingested from your connected sources." aria-label="About Transparency metrics"><i class="fa-regular fa-circle-question" aria-hidden="true"></i></span>
+              </h2>
+              <div data-testid="project-widget-transparency" class="hg-transparency-metrics">
+                <div class="hg-metric">
+                  <div class="hg-metric-label">Last sync</div>
+                  <div class="hg-metric-value-row">
+                    {% if project.last_sync_at %}
+                      <span class="hg-metric-value" data-testid="project-transparency-last-sync">{{ project.last_sync_at|naturaltime }}</span>
+                    {% else %}
+                      <span class="hg-metric-value hg-metric-value--soft" data-testid="project-transparency-last-sync">Never</span>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="hg-metric">
+                  <div class="hg-metric-label">Last commits</div>
+                  <div class="hg-metric-value-row">
+                    {% if latest_commit_at %}
+                      <span class="hg-metric-value" data-testid="project-transparency-last-commits">{{ latest_commit_at|naturaltime }}</span>
+                    {% else %}
+                      <span class="hg-metric-value hg-metric-value--soft" data-testid="project-transparency-last-commits">No commits yet</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
             </div>
           </article>
         </div>
         <div class="col">
           <article class="card h-100 hg-vitals-card">
             <div class="card-body">
-              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
+              <h2 class="hg-vitals-card-heading">Identity</h2>
               <dl class="row small mb-0">
                 <dt class="col-5 text-muted">Description</dt>
                 <dd class="col-7 mb-1" data-testid="project-description">{{ project.description|default:"—"|linebreaksbr }}</dd>
@@ -103,7 +118,7 @@
         <div class="col">
           <article class="card h-100 hg-vitals-card">
             <div class="card-body">
-              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2>
+              <h2 class="hg-vitals-card-heading">Playbook</h2>
               <div class="small" data-testid="project-playbook-section">
                 {% if project.playbook_slug %}
                   <p class="mb-0">{{ project.playbook_slug }}</p>
@@ -117,7 +132,7 @@
         <div class="col">
           <article class="card h-100 hg-vitals-card">
             <div class="card-body">
-              <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
+              <h2 class="hg-vitals-card-heading">Sync</h2>
               <p class="small mb-1">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
               <p class="small text-muted mb-0">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
             </div>
