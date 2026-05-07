@@ -4,8 +4,59 @@ import factory
 from django.utils import timezone
 from factory.django import DjangoModelFactory
 
+from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
+from playbooks.models import Playbook, PlaybookTable, PlaybookVariable, PlaybookVersion
+
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+
+
+class PlaybookFactory(DjangoModelFactory):
+    class Meta:
+        model = Playbook
+
+    name = factory.Sequence(lambda n: f"Playbook {n}")
+    slug = factory.Sequence(lambda n: f"playbook-{n}")
+    description = ""
+    is_system_seed = False
+
+
+class PlaybookVersionFactory(DjangoModelFactory):
+    class Meta:
+        model = PlaybookVersion
+
+    playbook = factory.SubFactory(PlaybookFactory)
+    version_number = 1
+    workflow_md = ""
+    change_summary = ""
+
+
+class PlaybookVariableFactory(DjangoModelFactory):
+    class Meta:
+        model = PlaybookVariable
+
+    playbook_version = factory.SubFactory(PlaybookVersionFactory)
+    sort_order = factory.Sequence(lambda n: n)
+    name = factory.Sequence(lambda n: f"Variable {n}")
+    abbrev = factory.Sequence(lambda n: f"V{n}")
+    dimensions = factory.LazyFunction(lambda: ["Vitals"])
+
+
+class PlaybookTableFactory(DjangoModelFactory):
+    class Meta:
+        model = PlaybookTable
+
+    playbook_version = factory.SubFactory(PlaybookVersionFactory)
+    sort_order = factory.Sequence(lambda n: n)
+    entity = PlaybookTable.Entity.INCREMENT
+    slicer = "last_14d"
+    dimensions = factory.LazyFunction(lambda: ["Increments"])
 
 
 class DataSourceFactory(DjangoModelFactory):

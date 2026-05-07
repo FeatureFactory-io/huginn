@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     # Huginn apps
     "accounts",
+    "playbooks",
     "ingestion",
     "analytics",
     "sitrep",
