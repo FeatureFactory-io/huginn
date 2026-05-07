@@ -20,17 +20,58 @@
   </button>
 </section>
 
-<div class="row">
-  <div class="col-lg-9">
-    <div class="row g-3 mb-5">
+<div class="row g-3 hg-tactical-plot-grid">
+  {# Mobile / tablet stack: SitAware → FRAGOs → Projects → Decisions → Actions. xl+: four columns. #}
+  <div class="col-12 col-xl-3 order-1" data-testid="dashboard-plot-col-situational-awareness">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-sitaware">
+      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
+        <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
+        <span>Situational Awareness</span>
+      </div>
+      <div class="card-body py-3 px-3 pb-3">
+        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(stub)</span></p>
+        <ul class="list-unstyled mb-0 small">
+          {% for ev in rail_situational_awareness %}
+            <li class="mb-2">
+              <span class="text-decoration-none">{{ ev.text }}</span>
+              {% if ev.severity == 'warning' %}
+                <span class="ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-xl-3 order-2" data-testid="dashboard-plot-col-fragos">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-fragos">
+      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
+        <i class="fa-solid fa-puzzle me-2 text-primary" aria-hidden="true"></i>
+        <span>FRAGOs in effect</span>
+      </div>
+      <div class="list-group list-group-flush small">
+        {% for fg in rail_fragos %}
+          <div class="list-group-item px-3 py-2">
+            <div class="fw-medium mb-1">{{ fg.title }}</div>
+            <div class="text-muted fst-italic" style="font-size:0.75rem;">{{ fg.scope_label }} <span class="text-muted fw-normal">(stub)</span></div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-xl-3 order-3" data-testid="dashboard-plot-col-projects">
+    <h2 class="h6 hg-label-caps text-muted mb-2">Projects</h2>
+    <div class="vstack gap-3">
       {% if dashboard_projects %}
         {% for card in dashboard_projects %}
-        <div class="col-md-6 col-xl-4 d-flex" data-testid="dashboard-project-card-{{ card.pk }}">
+        <div class="d-flex" data-testid="dashboard-project-card-{{ card.pk }}">
           <article class="hg-card hg-plot-tile h-100 w-100 position-relative" tabindex="0" role="article">
-            <div class="color-bar green"></div>
+            <div class="color-bar {{ card.sync_bar_hue }}" aria-hidden="true"></div>
             <div class="card-body">
-              <div class="d-flex align-items-start justify-content-between gap-2">
-                <h2 class="h5 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center min-w-0">
+              <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
+                <h3 class="h6 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center min-w-0">
                   <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 position-relative z-2" aria-hidden="false">
                     {% for src in card.sources %}
                       <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
@@ -47,13 +88,16 @@
                     {% endif %}
                   </span>
                   <span class="text-break" data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
-                </h2>
+                </h3>
                 {% if card.source_path %}
                 <div class="hg-plot-tile-path text-end flex-shrink-0 position-relative z-2" data-testid="dashboard-card-{{ card.pk }}-source-path">
                   <code class="small text-body text-break d-inline-block text-end">{{ card.source_path }}</code>
                 </div>
                 {% endif %}
               </div>
+              <p class="mb-2 mt-1">
+                <span class="badge {{ card.sync_badge_class }}">{{ card.sync_state_display }}</span>
+              </p>
               {% if card.description %}
               <div class="d-flex flex-column gap-1 small pt-1" data-testid="dashboard-card-{{ card.pk }}-body">
                 <p class="mb-0 text-body-secondary lh-sm" data-testid="dashboard-card-{{ card.pk }}-gitlab-description">{{ card.description }}</p>
@@ -69,9 +113,9 @@
         </div>
         {% endfor %}
       {% else %}
-        <div class="col-12" data-testid="dashboard-empty-projects">
-          <p class="text-muted mb-2">No active projects on the Tactical Plot yet.</p>
-          <p class="mb-0">
+        <div class="rounded-3 border bg-white p-3" data-testid="dashboard-empty-projects">
+          <p class="text-muted mb-2 small">No active projects on the Tactical Plot yet.</p>
+          <p class="mb-0 small">
             <a href="{% url 'projects-import' %}" class="fw-medium">Import a project</a>
             or
             <a href="{% url 'projects-list' %}">manage projects</a>.
@@ -81,59 +125,26 @@
     </div>
   </div>
 
-  <aside class="col-lg-3">
-    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-sitaware">
-      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
-        <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
-        <span>Situational Awareness</span>
+  <div class="col-12 col-xl-3 order-4 vstack gap-3" data-testid="dashboard-plot-col-work-queue">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card" data-testid="dashboard-plot-decisions-stub">
+      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
+        <i class="fa-solid fa-gavel me-2 text-primary" aria-hidden="true"></i>
+        <span>Decisions to make</span>
       </div>
-      <div class="card-body pb-3">
-        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(sample)</span></p>
-        <ul class="list-unstyled mb-0 small">
-          {% for ev in rail_situational_awareness %}
-            <li class="mb-2">
-              <a href="{% url 'mockup-sitawareness-view' %}"
-                 class="text-decoration-none fw-medium"
-                 data-bs-toggle="tooltip"
-                 title="Reference mockup — Situational Awareness"
-                 data-testid="dashboard-sitaware-{{ forloop.counter }}">
-                {{ ev.text }}
-              </a>
-              {% if ev.severity == 'warning' %}
-                <span class="d-none d-xl-inline ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
+      <div class="card-body py-3 px-3 small text-muted mb-0">
+        <p class="mb-0">Nothing queued yet.</p>
       </div>
     </section>
 
-    <section class="card border-0 shadow-sm rounded-3 mb-3" data-testid="dashboard-rail-fragos">
-      <div class="card-header bg-white fw-semibold border-bottom d-flex align-items-center">
-        <i class="fa-solid fa-puzzle me-2 text-primary" aria-hidden="true"></i>
-        <span>FRAGOs</span>
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card" data-testid="dashboard-plot-actions-stub">
+      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
+        <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
+        <span>Tasks assigned to you</span>
       </div>
-      <ul class="list-group list-group-flush small">
-        {% for fg in rail_fragos %}
-          <li class="list-group-item">
-            {% if fg.fragos_project %}
-              <a href="{% url 'mockup-fragos-list' %}?project={{ fg.fragos_project|urlencode }}"
-                 class="d-block fw-medium mb-1"
-                 data-bs-toggle="tooltip"
-                 title="Reference mockup — FRAGOs"
-                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
-            {% else %}
-              <a href="{% url 'mockup-fragos-list' %}"
-                 class="d-block fw-medium mb-1"
-                 data-bs-toggle="tooltip"
-                 title="Reference mockup — FRAGOs (all)"
-                 data-testid="dashboard-frago-{{ forloop.counter }}-link">{{ fg.title }}</a>
-            {% endif %}
-            <div class="text-muted fst-italic" style="font-size:0.75rem;">({{ fg.scope_label }})</div>
-          </li>
-        {% endfor %}
-      </ul>
+      <div class="card-body py-3 px-3 small text-muted mb-0">
+        <p class="mb-0">No assignments yet.</p>
+      </div>
     </section>
-  </aside>
+  </div>
 </div>
 {% endblock %}

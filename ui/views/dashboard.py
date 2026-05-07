@@ -33,6 +33,17 @@ _DS_SOURCE_META = {
 }
 
 
+def _sync_visuals(sync_state: str) -> tuple[str, str]:
+    """Return (color_bar_key, Bootstrap 5 badge class) for Tactical Plot tiles."""
+    m = {
+        Project.SyncState.ACTIVE.value: ("green", "text-bg-success"),
+        Project.SyncState.ERROR.value: ("red", "text-bg-danger"),
+        Project.SyncState.SYNCING.value: ("yellow", "text-bg-warning text-dark"),
+        Project.SyncState.INITIAL_SYNC_QUEUED.value: ("orange", "text-bg-secondary"),
+    }
+    return m.get(sync_state, ("grey", "text-bg-secondary"))
+
+
 def _sources_for_project(project: Project) -> list[dict]:
     ds = project.datasource
     if ds is None:
@@ -51,6 +62,7 @@ def _project_cards(projects: list[Project]) -> list[dict]:
         name = (p.display_name or "").strip() or p.name
         desc = (p.description or "").strip()
         path = (p.source_path or "").strip()
+        bar_hue, badge_cls = _sync_visuals(str(p.sync_state))
         out.append(
             {
                 "pk": p.pk,
@@ -58,6 +70,10 @@ def _project_cards(projects: list[Project]) -> list[dict]:
                 "description": desc or None,
                 "source_path": path or None,
                 "sources": _sources_for_project(p),
+                "sync_state": str(p.sync_state),
+                "sync_state_display": p.get_sync_state_display(),
+                "sync_bar_hue": bar_hue,
+                "sync_badge_class": badge_cls,
             }
         )
     return out

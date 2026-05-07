@@ -146,6 +146,10 @@ main.hg-main {
   background: var(--hg-green);
 }
 
+.hg-card .color-bar.grey {
+  background: var(--hg-grey);
+}
+
 .hg-card-name {
   font-size: 1rem;
   font-weight: 600;
