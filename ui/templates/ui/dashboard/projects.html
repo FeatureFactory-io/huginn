@@ -62,67 +62,67 @@
   </div>
 
   <div class="col-12 col-xl-3 order-3" data-testid="dashboard-plot-col-projects">
-    <h2 class="h6 hg-label-caps text-muted mb-2">Projects</h2>
-    <div class="vstack gap-3">
+    <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card h-100" data-testid="dashboard-rail-projects">
+      <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center">
+        <i class="fa-solid fa-folder-open me-2 text-primary" aria-hidden="true"></i>
+        <span>Projects</span>
+      </div>
       {% if dashboard_projects %}
+      <div class="list-group list-group-flush small">
         {% for card in dashboard_projects %}
-        <div class="d-flex" data-testid="dashboard-project-card-{{ card.pk }}">
-          <article class="hg-card hg-plot-tile h-100 w-100 position-relative" tabindex="0" role="article">
-            <div class="color-bar {{ card.sync_bar_hue }}" aria-hidden="true"></div>
-            <div class="card-body">
-              <div class="d-flex align-items-start justify-content-between gap-2 flex-wrap">
-                <h3 class="h6 hg-card-name flex-grow-1 mb-0 d-flex gap-2 align-items-center min-w-0">
-                  <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 position-relative z-2" aria-hidden="false">
-                    {% for src in card.sources %}
-                      <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
-                           width="18"
-                           height="18"
-                           alt="{{ src.label }}"
-                           loading="lazy"
-                           decoding="async"
-                           referrerpolicy="no-referrer"
-                           data-testid="dashboard-card-{{ card.pk }}-source-{{ src.key }}">
-                    {% endfor %}
-                    {% if not card.sources %}
-                      <span class="text-muted small" title="No data source">—</span>
-                    {% endif %}
-                  </span>
-                  <span class="text-break" data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
-                </h3>
-                {% if card.source_path %}
-                <div class="hg-plot-tile-path text-end flex-shrink-0 position-relative z-2" data-testid="dashboard-card-{{ card.pk }}-source-path">
-                  <code class="small text-body text-break d-inline-block text-end">{{ card.source_path }}</code>
-                </div>
+        <a class="list-group-item list-group-item-action px-3 py-2 border-start border-3 {{ card.sync_border_class }} text-decoration-none text-reset"
+           href="{% url 'projects-detail' pk=card.pk %}"
+           aria-label="Open project {{ card.name }}"
+           data-testid="dashboard-project-card-{{ card.pk }}">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+            <div class="fw-medium d-flex gap-2 align-items-center min-w-0 flex-grow-1">
+              <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 flex-shrink-0" aria-hidden="false">
+                {% for src in card.sources %}
+                  <img src="https://cdn.simpleicons.org/{{ src.si_slug }}"
+                       width="18"
+                       height="18"
+                       alt="{{ src.label }}"
+                       loading="lazy"
+                       decoding="async"
+                       referrerpolicy="no-referrer"
+                       data-testid="dashboard-card-{{ card.pk }}-source-{{ src.key }}">
+                {% endfor %}
+                {% if not card.sources %}
+                  <span class="text-muted small" title="No data source">—</span>
                 {% endif %}
-              </div>
-              <p class="mb-2 mt-1">
-                <span class="badge {{ card.sync_badge_class }}">{{ card.sync_state_display }}</span>
-              </p>
-              {% if card.description %}
-              <div class="d-flex flex-column gap-1 small pt-1" data-testid="dashboard-card-{{ card.pk }}-body">
-                <p class="mb-0 text-body-secondary lh-sm" data-testid="dashboard-card-{{ card.pk }}-gitlab-description">{{ card.description }}</p>
-              </div>
-              {% elif not card.source_path %}
-              <div class="d-flex flex-column gap-1 small pt-1" data-testid="dashboard-card-{{ card.pk }}-body">
-                <p class="mb-0 text-muted" data-testid="dashboard-card-{{ card.pk }}-empty-subtitle">—</p>
-              </div>
-              {% endif %}
+              </span>
+              <span class="text-break" data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
             </div>
-            <a class="stretched-link" href="{% url 'projects-detail' pk=card.pk %}" aria-label="Open project {{ card.name }}"></a>
-          </article>
-        </div>
+            {% if card.source_path %}
+            <code class="small text-body ms-1 text-break flex-shrink-0 hg-plot-project-path" data-testid="dashboard-card-{{ card.pk }}-source-path">{{ card.source_path }}</code>
+            {% endif %}
+          </div>
+          <div class="mb-1">
+            <span class="badge {{ card.sync_badge_class }}">{{ card.sync_state_display }}</span>
+          </div>
+          {% if card.description %}
+          <div data-testid="dashboard-card-{{ card.pk }}-body">
+            <p class="mb-0 text-body-secondary lh-sm" data-testid="dashboard-card-{{ card.pk }}-gitlab-description">{{ card.description }}</p>
+          </div>
+          {% elif not card.source_path %}
+          <div data-testid="dashboard-card-{{ card.pk }}-body">
+            <p class="mb-0 text-muted fst-italic" style="font-size:0.75rem;" data-testid="dashboard-card-{{ card.pk }}-empty-subtitle">—</p>
+          </div>
+          {% endif %}
+        </a>
         {% endfor %}
+      </div>
       {% else %}
-        <div class="rounded-3 border bg-white p-3" data-testid="dashboard-empty-projects">
-          <p class="text-muted mb-2 small">No active projects on the Tactical Plot yet.</p>
-          <p class="mb-0 small">
-            <a href="{% url 'projects-import' %}" class="fw-medium">Import a project</a>
-            or
-            <a href="{% url 'projects-list' %}">manage projects</a>.
-          </p>
-        </div>
+      <div class="card-body py-3 px-3 small" data-testid="dashboard-empty-projects">
+        <p class="text-muted mb-2">No active projects on the Tactical Plot yet.</p>
+        <p class="mb-0 mt-2">
+          <a href="{% url 'projects-import' %}" class="fw-medium">Import a project</a>
+          or
+          <a href="{% url 'projects-list' %}">manage projects</a>.
+        </p>
+      </div>
       {% endif %}
-    </div>
+    </section>
   </div>
 
   <div class="col-12 col-xl-3 order-4 vstack gap-3" data-testid="dashboard-plot-col-work-queue">

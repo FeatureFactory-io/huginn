@@ -34,14 +34,14 @@ _DS_SOURCE_META = {
 
 
 def _sync_visuals(sync_state: str) -> tuple[str, str]:
-    """Return (color_bar_key, Bootstrap 5 badge class) for Tactical Plot tiles."""
+    """Return (Bootstrap 5 badge class, border-* class for list-row left accent)."""
     m = {
-        Project.SyncState.ACTIVE.value: ("green", "text-bg-success"),
-        Project.SyncState.ERROR.value: ("red", "text-bg-danger"),
-        Project.SyncState.SYNCING.value: ("yellow", "text-bg-warning text-dark"),
-        Project.SyncState.INITIAL_SYNC_QUEUED.value: ("orange", "text-bg-secondary"),
+        Project.SyncState.ACTIVE.value: ("text-bg-success", "border-success"),
+        Project.SyncState.ERROR.value: ("text-bg-danger", "border-danger"),
+        Project.SyncState.SYNCING.value: ("text-bg-warning text-dark", "border-warning"),
+        Project.SyncState.INITIAL_SYNC_QUEUED.value: ("text-bg-secondary", "border-secondary"),
     }
-    return m.get(sync_state, ("grey", "text-bg-secondary"))
+    return m.get(sync_state, ("text-bg-secondary", "border-secondary"))
 
 
 def _sources_for_project(project: Project) -> list[dict]:
@@ -62,7 +62,7 @@ def _project_cards(projects: list[Project]) -> list[dict]:
         name = (p.display_name or "").strip() or p.name
         desc = (p.description or "").strip()
         path = (p.source_path or "").strip()
-        bar_hue, badge_cls = _sync_visuals(str(p.sync_state))
+        badge_cls, border_cls = _sync_visuals(str(p.sync_state))
         out.append(
             {
                 "pk": p.pk,
@@ -72,8 +72,8 @@ def _project_cards(projects: list[Project]) -> list[dict]:
                 "sources": _sources_for_project(p),
                 "sync_state": str(p.sync_state),
                 "sync_state_display": p.get_sync_state_display(),
-                "sync_bar_hue": bar_hue,
                 "sync_badge_class": badge_cls,
+                "sync_border_class": border_cls,
             }
         )
     return out
@@ -91,7 +91,7 @@ def _max_last_sync_among(projects: list[Project]) -> datetime | None:
 
 
 class DashboardProjectsView(View):
-    """GET: Tactical Plot — real project cards; rail chrome still placeholder."""
+    """GET: Tactical Plot — project list in same widget chrome as other rails."""
 
     template_name = "ui/dashboard/projects.html"
 
