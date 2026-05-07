@@ -52,13 +52,18 @@ body {
 }
 
 .hg-navbar {
+  /* Match body copy (BS defaults bump brand/links for marketing-style headers) */
+  --bs-navbar-brand-font-size: 1rem;
+  --bs-navbar-toggler-font-size: 1rem;
   background: var(--hg-primary);
   border-bottom: 3px solid var(--hg-accent);
+  font-size: 1rem;
 }
 
 .hg-navbar .navbar-brand {
   color: #fff;
   font-weight: 600;
+  font-size: 1rem;
 }
 
 .hg-navbar .navbar-brand img {
@@ -67,10 +72,15 @@ body {
 
 .hg-navbar .nav-link {
   color: rgba(255, 255, 255, 0.82);
-  padding: 0.5rem 0.9rem;
+  padding: 0.4rem 0.75rem;
   border-radius: 4px;
   transition: background 0.12s;
+  font-size: 1rem;
   font-weight: 500;
+}
+
+.hg-navbar .navbar-text {
+  font-size: 1rem;
 }
 
 .hg-navbar .nav-link:hover {
