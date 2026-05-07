@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ pb.name }} · Huginn{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small mb-2">
+    <li class="breadcrumb-item"><a href="{% url 'playbooks-list' %}">Playbooks</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'playbooks-detail' pb.pk %}">{{ pb.name }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Edit</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1" data-testid="page-title">Edit {{ pb.name }}</h1>
+    <p class="text-muted small mb-0">
+      Editing <strong>v{{ latest_version.version_number }}</strong>. Saving creates a new immutable snapshot —
+      <strong>{{ save_button_label }}</strong>.
+    </p>
+  </div>
+</section>
+
+<div class="row justify-content-center">
+  <div class="col-xl-11">
+    <form method="post" data-testid="playbooks-edit-form">
+      {% csrf_token %}
+      {% include "ui/playbooks/_editor_form.html" with catalog_drift_banner=catalog_drift_banner %}
+    </form>
+  </div>
+</div>
+{% endblock %}

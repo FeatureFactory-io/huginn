@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 
 from ingestion.models import DataSource, Project
-from tests.factories import ProjectFactory
+from tests.factories import PlaybookFactory, ProjectFactory
 
 
 @pytest.mark.django_db
@@ -152,6 +152,18 @@ def test_projects_list_import_banner_query(commander_client):
     r = commander_client.get(reverse("projects-list"), {"imported": "1"})
     body = r.content.decode()
     assert "projects-list-import-banner" in body
+
+
+@pytest.mark.django_db
+def test_projects_list_filter_playbook_matches_assigned_fk(commander_client, db):
+    pb = PlaybookFactory(name="Zebra Analytics", slug="zebra-analytics")
+    ProjectFactory(name="with-pb", slug="with-pb", assigned_playbook=pb, playbook_slug=pb.slug)
+    ProjectFactory(name="no-pb", slug="no-pb", playbook_slug="")
+
+    r = commander_client.get(reverse("projects-list"), {"playbook": "Zebra"})
+    body = r.content.decode()
+    assert "with-pb" in body
+    assert "no-pb" not in body
 
 
 @pytest.mark.django_db

@@ -2,21 +2,10 @@
 
 from __future__ import annotations
 
-import markdown
 from django.shortcuts import render
 from django.urls import reverse
 
-
-def workflow_md_to_html(md_source: str) -> str:
-    """Render Workflow markdown to HTML for read-only panels (trusted mock / UI content)."""
-    return markdown.markdown(
-        md_source or "",
-        extensions=[
-            "markdown.extensions.extra",
-            "markdown.extensions.sane_lists",
-        ],
-        output_format="html",
-    )
+from playbooks.markdown_utils import workflow_md_to_html
 
 
 def _attach_workflow_html(form_or_pb: dict) -> None:

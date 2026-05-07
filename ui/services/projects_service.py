@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from ingestion.integrations.gitlab_client import GitlabClient
 from ingestion.models import DataSource, Project
 from ingestion.tasks import sync_project
+from playbooks.models import Playbook, PlaybookVersion
 
 
 class ProjectsService:
@@ -148,6 +149,26 @@ class ProjectsService:
             choices = {c.value for c in Project.SyncSchedule}
             if val in choices:
                 updates["sync_schedule"] = val
+
+        if {"assigned_playbook", "pinned_playbook_version"} & fields.keys():
+            apb_raw = (fields.get("assigned_playbook") or "").strip()
+            pin_raw = (fields.get("pinned_playbook_version") or "").strip()
+            if not apb_raw:
+                updates["assigned_playbook_id"] = None
+                updates["pinned_playbook_version_id"] = None
+                updates["playbook_slug"] = ""
+            elif apb_raw.isdigit():
+                pb = Playbook.objects.filter(pk=int(apb_raw)).first()
+                if pb:
+                    updates["assigned_playbook_id"] = pb.pk
+                    updates["playbook_slug"] = pb.slug
+                    pin_pk = None
+                    if pin_raw.isdigit():
+                        pv = PlaybookVersion.objects.filter(pk=int(pin_raw), playbook_id=pb.pk).first()
+                        if pv:
+                            pin_pk = pv.pk
+                    updates["pinned_playbook_version_id"] = pin_pk
+
         if updates:
             qs.update(**updates)
 

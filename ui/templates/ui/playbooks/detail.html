@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}{{ pb.name }} · Playbook{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small mb-2">
+    <li class="breadcrumb-item"><a href="{% url 'playbooks-list' %}">Playbooks</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ pb.name }}</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1">{{ pb.name }}</h1>
+    <p class="text-muted small mb-0">
+      Latest <strong>v{{ latest_version.version_number }}</strong>
+      · Author {{ pb_author }}
+      {% if focused_version %}· Viewing <strong>v{{ focused_version.version_number }}</strong>{% endif %}
+    </p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar">
+    <form method="post" action="{% url 'playbooks-detail' pb.pk %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="validate">
+      <button type="submit" class="btn btn-outline-secondary btn-sm" data-testid="playbooks-validate-btn">
+        <i class="fa-solid fa-stethoscope me-1"></i> Validate Playbook
+      </button>
+    </form>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'playbooks-create' %}?clone={{ pb.pk }}" data-testid="playbooks-clone-btn">
+      <i class="fa-solid fa-copy me-1"></i> Clone
+    </a>
+    <a class="btn btn-primary btn-sm" href="{% url 'playbooks-edit' pb.pk %}" data-testid="playbooks-edit-btn">
+      <i class="fa-solid fa-pen me-1"></i> Edit
+    </a>
+  </div>
+</section>
+
+{% if validate_results is not None %}
+  <div class="alert {% if validate_results %}alert-warning{% else %}alert-success{% endif %} border-0 shadow-sm mb-3" role="status" data-testid="playbooks-validate-results">
+    {% if validate_results %}
+      <p class="fw-semibold mb-2">Catalog drift findings</p>
+      <ul class="small mb-0">
+        {% for line in validate_results %}<li>{{ line }}</li>{% endfor %}
+      </ul>
+      <p class="small mb-0 mt-2"><a href="{% url 'playbooks-edit' pb.pk %}">Fix in Edit</a></p>
+    {% else %}
+      <span data-testid="playbooks-validate-empty">No catalog drift detected across {{ version_total }} version(s).</span>
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
+  <div class="card-header border-0 pt-3 px-3 pb-0">
+    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'playbook' %}active{% endif %}"
+           href="{% url 'playbooks-detail' pb.pk %}?tab=playbook"
+           role="tab"
+           data-testid="playbooks-tab-playbook">Playbook</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
+           href="{% url 'playbooks-detail' pb.pk %}?tab=versions"
+           role="tab"
+           data-testid="playbooks-tab-versions">Versions</a>
+      </li>
+    </ul>
+  </div>
+  <div class="card-body">
+    {% if active_tab == 'playbook' %}
+      <section class="mb-4">
+        <h2 class="h6 fw-semibold">Metadata</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-3">Description</dt>
+          <dd class="col-sm-9">{{ pb.description|default:"—" }}</dd>
+          <dt class="col-sm-3">Workflow</dt>
+          <dd class="col-sm-9">
+            <div class="border rounded-3 bg-light p-3 hg-markdown-workflow small">{{ snapshot.workflow_html|safe }}</div>
+          </dd>
+        </dl>
+      </section>
+      <section class="mb-4">
+        <h2 class="h6 fw-semibold">Variables</h2>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light"><tr><th>Name</th><th>Abbrev</th><th>Calculating</th><th>Interpreting</th><th>Hover</th><th>Dimensions</th></tr></thead>
+            <tbody>
+              {% for v in snapshot.variables %}
+                <tr>
+                  <td>{{ v.name }}</td>
+                  <td><code>{{ v.abbrev }}</code></td>
+                  <td class="small">{{ v.calculating }}</td>
+                  <td class="small">{{ v.interpreting }}</td>
+                  <td class="small text-muted">{{ v.hover }}</td>
+                  <td class="small">{{ v.dimensions_display }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="6" class="text-muted small">No variables.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="mb-4">
+        <h2 class="h6 fw-semibold">Tables</h2>
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle">
+            <thead class="table-light"><tr><th>Entity</th><th>Slicer</th><th>Dimensions</th></tr></thead>
+            <tbody>
+              {% for t in snapshot.tables %}
+                <tr {% if t.drift_warning %}class="table-warning"{% endif %}>
+                  <td>{{ t.entity_label }}</td>
+                  <td><code>{{ t.slicer }}</code></td>
+                  <td>{{ t.dimensions_display }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-muted small">No tables.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section>
+        <h2 class="h6 fw-semibold">Used by</h2>
+        {% if used_projects %}
+          <ul class="small mb-0">
+            {% for pr in used_projects %}
+              <li><a href="{% url 'projects-detail' pr.pk %}">{{ pr.display_name|default:pr.name }}</a>
+                {% if pr.pinned_playbook_version %}· pinned v{{ pr.pinned_playbook_version.version_number }}{% else %}· auto-track latest{% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="small text-muted mb-0">No projects assigned.</p>
+        {% endif %}
+      </section>
+    {% else %}
+      <div data-testid="playbooks-versions-pane">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr><th>Ver</th><th>When</th><th>Author</th><th>Summary</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for ver in versions %}
+                <tr>
+                  <td>v{{ ver.version_number }}</td>
+                  <td class="small text-muted">{{ ver.created_at|naturaltime }}</td>
+                  <td class="small">{{ ver.created_by.email|default:"—" }}</td>
+                  <td class="small">{{ ver.change_summary|default:"—" }}</td>
+                  <td class="text-end">
+                    <a class="btn btn-link btn-sm py-0" href="{% url 'playbooks-detail' pb.pk %}?tab=playbook&version={{ ver.version_number }}">View snapshot</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0 mt-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Coming soon">Compare with current</button>
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

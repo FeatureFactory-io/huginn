@@ -42,6 +42,25 @@
                 <option value="daily" {% if project.sync_schedule == "daily" %}selected{% endif %}>Daily</option>
               </select>
             </div>
+            <div class="col-12">
+              <label class="form-label mb-1" for="id_assigned_playbook">Playbook</label>
+              <select id="id_assigned_playbook" name="assigned_playbook" class="form-select form-select-sm" data-testid="projects-edit-assigned-playbook">
+                <option value="">Not assigned</option>
+                {% for pb in playbooks_list %}
+                  <option value="{{ pb.pk }}" {% if project.assigned_playbook_id == pb.pk %}selected{% endif %}>{{ pb.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-1" for="id_pinned_version">Pinned playbook version</label>
+              <select id="id_pinned_version" name="pinned_playbook_version" class="form-select form-select-sm" data-testid="projects-edit-pinned-version">
+                <option value="">Auto-track latest</option>
+                {% for v in pinned_versions %}
+                  <option value="{{ v.pk }}" {% if project.pinned_playbook_version_id == v.pk %}selected{% endif %}>v{{ v.version_number }}</option>
+                {% endfor %}
+              </select>
+              <p class="small text-muted mb-0 mt-1">Leave empty to follow the playbook's latest version.</p>
+            </div>
           </div>
 
           <div class="mb-3 pb-3 border-bottom" role="group" aria-label="GitLab description">

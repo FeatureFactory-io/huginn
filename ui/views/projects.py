@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -13,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from ingestion.models import DataSource, Project
 from ingestion.services.project_metadata import refresh_project_metadata
+from playbooks.models import Playbook, PlaybookVersion
 from ui.services.increments_service import RANGE_LABELS, IncrementsService, normalize_range_key
 from ui.services.project_vitals_service import ProjectVitalsService
 from ui.services.projects_service import ProjectsService
@@ -51,7 +53,7 @@ class ProjectsListView(View):
     template_name = "ui/projects/list.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        qs = Project.objects.select_related("datasource", "imported_by").all()
+        qs = Project.objects.select_related("datasource", "imported_by", "assigned_playbook").all()
         ds_param = (request.GET.get("datasource") or "").strip()
         st_param = (request.GET.get("status") or "").strip()
         playbook_param = (request.GET.get("playbook") or "").strip()
@@ -61,7 +63,11 @@ class ProjectsListView(View):
         if st_param in {Project.Status.ACTIVE, Project.Status.ARCHIVED, Project.Status.ORPHANED}:
             qs = qs.filter(status=st_param)
         if playbook_param:
-            qs = qs.filter(playbook_slug__icontains=playbook_param)
+            qs = qs.filter(
+                Q(playbook_slug__icontains=playbook_param)
+                | Q(assigned_playbook__slug__icontains=playbook_param)
+                | Q(assigned_playbook__name__icontains=playbook_param),
+            )
 
         projects = list(qs.order_by("name"))
         return render(
@@ -176,7 +182,15 @@ class ProjectsDetailView(View):
     template_name = "ui/projects/detail.html"
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
-        project = get_object_or_404(Project.objects.select_related("datasource", "imported_by"), pk=pk)
+        project = get_object_or_404(
+            Project.objects.select_related(
+                "datasource",
+                "imported_by",
+                "assigned_playbook",
+                "pinned_playbook_version",
+            ),
+            pk=pk,
+        )
         tab = (request.GET.get("tab") or "vitals").strip().lower()
         if tab not in {"vitals", "increments"}:
             tab = "vitals"
@@ -229,19 +243,52 @@ class ProjectsEditView(View):
     template_name = "ui/projects/edit.html"
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
-        project = get_object_or_404(Project.objects.select_related("datasource"), pk=pk)
-        return render(request, self.template_name, {"active_nav": "projects", "project": project})
+        project = get_object_or_404(
+            Project.objects.select_related("datasource", "assigned_playbook", "pinned_playbook_version"),
+            pk=pk,
+        )
+        playbooks_list = list(Playbook.objects.order_by("name"))
+        pinned_versions: list[PlaybookVersion] = []
+        if project.assigned_playbook_id:
+            pinned_versions = list(
+                PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by(
+                    "-version_number",
+                ),
+            )
+        return render(
+            request,
+            self.template_name,
+            {
+                "active_nav": "projects",
+                "project": project,
+                "playbooks_list": playbooks_list,
+                "pinned_versions": pinned_versions,
+            },
+        )
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
-        project = get_object_or_404(Project.objects.select_related("datasource"), pk=pk)
+        project = get_object_or_404(
+            Project.objects.select_related("datasource", "assigned_playbook", "pinned_playbook_version"),
+            pk=pk,
+        )
         display_name = (request.POST.get("display_name") or "").strip()
         if not display_name:
+            playbooks_list = list(Playbook.objects.order_by("name"))
+            pinned_versions: list[PlaybookVersion] = []
+            if project.assigned_playbook_id:
+                pinned_versions = list(
+                    PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by(
+                        "-version_number",
+                    ),
+                )
             return render(
                 request,
                 self.template_name,
                 {
                     "active_nav": "projects",
                     "project": project,
+                    "playbooks_list": playbooks_list,
+                    "pinned_versions": pinned_versions,
                     "form_error": "Display name is required.",
                 },
             )
@@ -249,6 +296,8 @@ class ProjectsEditView(View):
             project.id,
             display_name=display_name,
             sync_schedule=(request.POST.get("sync_schedule") or "").strip(),
+            assigned_playbook=(request.POST.get("assigned_playbook") or "").strip(),
+            pinned_playbook_version=(request.POST.get("pinned_playbook_version") or "").strip(),
         )
         messages.success(request, "Project settings updated.")
         return redirect(reverse("projects-detail", args=[project.pk]))

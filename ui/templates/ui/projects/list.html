@@ -41,8 +41,8 @@
     </select>
   </div>
   <div class="col-md-3">
-    <label class="form-label small mb-0" for="flt_pb">Playbook (slug contains)</label>
-    <input type="search" name="playbook" id="flt_pb" value="{{ filter_playbook }}" class="form-control form-control-sm" placeholder="stub filter" data-testid="projects-filter-playbook">
+    <label class="form-label small mb-0" for="flt_pb">Playbook</label>
+    <input type="search" name="playbook" id="flt_pb" value="{{ filter_playbook }}" class="form-control form-control-sm" placeholder="Name or slug" data-testid="projects-filter-playbook">
   </div>
   <div class="col-md-3 d-flex gap-2">
     <button type="submit" class="btn btn-sm btn-primary" data-testid="projects-filter-apply">Apply</button>
@@ -84,7 +84,11 @@
                    data-testid="projects-row-name-{{ p.pk }}">{{ p.display_name|default:p.name }}</a>
               </td>
               <td>{{ p.datasource.name|default:"—" }}</td>
-              <td>{% if p.playbook_slug %}{{ p.playbook_slug }}{% else %}Not assigned{% endif %}</td>
+              <td>
+                {% if p.assigned_playbook %}
+                  <a href="{% url 'playbooks-detail' p.assigned_playbook.pk %}">{{ p.assigned_playbook.name }}</a>
+                {% elif p.playbook_slug %}{{ p.playbook_slug }}{% else %}Not assigned{% endif %}
+              </td>
               <td>{% if p.last_sync_at %}{{ p.last_sync_at }}{% else %}Never{% endif %}</td>
               <td><span class="badge text-bg-light border" data-testid="project-sync-state-{{ p.pk }}">{{ p.get_sync_state_display }}</span></td>
               <td class="text-end ps-3 align-middle">

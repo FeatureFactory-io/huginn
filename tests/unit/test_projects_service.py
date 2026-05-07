@@ -119,3 +119,47 @@ def test_persist_skips_already_imported_via_catalog_flag(mock_delay) -> None:
     assert created == []
     assert Project.objects.count() == before
     mock_delay.delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_update_configuration_sets_playbook_and_clears_invalid_pin() -> None:
+    from tests.factories import PlaybookFactory, PlaybookVersionFactory, ProjectFactory
+
+    p = ProjectFactory(playbook_slug="")
+    pb_a = PlaybookFactory(slug="pb-a")
+    pb_b = PlaybookFactory(slug="pb-b")
+    va = PlaybookVersionFactory(playbook=pb_a, version_number=1)
+    PlaybookVersionFactory(playbook=pb_b, version_number=1)
+
+    ProjectsService().update_project_configuration(
+        p.pk,
+        assigned_playbook=str(pb_a.pk),
+        pinned_playbook_version=str(va.pk),
+    )
+    p.refresh_from_db()
+    assert p.assigned_playbook_id == pb_a.pk
+    assert p.playbook_slug == "pb-a"
+    assert p.pinned_playbook_version_id == va.pk
+
+    ProjectsService().update_project_configuration(
+        p.pk,
+        assigned_playbook=str(pb_b.pk),
+        pinned_playbook_version=str(va.pk),
+    )
+    p.refresh_from_db()
+    assert p.assigned_playbook_id == pb_b.pk
+    assert p.pinned_playbook_version_id is None
+
+
+@pytest.mark.django_db
+def test_update_configuration_clears_playbook_when_empty() -> None:
+    from tests.factories import PlaybookFactory, ProjectFactory
+
+    pb = PlaybookFactory(slug="keep-slug")
+    p = ProjectFactory(assigned_playbook=pb, playbook_slug=pb.slug)
+
+    ProjectsService().update_project_configuration(p.pk, assigned_playbook="", pinned_playbook_version="")
+    p.refresh_from_db()
+    assert p.assigned_playbook_id is None
+    assert p.playbook_slug == ""
+    assert p.pinned_playbook_version_id is None

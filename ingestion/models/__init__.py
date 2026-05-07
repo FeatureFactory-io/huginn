@@ -134,6 +134,20 @@ class Project(models.Model):
     display_name = models.CharField(max_length=255, blank=True)
     source_path = models.CharField(max_length=512, blank=True)
     playbook_slug = models.CharField(max_length=255, blank=True)
+    assigned_playbook = models.ForeignKey(
+        "playbooks.Playbook",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_projects",
+    )
+    pinned_playbook_version = models.ForeignKey(
+        "playbooks.PlaybookVersion",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pinned_projects",
+    )
     gitlab_project_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     source_url = models.URLField(max_length=1024, blank=True)
     description = models.TextField(blank=True, default="")

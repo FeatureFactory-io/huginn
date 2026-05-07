@@ -105,8 +105,16 @@
             <article class="hg-metric-card">
               {% include "ui/components/_metric_card_header.html" with title="Playbook" %}
               <div class="hg-metric-card__body small" data-testid="project-playbook-section">
-                {% if project.playbook_slug %}
+                {% if project.assigned_playbook %}
+                  <p class="mb-1"><a href="{% url 'playbooks-detail' project.assigned_playbook.pk %}">{{ project.assigned_playbook.name }}</a></p>
+                  {% if project.pinned_playbook_version %}
+                    <p class="mb-0 text-muted">Pinned v{{ project.pinned_playbook_version.version_number }}</p>
+                  {% else %}
+                    <p class="mb-0 text-muted">Auto-tracking latest</p>
+                  {% endif %}
+                {% elif project.playbook_slug %}
                   <p class="mb-0">{{ project.playbook_slug }}</p>
+                  <p class="mb-0 text-muted small mt-1">Legacy slug — <a href="{% url 'projects-edit' pk=project.pk %}">Re-link</a></p>
                 {% else %}
                   <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
                 {% endif %}
