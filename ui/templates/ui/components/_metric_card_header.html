@@ -1,0 +1,17 @@
+{% comment %}
+Streamlit-style metric card header.
+
+Inputs (via {% include with %}):
+  title       : visible label, rendered uppercase via CSS
+  help        : optional tooltip text. When set, a help icon is shown.
+  help_label  : optional aria-label for the help icon (defaults to "About this metric")
+  heading_id  : optional id on the <h2> for aria-labelledby wiring
+{% endcomment %}
+<header class="hg-metric-card__header">
+  <h2 class="hg-metric-card__title"{% if heading_id %} id="{{ heading_id }}"{% endif %}>{{ title }}</h2>
+  {% if help %}
+  <span class="hg-metric-card__help" role="img" tabindex="0" title="{{ help }}" aria-label="{{ help_label|default:'About this metric' }}">
+    <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+  </span>
+  {% endif %}
+</header>

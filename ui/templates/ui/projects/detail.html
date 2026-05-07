@@ -65,78 +65,66 @@
   <div class="card-body">
     {% if active_tab == 'vitals' %}
     <div id="project-pane-vitals" role="tabpanel" aria-labelledby="project-tab-vitals" tabindex="0">
-      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
-        <div class="col">
-          <article class="card h-100 hg-vitals-card">
-            <div class="card-body">
-              <h2 id="vitals-transparency-heading" class="hg-vitals-card-heading">
-                Transparency
-                <span class="hg-metric-help" role="img" tabindex="0" title="Recency of data ingested from your connected sources." aria-label="About Transparency metrics"><i class="fa-regular fa-circle-question" aria-hidden="true"></i></span>
-              </h2>
-              <div data-testid="project-widget-transparency" class="hg-transparency-metrics">
-                <div class="hg-metric">
-                  <div class="hg-metric-label">Last sync</div>
-                  <div class="hg-metric-value-row">
-                    {% if project.last_sync_at %}
-                      <span class="hg-metric-value" data-testid="project-transparency-last-sync">{{ project.last_sync_at|naturaltime }}</span>
-                    {% else %}
-                      <span class="hg-metric-value hg-metric-value--soft" data-testid="project-transparency-last-sync">Never</span>
-                    {% endif %}
+      <div class="hg-vitals-grid">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+          <div class="col">
+            <article class="hg-metric-card">
+              {% include "ui/components/_metric_card_header.html" with title="Transparency" help="Recency of data ingested from connected sources." help_label="About Transparency metrics" heading_id="vitals-transparency-heading" %}
+              <div class="hg-metric-card__body" data-testid="project-widget-transparency">
+                <div class="hg-metric-row">
+                  <div class="hg-metric">
+                    <div class="hg-metric__label">Last sync</div>
+                    <div class="hg-metric__value{% if not project.last_sync_at %} hg-metric__value--soft{% endif %}" data-testid="project-transparency-last-sync">{% if project.last_sync_at %}{{ project.last_sync_at|naturaltime }}{% else %}Never{% endif %}</div>
                   </div>
-                </div>
-                <div class="hg-metric">
-                  <div class="hg-metric-label">Last commits</div>
-                  <div class="hg-metric-value-row">
-                    {% if latest_commit_at %}
-                      <span class="hg-metric-value" data-testid="project-transparency-last-commits">{{ latest_commit_at|naturaltime }}</span>
-                    {% else %}
-                      <span class="hg-metric-value hg-metric-value--soft" data-testid="project-transparency-last-commits">No commits yet</span>
-                    {% endif %}
+                  <div class="hg-metric">
+                    <div class="hg-metric__label">Last commits</div>
+                    <div class="hg-metric__value{% if not latest_commit_at %} hg-metric__value--soft{% endif %}" data-testid="project-transparency-last-commits">{% if latest_commit_at %}{{ latest_commit_at|naturaltime }}{% else %}No commits yet{% endif %}</div>
                   </div>
                 </div>
               </div>
-            </div>
-          </article>
-        </div>
-        <div class="col">
-          <article class="card h-100 hg-vitals-card">
-            <div class="card-body">
-              <h2 class="hg-vitals-card-heading">Identity</h2>
-              <dl class="row small mb-0">
-                <dt class="col-5 text-muted">Description</dt>
-                <dd class="col-7 mb-1" data-testid="project-description">{{ project.description|default:"—"|linebreaksbr }}</dd>
-                <dt class="col-5 text-muted">Source path</dt>
-                <dd class="col-7 text-break"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
-                <dt class="col-5 text-muted">Imported on</dt>
-                <dd class="col-7" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
-                <dt class="col-5 text-muted">Imported by</dt>
-                <dd class="col-7 mb-0 text-break" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
-              </dl>
-            </div>
-          </article>
-        </div>
-        <div class="col">
-          <article class="card h-100 hg-vitals-card">
-            <div class="card-body">
-              <h2 class="hg-vitals-card-heading">Playbook</h2>
-              <div class="small" data-testid="project-playbook-section">
+            </article>
+          </div>
+          <div class="col">
+            <article class="hg-metric-card">
+              {% include "ui/components/_metric_card_header.html" with title="Identity" %}
+              <div class="hg-metric-card__body">
+                <dl class="row small hg-metric-card__dl">
+                  <dt class="col-5">Description</dt>
+                  <dd class="col-7" data-testid="project-description">{{ project.description|default:"—"|linebreaksbr }}</dd>
+                  <dt class="col-5">Source path</dt>
+                  <dd class="col-7 text-break"><code data-testid="project-source-path">{{ project.source_path|default:"—" }}</code></dd>
+                  <dt class="col-5">Imported on</dt>
+                  <dd class="col-7" data-testid="project-created-at">{{ project.created_at|date:"Y-m-d" }}</dd>
+                  <dt class="col-5">Imported by</dt>
+                  <dd class="col-7 text-break" data-testid="project-imported-by">{% if project.imported_by %}{{ project.imported_by.get_full_name|default:project.imported_by.email }}{% else %}—{% endif %}</dd>
+                </dl>
+              </div>
+            </article>
+          </div>
+          <div class="col">
+            <article class="hg-metric-card">
+              {% include "ui/components/_metric_card_header.html" with title="Playbook" %}
+              <div class="hg-metric-card__body small" data-testid="project-playbook-section">
                 {% if project.playbook_slug %}
                   <p class="mb-0">{{ project.playbook_slug }}</p>
                 {% else %}
                   <p class="mb-0 text-muted">Not assigned — <a href="{% url 'projects-edit' pk=project.pk %}">Assign</a></p>
                 {% endif %}
               </div>
-            </div>
-          </article>
-        </div>
-        <div class="col">
-          <article class="card h-100 hg-vitals-card">
-            <div class="card-body">
-              <h2 class="hg-vitals-card-heading">Sync</h2>
-              <p class="small mb-1">Schedule: <span data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</span></p>
-              <p class="small text-muted mb-0">Next: Based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
-            </div>
-          </article>
+            </article>
+          </div>
+          <div class="col">
+            <article class="hg-metric-card">
+              {% include "ui/components/_metric_card_header.html" with title="Sync" help="Cadence and next expected sync window." help_label="About Sync schedule" %}
+              <div class="hg-metric-card__body small">
+                <div class="hg-metric">
+                  <div class="hg-metric__label">Schedule</div>
+                  <div class="hg-metric__value hg-metric__value--soft" data-testid="project-sync-schedule">{{ project.get_sync_schedule_display }}</div>
+                </div>
+                <p class="text-muted mb-0 mt-1">Next: based on {{ project.get_sync_schedule_display|lower }} cadence — exact time not yet calculated.</p>
+              </div>
+            </article>
+          </div>
         </div>
       </div>
     </div>
