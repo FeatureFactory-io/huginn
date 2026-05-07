@@ -18,7 +18,8 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
 
   Scenario: PROJECTS-LIST+FIND-02 List shows required columns
     Given a Project "atlas-backend" exists
-    Then the table has columns: Name, DataSource, Playbook, Last sync, Status, Actions
+    Then the table has columns: Name, DataSource, Playbook, Last sync, Status
+    And each row exposes a single overflow menu for secondary actions (no visible "Actions" column header)
 
   Scenario: PROJECTS-LIST+FIND-03 Project row shows name, DataSource, and sync status
     Given a Project "atlas-backend" imported from DataSource "company-gitlab" exists
@@ -39,19 +40,19 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
   # Navigation — row actions
   # ---------------------------------------------------------------------------
 
-  Scenario: PROJECTS-LIST+FIND-06 View action navigates to Project detail
+  Scenario: PROJECTS-LIST+FIND-06 Clicking the Project name navigates to Project detail
     Given a Project "atlas-backend" exists
-    When I click the "View" row action for "atlas-backend"
+    When I click the Name link "atlas-backend"
     Then I am on the screen "PROJECTS-VIEW_PROJECT-1" for "atlas-backend"
 
   Scenario: PROJECTS-LIST+FIND-07 Edit action navigates to project edit form
     Given a Project "atlas-backend" exists
-    When I click the "Edit" row action for "atlas-backend"
+    When I choose "Edit project" from the row overflow menu for "atlas-backend"
     Then I am on the screen "PROJECTS-EDIT_PROJECT-1" for "atlas-backend"
 
   Scenario: PROJECTS-LIST+FIND-08 Archive action opens confirmation modal
     Given a Project "atlas-backend" exists
-    When I click the "Archive" row action for "atlas-backend"
+    When I choose "Archive" from the row overflow menu for "atlas-backend"
     Then the screen "PROJECTS-ARCHIVE_PROJECT-1" confirmation modal is open for "atlas-backend"
 
   # ---------------------------------------------------------------------------

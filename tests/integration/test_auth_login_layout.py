@@ -12,7 +12,7 @@ def test_auth_login_08_login_page_shows_brand_mark_tagline_and_form_elements(db)
     assert r.status_code == 200
     body = r.content.decode()
     assert 'data-testid="login-brand-mark"' in body
-    assert "Human-AI OODA for PM" in body
+    assert "Human-AI Command Composite" in body
     assert 'data-testid="login-email"' in body
     assert 'data-testid="login-password"' in body
     assert 'data-testid="login-submit"' in body

@@ -5,13 +5,15 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="ACTIONSTATIONS-LIST+FIND-1" screen_testid="actionstations-list-find-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2">
-  <div>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
     <span class="badge bg-secondary">{{ rows|length }} issues</span>
     <h1 class="hg-page-title d-inline">Action Stations</h1>
     <p class="text-muted mb-0 small">Read-only mirror of <span class="font-monospace">HUGINN</span>-tagged Jira tickets.</p>
   </div>
-  <button class="btn btn-outline-secondary btn-sm" data-testid="action-stations-sync"><i class="fa-solid fa-rotate"></i> Sync</button>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Action Stations actions">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="action-stations-sync"><i class="fa-solid fa-rotate"></i> Sync</button>
+  </div>
 </section>
 
 <p class="small text-muted mb-4">Last sync <strong>{{ last_sync }}</strong></p>

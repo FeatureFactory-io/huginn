@@ -21,8 +21,9 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
     Then I see the page heading "Playbooks"
     And I see a count badge showing "3"
 
-  Scenario: PLAYBOOKS-LIST+FIND-02 Top action shows + New Playbook button
+  Scenario: PLAYBOOKS-LIST+FIND-02 Top actions show primary New Playbook and disabled Import from Mimir
     Then I see a "+ New Playbook" primary button
+    And I see a disabled "Import from Mimir" button with a Mimir icon and tooltip "Coming soon"
 
   # ---------------------------------------------------------------------------
   # Empty state — first-run-with-seed and force-empty fallback
@@ -50,9 +51,10 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
   # Populated list — columns, version, usage, freshness
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-LIST+FIND-06 Table columns are Name, Latest version, Used by, Updated, Actions
+  Scenario: PLAYBOOKS-LIST+FIND-06 Table columns are Name, Author, Latest version, Used by, Updated
     Given a Playbook "Atlas Engineering Playbook" exists
-    Then the table has columns: Name, Latest version, Used by, Updated, Actions
+    Then the table has columns: Name, Author, Latest version, Used by, Updated
+    And each row exposes a single overflow menu for secondary actions (no visible "Actions" column header)
 
   Scenario: PLAYBOOKS-LIST+FIND-07 Latest version cell shows current version number
     Given the Playbook "Atlas Engineering Playbook" has versions "v1", "v2", "v3"
@@ -115,14 +117,14 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
     When I click the "+ New Playbook" button
     Then I am on the screen "PLAYBOOKS-CREATE_PLAYBOOK-1"
 
-  Scenario: PLAYBOOKS-LIST+FIND-17 View row action navigates to Playbook detail
+  Scenario: PLAYBOOKS-LIST+FIND-17 Clicking the Playbook name navigates to Playbook detail
     Given the Playbook "Atlas Engineering Playbook" exists
-    When I click the "View" row action for "Atlas Engineering Playbook"
+    When I click the Name link "Atlas Engineering Playbook"
     Then I am on the screen "PLAYBOOKS-VIEW_PLAYBOOK-1" for "Atlas Engineering Playbook"
 
   Scenario: PLAYBOOKS-LIST+FIND-18 Edit row action navigates to edit form
     Given the Playbook "Atlas Engineering Playbook" exists
-    When I click the "Edit" row action for "Atlas Engineering Playbook"
+    When I choose "Edit" from the row overflow menu for "Atlas Engineering Playbook"
     Then I am on the screen "PLAYBOOKS-EDIT_PLAYBOOK-1" for "Atlas Engineering Playbook"
 
   Scenario: PLAYBOOKS-LIST+FIND-19 Clone row action opens create form pre-filled with current content
@@ -130,7 +132,7 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
     # MVP wiring: only the Increment canonical entity is live, so the seed ships
     # with one PlaybookTable (Increment | last_14d | [Increments]).
     Given the seed Playbook "FeatureFactory Playbook" exists with its starter Variables and 1 default Table
-    When I click the "Clone" row action for "FeatureFactory Playbook"
+    When I choose "Clone to new Playbook" from the row overflow menu for "FeatureFactory Playbook"
     Then I am on the screen "PLAYBOOKS-CREATE_PLAYBOOK-1"
     And the Workflow markdown is pre-filled from "FeatureFactory Playbook" v1
     And the Variables list is pre-filled with the seed's starter Variables in their seed order
@@ -150,7 +152,7 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
 
   Scenario: PLAYBOOKS-LIST+FIND-22 Enabled Delete row action opens confirmation modal
     Given the Playbook "Migration Spike Draft" is assigned to 0 Projects
-    When I click the "Delete" row action for "Migration Spike Draft"
+    When I choose "Delete" from the row overflow menu for "Migration Spike Draft"
     Then the screen "PLAYBOOKS-DELETE_PLAYBOOK-1" confirmation modal is open for "Migration Spike Draft"
 
   Scenario: PLAYBOOKS-LIST+FIND-23 Seed Playbook is always Delete-disabled when assigned, deletable when not
@@ -171,10 +173,10 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
 
   Scenario: PLAYBOOKS-LIST+FIND-25 Table is keyboard-navigable and has column headers
     Then the Playbooks table has a visible header row with scope="col" on each header
-    And each row action button has an accessible label
+    And each row overflow menu toggle has an accessible name including the Playbook name
 
   Scenario: PLAYBOOKS-LIST+FIND-26 Disabled Delete action is announced as disabled
     Given the Playbook "Atlas Engineering Playbook" is assigned to 3 Projects
-    When I focus the disabled "Delete" row action for "Atlas Engineering Playbook"
-    Then the action has aria-disabled="true"
-    And the tooltip "Used by 3 project(s). Reassign or archive those projects first." is reachable by screen readers
+    When I open the row overflow menu for "Atlas Engineering Playbook"
+    Then the "Delete (in use)" menu item is disabled
+    And the disabled item has aria-disabled="true"

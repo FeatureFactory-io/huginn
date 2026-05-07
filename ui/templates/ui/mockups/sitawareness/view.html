@@ -5,12 +5,16 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-  <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0">
-    <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
-    <span>Situational Awareness · {{ project_slug }}</span>
-  </h1>
-  <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}?project={{ project_slug }}"><i class="fa-solid fa-pen-to-square"></i></a>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0 flex-wrap">
+      <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
+      <span>Situational Awareness · {{ project_slug }}</span>
+    </h1>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Situational Awareness actions">
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}?project={{ project_slug }}" aria-label="Edit Situational Awareness"><i class="fa-solid fa-pen-to-square"></i></a>
+  </div>
 </section>
 
 <div class="row g-4">

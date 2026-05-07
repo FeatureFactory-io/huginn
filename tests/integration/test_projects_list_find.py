@@ -45,7 +45,7 @@ def test_list_06_view_action_link_present(commander_client, db):
     p = ProjectFactory(name="v", slug="v")
     r = commander_client.get(reverse("projects-list"))
     body = r.content.decode()
-    assert f'data-testid="projects-row-view-{p.pk}"' in body
+    assert f'data-testid="projects-row-name-{p.pk}"' in body
     assert reverse("projects-detail", args=[p.pk]) in body
 
 

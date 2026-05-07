@@ -5,11 +5,13 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-EDIT-1" screen_testid="sitawareness-edit-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3">
-  <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0">
-    <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
-    <span>Edit Situational Awareness · {{ project_slug }}</span>
-  </h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0 flex-wrap">
+      <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
+      <span>Edit Situational Awareness · {{ project_slug }}</span>
+    </h1>
+  </div>
 </section>
 
 <form class="row g-4">

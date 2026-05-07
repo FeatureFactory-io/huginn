@@ -5,15 +5,17 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="PROJECTS-LIST+FIND-1" screen_testid="projects-list-find-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-3">
-  <div>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
     <span class="badge bg-secondary rounded-pill me-2">{{ rows|length }} projects</span>
     <h1 class="hg-page-title d-inline">Projects</h1>
     <p class="text-muted small mb-0">Imported from connected data sources.</p>
   </div>
-  <a class="btn btn-primary btn-sm" href="{% url 'mockup-projects-import' %}" data-testid="projects-import-btn">
-    <i class="fa-solid fa-download me-1"></i> Import Projects
-  </a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Project list actions">
+    <a class="btn btn-primary btn-sm" href="{% url 'mockup-projects-import' %}" data-testid="projects-import-btn">
+      <i class="fa-solid fa-download me-1"></i> Import Projects
+    </a>
+  </div>
 </section>
 
 <div class="row g-3 mb-3">
@@ -34,19 +36,45 @@
         <thead class="table-light">
           <tr>
             <th scope="col">Name</th><th scope="col">DataSource</th><th scope="col">Playbook</th>
-            <th scope="col">Last sync</th><th scope="col">Status</th><th class="text-end" scope="col">Actions</th>
+            <th scope="col">Last sync</th><th scope="col">Status</th>
+            <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
           </tr>
         </thead>
         <tbody>
           {% for r in rows %}
             <tr data-testid="projects-row-{{ r.id }}">
-              <td class="fw-medium">{{ r.name }}</td><td>{{ r.datasource }}</td><td>{{ r.playbook }}</td>
+              <td>
+                <a href="{% url 'mockup-projects-view' r.id %}"
+                   class="hg-list-name-link fw-semibold d-inline-block"
+                   data-testid="projects-row-name-{{ r.id }}">{{ r.name }}</a>
+              </td><td>{{ r.datasource }}</td><td>{{ r.playbook }}</td>
               <td>{{ r.last_sync }}</td><td><span class="badge bg-secondary-subtle border">{{ r.sync_status }}</span></td>
-              <td class="text-end btn-group-wrap">
-                <div class="btn-group btn-group-sm">
-                  <a class="btn btn-outline-secondary" href="{% url 'mockup-projects-view' r.id %}" data-bs-toggle="tooltip" title="View" data-testid="projects-row-view-{{ r.id }}"><i class="fa-solid fa-eye"></i></a>
-                  <a class="btn btn-outline-secondary" href="{% url 'mockup-projects-edit' r.id %}" data-bs-toggle="tooltip" title="Edit" data-testid="projects-row-edit-{{ r.id }}"><i class="fa-solid fa-pen"></i></a>
-                  <a class="btn btn-outline-warning" href="{% url 'mockup-projects-archive' r.id %}" data-bs-toggle="tooltip" title="Archive" data-testid="projects-row-archive-{{ r.id }}"><i class="fa-solid fa-box-archive"></i></a>
+              <td class="text-end ps-3 align-middle">
+                <div class="dropdown d-inline-block">
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary border-0 px-2"
+                          id="projects-row-menu-{{ r.id }}"
+                          data-bs-toggle="dropdown"
+                          data-bs-popper-config='{"strategy":"fixed"}'
+                          aria-expanded="false"
+                          aria-haspopup="true"
+                          aria-label="Actions for {{ r.name }}"
+                          data-testid="projects-row-actions-{{ r.id }}">
+                    <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="projects-row-menu-{{ r.id }}">
+                    <li>
+                      <a class="dropdown-item" href="{% url 'mockup-projects-edit' r.id %}" data-testid="projects-row-edit-{{ r.id }}">
+                        <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit project
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <a class="dropdown-item text-warning" href="{% url 'mockup-projects-archive' r.id %}" data-testid="projects-row-archive-{{ r.id }}">
+                        <i class="fa-solid fa-box-archive fa-fw me-2" aria-hidden="true"></i>Archive
+                      </a>
+                    </li>
+                  </ul>
                 </div>
               </td>
             </tr>

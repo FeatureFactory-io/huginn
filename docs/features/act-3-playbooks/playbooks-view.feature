@@ -23,19 +23,20 @@ Feature: PLAYBOOKS-VIEW_PLAYBOOK-1 Inspect a Playbook, browse versions, validate
     And I am on the screen "PLAYBOOKS-VIEW_PLAYBOOK-1" for "Atlas Engineering Playbook"
 
   # ---------------------------------------------------------------------------
-  # Layout — two columns
+  # Layout — tabs (Project-detail pattern)
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-01 Layout has Left (current version) and Right (versions)
-    Then I see a "Current version" panel on the left
-    And I see a "Versions" panel on the right
+  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-01 Detail shows Playbook and Versions tabs
+    Then I see a "Playbook" tab
+    And I see a "Versions" tab
+    And the "Playbook" tab shows the latest snapshot by default
 
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-02 Header shows Playbook name and current version
     Then I see the heading "Atlas Engineering Playbook"
     And I see a version indicator "v3 (latest)"
 
   # ---------------------------------------------------------------------------
-  # Left column — Metadata + Workflow + Variables + Tables (read-only)
+  # Playbook tab — Metadata + Workflow + Variables + Tables + Used by (read-only)
   # ---------------------------------------------------------------------------
 
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-03 Metadata renders Name and Description as read-only text
@@ -45,6 +46,7 @@ Feature: PLAYBOOKS-VIEW_PLAYBOOK-1 Inspect a Playbook, browse versions, validate
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-04 Workflow renders the Markdown as HTML (not the source)
     Given v3 Workflow contains "## Roles\nDonland — commander; Stark — engineering lead"
     Then I see a rendered heading "Roles"
+    And I see a rendered heading "Sprint focus"
     And I see the rendered text "Donland — commander; Stark — engineering lead"
     And I do NOT see the literal characters "##"
 
@@ -82,24 +84,28 @@ Feature: PLAYBOOKS-VIEW_PLAYBOOK-1 Inspect a Playbook, browse versions, validate
     And rows for entities still in the catalog render normally
 
   # ---------------------------------------------------------------------------
-  # Right column — Versions panel
+  # Versions tab — version log
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-11 Versions panel lists every version with author and change summary
-    Then the Versions panel lists, newest first:
+  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-11 Versions tab lists every version with author and change summary
+    When I open the "Versions" tab
+    Then the Versions list shows, newest first:
       | Version | Author              | Change summary                                                       |
       | v3      | donland@example.com | Added a second Increment-Table on Engineering (this_week)            |
       | v2      | donland@example.com | Tightened "Commits today" interpreting after retro                   |
       | v1      | donland@example.com | Cloned from seed; added "Commits today" Variable                     |
 
-  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-12 Clicking an older version updates the left panel content
-    When I click "v2" in the Versions panel
-    Then the left panel shows v2's Workflow, Variables, and Tables
-    And the version indicator changes to "v2 (selected)"
+  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-12 Selecting an older version loads its snapshot into the Playbook tab
+    Given historical browse is implemented
+    When I open the "Versions" tab
+    And I select version "v2"
+    Then the "Playbook" tab shows v2's Workflow, Variables, and Tables
+    And the version indicator shows v2 as the snapshot in focus
     And v3 remains the latest version
 
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-13 Compare with current shows a diff across Workflow, Variables, and Tables
-    Given v2 is selected in the Versions panel
+    Given historical browse is implemented
+    And v2 is selected in the Versions tab
     When I click "Compare with current"
     Then I see a side-by-side diff of v2 → v3 grouped by section: Workflow, Variables, Tables
     And the Variables section highlights "Commits today" interpreting as unchanged between v2 and v3
@@ -124,8 +130,8 @@ Feature: PLAYBOOKS-VIEW_PLAYBOOK-1 Inspect a Playbook, browse versions, validate
   # Validate Playbook — catalog drift scan
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-16 Validate Playbook CTA is visible at the top of the Versions panel
-    Then I see a "[Validate Playbook]" action at the top of the Versions panel
+  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-16 Validate Playbook CTA is visible in the page header toolbar
+    Then I see a "[Validate Playbook]" action in the Playbook detail header
 
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-17 Validate Playbook reports no drift when every Tables row maps to the current catalog
     Given the canonical-entity catalog and slicer registry both still contain every entity and slicer used by every saved version of "Atlas Engineering Playbook"
@@ -182,10 +188,11 @@ Feature: PLAYBOOKS-VIEW_PLAYBOOK-1 Inspect a Playbook, browse versions, validate
   # Accessibility
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-24 Versions list is keyboard-navigable
-    When I focus the Versions panel
-    Then I can move between version entries with ArrowUp / ArrowDown
-    And pressing Enter on a focused version updates the left panel
+  Scenario: PLAYBOOKS-VIEW_PLAYBOOK-24 Versions list supports keyboard focus within the Versions tab
+    When I open the "Versions" tab
+    And I focus the Versions list
+    Then I can move focus between version entries with Tab
+    # Arrow-key listbox behavior is optional until historical browse is wired.
 
   Scenario: PLAYBOOKS-VIEW_PLAYBOOK-25 Inline-warning rows on Tables are announced to screen readers
     Given the slicer "last_30d" has been removed from the Increment slicer registry

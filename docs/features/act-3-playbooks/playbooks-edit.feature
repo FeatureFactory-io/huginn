@@ -29,6 +29,11 @@ Feature: PLAYBOOKS-EDIT_PLAYBOOK-1 Edit a Playbook (creates a new version)
     And the Variables list mirrors v3 (seed starter Variables plus "Commits today", "Commits this week", "Distinct authors 14d")
     And the Tables list has 3 rows mirroring v3 in order: "Increment | last_14d | [Increments]", "Increment | this_week | [Engineering]", "Increment | last_30d | [Engineering]"
 
+  Scenario: PLAYBOOKS-EDIT_PLAYBOOK-01b Workflow preview renders Markdown as HTML (not raw "##" in the preview)
+    Then the Workflow preview shows a rendered heading "Roles"
+    And the Workflow preview shows a rendered heading "Sprint focus"
+    And I do NOT see the literal characters "##" in the Workflow preview panel
+
   Scenario: PLAYBOOKS-EDIT_PLAYBOOK-02 Header indicates we are editing the latest version
     Then I see the heading "Edit Atlas Engineering Playbook"
     And I see a sub-heading "Editing v3 → will save as v4"

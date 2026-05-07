@@ -5,7 +5,12 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="CONTRIBUTORS-VIEW_CONTRIBUTOR-1" screen_testid="contributors-view-contributor-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3"><h1 class="hg-page-title">{{ c.name }}</h1><small class="text-muted">{% for h in c.handles %}<span class="badge bg-secondary-subtle text-dark fw-normal">{{ h }}</span> {% endfor %}</small></section>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1">{{ c.name }}</h1>
+    <small class="text-muted">{% for h in c.handles %}<span class="badge bg-secondary-subtle text-dark fw-normal">{{ h }}</span> {% endfor %}</small>
+  </div>
+</section>
 
 <div class="row g-4">
   <div class="col-lg-8">

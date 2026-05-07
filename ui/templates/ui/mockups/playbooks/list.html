@@ -1,39 +1,145 @@
 {% extends "base_mockups.html" %}
+{% load static %}
 
 {% block title %}Playbooks · Huginn{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-LIST+FIND-1" screen_testid="playbooks-list-find-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between gap-2">
-  <div>
-    <span class="badge bg-secondary rounded-pill me-2">{{ rows|length }} playbooks</span>
-    <h1 class="hg-page-title d-inline">Playbooks</h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <span class="badge bg-secondary rounded-pill me-2" data-testid="playbooks-count-badge">{{ row_count }}</span>
+    <h1 class="hg-page-title d-inline" data-testid="page-title">Playbooks</h1>
+    <p class="text-muted small mb-0">Versioned doctrine — Variables, Tables, and Workflow for assigned Projects.</p>
   </div>
-  <a class="btn btn-primary btn-sm" href="{% url 'mockup-playbooks-create' %}" data-testid="playbooks-new-btn"><i class="fa-solid fa-plus me-1"></i> New Playbook</a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Playbook list actions">
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 hg-btn-disabled-visible"
+            disabled
+            data-bs-toggle="tooltip"
+            title="Coming soon"
+            data-testid="playbooks-import-mimir-btn">
+      <img src="{% static 'images/mimir-logo.png' %}" alt="" class="hg-mimir-btn-icon" aria-hidden="true">
+      <span>Import from Mimir</span>
+    </button>
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'mockup-playbooks-create' %}"
+       data-bs-toggle="tooltip" title="Create a new Playbook"
+       data-testid="playbooks-new-btn">
+      <i class="fa-solid fa-plus me-1"></i> New Playbook
+    </a>
+  </div>
 </section>
 
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-author">Author</label>
+    <select class="form-select form-select-sm" id="pb-filter-author" data-testid="playbooks-filter-author">
+      <option>All</option>
+      <option>donland@example.com</option>
+      <option>stark@example.com</option>
+      <option>system@huginn</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-used">Used by Project</label>
+    <select class="form-select form-select-sm" id="pb-filter-used" data-testid="playbooks-filter-used-by-project">
+      <option>All</option>
+      <option>Yes</option>
+      <option>No</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-updated">Updated within</label>
+    <select class="form-select form-select-sm" id="pb-filter-updated" data-testid="playbooks-filter-updated-within">
+      <option>Any time</option>
+      <option>Last 7 days</option>
+      <option>Last 30 days</option>
+    </select>
+  </div>
+</div>
+
 <div class="card border-0 shadow-sm rounded-3">
-  <div class="card-body table-responsive">
-    <table class="table table-hover mb-0 align-middle" data-testid="playbooks-table">
-      <thead class="table-light">
-        <tr><th>Name</th><th>Latest ver.</th><th>Used by</th><th>Updated</th><th class="text-end">Actions</th></tr>
-      </thead>
-      <tbody>
-        {% for r in rows %}
-          <tr data-testid="playbooks-row-{{ r.id }}">
-            <td>{{ r.name }}</td><td>v{{ r.latest_version }}</td><td>{{ r.used_by }}</td><td>{{ r.updated }}</td>
-            <td class="text-end">
-              <div class="btn-group btn-group-sm">
-                <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-view' r.id %}"><i class="fa-solid fa-eye"></i></a>
-                <a class="btn btn-outline-secondary" href="{% url 'mockup-playbooks-edit' r.id %}"><i class="fa-solid fa-pen"></i></a>
-                <a class="btn btn-outline-danger" href="{% url 'mockup-playbooks-delete' r.id %}"><i class="fa-solid fa-trash"></i></a>
-              </div>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="card-body p-0">
+    {% if rows %}
+      <div class="table-responsive" data-testid="playbooks-table-wrap">
+        <table class="table table-hover align-middle mb-0" data-testid="playbooks-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Author</th>
+              <th scope="col">Latest ver.</th>
+              <th scope="col">Used by</th>
+              <th scope="col">Updated</th>
+              <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr data-testid="playbooks-row-{{ r.id }}">
+                <td>
+                  <a href="{% url 'mockup-playbooks-view' r.id %}"
+                     class="hg-list-name-link fw-semibold d-inline-block"
+                     data-testid="playbooks-row-name-{{ r.id }}">{{ r.name }}</a>
+                </td>
+                <td class="small text-muted">{{ r.author }}</td>
+                <td><span class="badge bg-light text-dark border">v{{ r.latest_version }}</span></td>
+                <td class="small">{{ r.used_by_label }}</td>
+                <td class="small text-muted">{{ r.updated }}</td>
+                <td class="text-end ps-3 align-middle">
+                  <div class="dropdown d-inline-block">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary border-0 px-2"
+                            id="playbooks-row-menu-{{ r.id }}"
+                            data-bs-toggle="dropdown"
+                            data-bs-popper-config='{"strategy":"fixed"}'
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-label="Actions for {{ r.name }}"
+                            data-testid="playbooks-row-actions-{{ r.id }}">
+                      <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="playbooks-row-menu-{{ r.id }}">
+                      <li>
+                        <a class="dropdown-item" href="{% url 'mockup-playbooks-edit' r.id %}" data-testid="playbooks-row-edit-{{ r.id }}">
+                          <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="{% url 'mockup-playbooks-create' %}?clone={{ r.id }}" data-testid="playbooks-row-clone-{{ r.id }}">
+                          <i class="fa-solid fa-copy fa-fw me-2 text-muted" aria-hidden="true"></i>Clone to new Playbook
+                        </a>
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        {% if r.delete_disabled %}
+                          <span class="dropdown-item disabled small text-muted" aria-disabled="true" data-testid="playbooks-row-delete-{{ r.id }}-disabled">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete (in use)
+                          </span>
+                        {% else %}
+                          <a class="dropdown-item text-danger" href="{% url 'mockup-playbooks-delete' r.id %}" data-testid="playbooks-row-delete-{{ r.id }}">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete
+                          </a>
+                        {% endif %}
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted" data-testid="playbooks-empty-state">
+        <i class="fa-solid fa-book fa-2x mb-3 d-block" style="color:var(--hg-border)"></i>
+        <p class="mb-1 fw-medium">No Playbooks yet</p>
+        <p class="small mb-3">Write one to define expectations for your Projects.</p>
+        <a href="{% url 'mockup-playbooks-create' %}" class="btn btn-primary btn-sm" data-testid="playbooks-empty-cta">
+          <i class="fa-solid fa-plus me-1"></i> New Playbook
+        </a>
+      </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

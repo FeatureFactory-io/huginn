@@ -13,12 +13,14 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="CHAT-1" screen_testid="chat-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0" data-testid="page-title">
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0 flex-wrap" data-testid="page-title">
       <i class="fa-solid fa-brain-circuit text-primary" aria-hidden="true"></i>
       <span>Gjallarhorn</span>
     </h1>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Chat context">
     <select class="form-select form-select-sm w-auto" aria-label="Project context"><option selected>atlas-backend</option><option>billing-service</option></select>
   </div>
 </section>

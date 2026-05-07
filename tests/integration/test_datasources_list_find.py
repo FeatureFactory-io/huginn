@@ -73,7 +73,8 @@ def test_list_08_action_testids(commander_client) -> None:
     ds = DataSourceFactory()
     r = commander_client.get(reverse("datasources-list"))
     body = r.content.decode()
-    for action in ("view", "edit", "import", "delete"):
+    assert f'data-testid="datasource-row-name-{ds.pk}"' in body
+    for action in ("edit", "import", "delete"):
         assert f'data-testid="datasource-action-{action}-{ds.pk}"' in body
 
 

@@ -76,7 +76,7 @@ Feature: AUTH-LOGIN-1 Login to Huginn
 
   Scenario: AUTH-LOGIN-08 Login page displays correct layout elements
     Then I see the Huginn wordmark in the header
-    And I see the tagline "Human-AI OODA for PM"
+    And I see the tagline "Human-AI Command Composite"
     And I see an email input with data-testid "login-email"
     And I see a password input with data-testid "login-password"
     And I see the "Sign In" button

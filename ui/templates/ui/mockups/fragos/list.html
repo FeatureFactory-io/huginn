@@ -5,15 +5,17 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-LIST+FIND-1" screen_testid="fragos-list-find-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2">
-  <div>
-    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap" data-testid="page-title">
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
       <i class="fa-solid fa-puzzle text-primary" aria-hidden="true"></i>
       <span>FRAGOs · {{ project_slug }}</span>
     </h1>
     <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time.</p>
   </div>
-  <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
+    <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+  </div>
 </section>
 
 <div class="card border-0 shadow-sm rounded-3">
@@ -26,7 +28,7 @@
           <th scope="col">Tag</th>
           <th scope="col">Window</th>
           <th scope="col">Status</th>
-          <th class="text-end" scope="col">Actions</th>
+          <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
         </tr>
       </thead>
       <tbody>
@@ -37,15 +39,40 @@
                 <input class="form-check-input" type="checkbox" {% if r.enabled %}checked{% endif %} disabled data-testid="frago-toggle-{{ r.id }}">
               </div>
             </td>
-            <td class="fw-medium">{{ r.title }}</td>
+            <td class="fw-medium">
+              <a href="{% url 'mockup-fragos-view' r.id %}"
+                 class="hg-list-name-link d-inline-block"
+                 data-testid="fragos-row-title-{{ r.id }}">{{ r.title }}</a>
+            </td>
             <td>{{ r.tag }}</td>
             <td>{{ r.effective }}</td>
             <td><span class="badge bg-{{ r.status_class }}">{{ r.status }}</span></td>
-            <td class="text-end">
-              <div class="btn-group btn-group-sm">
-                <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-view' r.id %}"><i class="fa-solid fa-eye"></i></a>
-                <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-edit' r.id %}"><i class="fa-solid fa-pen"></i></a>
-                <a class="btn btn-outline-danger" href="{% url 'mockup-fragos-revoke' r.id %}"><i class="fa-solid fa-ban"></i></a>
+            <td class="text-end ps-3 align-middle">
+              <div class="dropdown d-inline-block">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary border-0 px-2"
+                        id="fragos-row-menu-{{ r.id }}"
+                        data-bs-toggle="dropdown"
+                        data-bs-popper-config='{"strategy":"fixed"}'
+                        aria-expanded="false"
+                        aria-haspopup="true"
+                        aria-label="Actions for {{ r.title }}"
+                        data-testid="fragos-row-actions-{{ r.id }}">
+                  <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="fragos-row-menu-{{ r.id }}">
+                  <li>
+                    <a class="dropdown-item" href="{% url 'mockup-fragos-edit' r.id %}" data-testid="fragos-row-edit-{{ r.id }}">
+                      <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a class="dropdown-item text-danger" href="{% url 'mockup-fragos-revoke' r.id %}" data-testid="fragos-row-revoke-{{ r.id }}">
+                      <i class="fa-solid fa-ban fa-fw me-2" aria-hidden="true"></i>Revoke
+                    </a>
+                  </li>
+                </ul>
               </div>
             </td>
           </tr>

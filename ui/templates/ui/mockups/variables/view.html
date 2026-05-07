@@ -5,15 +5,17 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="VARIABLES-VIEW-1" screen_testid="variables-view-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2 align-items-start">
-  <div>
-    <h1 class="hg-page-title" data-testid="page-title">Variables · {{ project_slug }}</h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1" data-testid="page-title">Variables · {{ project_slug }}</h1>
     <p class="text-muted mb-0 small">Read-only panels (mock charts placeholders).</p>
   </div>
-  <div class="btn-group btn-group-sm" role="group" aria-label="Time range">
-    <button type="button" class="btn btn-outline-secondary">This week</button>
-    <button type="button" class="btn btn-outline-secondary">Previous week</button>
-    <button type="button" class="btn btn-primary">Last 2 weeks</button>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Variables time range">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Chart time range">
+      <button type="button" class="btn btn-outline-secondary">This week</button>
+      <button type="button" class="btn btn-outline-secondary">Previous week</button>
+      <button type="button" class="btn btn-primary">Last 2 weeks</button>
+    </div>
   </div>
 </section>
 

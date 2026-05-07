@@ -5,15 +5,17 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="PROJECTS-EDIT_PROJECT-1" screen_testid="projects-edit-project-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3">
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb small">
-      <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
-      <li class="breadcrumb-item">{{ p.name }}</li>
-      <li class="breadcrumb-item active" aria-current="page">Edit</li>
-    </ol>
-  </nav>
-  <h1 class="hg-page-title" data-testid="page-title">Edit Project</h1>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
+        <li class="breadcrumb-item">{{ p.name }}</li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+      </ol>
+    </nav>
+    <h1 class="hg-page-title mb-0" data-testid="page-title">Edit Project</h1>
+  </div>
 </section>
 
 <div class="row justify-content-center">

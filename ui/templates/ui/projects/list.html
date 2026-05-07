@@ -1,15 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Projects · Huginn{% endblock %}
 {% block content %}
-<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between align-items-start gap-3">
-  <div>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
     <span class="badge bg-secondary rounded-pill me-2" data-testid="projects-count-badge">{{ projects|length }} projects</span>
     <h1 class="hg-page-title d-inline" data-testid="projects-page-title">Projects</h1>
     <p class="text-muted small mb-0">Imported from connected data sources.</p>
   </div>
-  <a class="btn btn-primary btn-sm" href="{% url 'projects-import' %}" data-testid="projects-import-btn">
-    <i class="fa-solid fa-download me-1"></i> Import Projects
-  </a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Project list actions">
+    <a class="btn btn-primary btn-sm" href="{% url 'projects-import' %}" data-testid="projects-import-btn">
+      <i class="fa-solid fa-download me-1"></i> Import Projects
+    </a>
+  </div>
 </section>
 
 {% if imported_banner %}
@@ -68,22 +70,49 @@
               <th scope="col">Playbook</th>
               <th scope="col">Last sync</th>
               <th scope="col">Status</th>
-              <th class="text-end" scope="col">Actions</th>
+              <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+                <span class="visually-hidden">Row actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {% for p in projects %}
             <tr data-testid="project-row-{{ p.pk }}">
-              <td class="fw-medium">{{ p.display_name|default:p.name }}</td>
+              <td>
+                <a href="{% url 'projects-detail' pk=p.pk %}"
+                   class="hg-list-name-link fw-semibold d-inline-block"
+                   data-testid="projects-row-name-{{ p.pk }}">{{ p.display_name|default:p.name }}</a>
+              </td>
               <td>{{ p.datasource.name|default:"—" }}</td>
               <td>{% if p.playbook_slug %}{{ p.playbook_slug }}{% else %}Not assigned{% endif %}</td>
               <td>{% if p.last_sync_at %}{{ p.last_sync_at }}{% else %}Never{% endif %}</td>
               <td><span class="badge text-bg-light border" data-testid="project-sync-state-{{ p.pk }}">{{ p.get_sync_state_display }}</span></td>
-              <td class="text-end btn-group-wrap">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Row actions for {{ p.display_name|default:p.name }}">
-                  <a class="btn btn-outline-secondary" href="{% url 'projects-detail' pk=p.pk %}" title="View" data-testid="projects-row-view-{{ p.pk }}"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="visually-hidden">View</span></a>
-                  <a class="btn btn-outline-secondary" href="{% url 'projects-edit' pk=p.pk %}" title="Edit" data-testid="projects-row-edit-{{ p.pk }}"><i class="fa-solid fa-pen" aria-hidden="true"></i><span class="visually-hidden">Edit</span></a>
-                  <a class="btn btn-outline-warning" href="{% url 'projects-archive' pk=p.pk %}" title="Archive" data-testid="projects-row-archive-{{ p.pk }}"><i class="fa-solid fa-box-archive" aria-hidden="true"></i><span class="visually-hidden">Archive</span></a>
+              <td class="text-end ps-3 align-middle">
+                <div class="dropdown d-inline-block">
+                  <button type="button"
+                          class="btn btn-sm btn-outline-secondary border-0 px-2"
+                          id="projects-row-menu-{{ p.pk }}"
+                          data-bs-toggle="dropdown"
+                          data-bs-popper-config='{"strategy":"fixed"}'
+                          aria-expanded="false"
+                          aria-haspopup="true"
+                          aria-label="Actions for {{ p.display_name|default:p.name }}"
+                          data-testid="projects-row-actions-{{ p.pk }}">
+                    <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="projects-row-menu-{{ p.pk }}">
+                    <li>
+                      <a class="dropdown-item" href="{% url 'projects-edit' pk=p.pk %}" data-testid="projects-row-edit-{{ p.pk }}">
+                        <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit project
+                      </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                      <a class="dropdown-item text-warning" href="{% url 'projects-archive' pk=p.pk %}" data-testid="projects-row-archive-{{ p.pk }}">
+                        <i class="fa-solid fa-box-archive fa-fw me-2" aria-hidden="true"></i>Archive
+                      </a>
+                    </li>
+                  </ul>
                 </div>
               </td>
             </tr>

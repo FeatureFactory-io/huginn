@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — initial capture, palette approved.
+> Last updated: May 2026 — LIST+FIND row pattern (name + kebab); Playbook VIEW tabs; detail header toolbar (§3.4).
 
 ---
 
@@ -193,7 +193,7 @@ Every page follows this structure:
 
 ```
 <navbar .hg-navbar>        ← fixed top, primary + gold accent border-bottom
-<div .hg-page-header>      ← white bar: page title + subtitle + top actions
+<div .hg-page-header>      ← white bar: page title + subtitle + top actions (placement: §3.4)
 <main .container-fluid>    ← body bg (#f5f7fa), px-4 py-3
   [page-specific content]
 </main>
@@ -228,6 +228,21 @@ Every page follows this structure:
 .hg-navbar .nav-link:hover  { color: #fff; background: rgba(255,255,255,0.07); }
 .hg-navbar .nav-link.active { color: #fff; background: rgba(255,255,255,0.13); }
 ```
+
+### 3.4 Detail page header — primary actions (toolbar placement)
+
+On **VIEW**, **LIST+FIND** (when a single primary CTA sits beside the title), and analogous screens, the row inside **`hg-page-header`** is a flex header:
+
+| Rule | Detail |
+|---|---|
+| **Horizontal** | Title and meta on the **left**; action buttons grouped on the **right** (`justify-content-between`). |
+| **Vertical** | The title block and the button group share **vertical center alignment** (`align-items-center` on the header row). Do **not** top-align the toolbar (`align-items-start`) unless there is an explicit layout exception. |
+| **Toolbar semantics** | Wrap actions in `role="toolbar"` with a specific `aria-label` (e.g. `"Project actions"`, `"Playbook actions"`). |
+| **Responsive** | Use `flex-wrap` + `gap-3` so the toolbar wraps under the title on narrow viewports while preserving reading order. |
+
+**Canonical reference (production):** `ui/templates/ui/projects/detail.html` — Project VIEW header.
+
+Apply the same pattern to mockups and new surfaces (e.g. Playbook VIEW, Playbooks list header with **New Playbook**) so detail-adjacent headers stay visually consistent with Projects.
 
 ---
 
@@ -424,36 +439,54 @@ CSS:
 }
 ```
 
-#### LIST+FIND Table
+#### LIST+FIND Table — primary drill-down + kebab menu
+
+Do **not** use a permanent strip of icon-only buttons in the Actions column (hard to scan on mobile; visually noisy). Instead:
+
+| Rule | Detail |
+|---|---|
+| **Primary VIEW** | The row’s **canonical entity label** (Name, Title, Headline, Jira key, …) is a **text link** to the VIEW/detail route. Use class **`hg-list-name-link`** (see `static/css/huginn.css`). |
+| **Secondary actions** | Place Edit, Clone, Import, Archive, Disconnect, etc. in a **single kebab control** (`fa-ellipsis-vertical`) opening a **Bootstrap dropdown**. |
+| **Actions column header** | Omit a visible **Actions** label; use a **narrow column** with `<span class="visually-hidden">Row actions</span>` so screen readers still get a header. |
+| **Dropdown clipping** | Inside `.table-responsive`, set **`data-bs-popper-config='{"strategy":"fixed"}'`** on the dropdown toggle so menus are not clipped by overflow. |
+| **Destructive actions** | Put **Disconnect / Delete / Revoke** after a **divider**, with **`text-danger`** on the menu item. |
+| **`role="toolbar"`** | The kebab column is not a full toolbar (single control); the toggle uses **`aria-label="Actions for {entity}"`**. |
 
 ```html
-<div class="table-responsive">
-  <table class="table table-hover align-middle" data-testid="{entity}-table">
+<div class="table-responsive" data-testid="{entity}-table-wrap">
+  <table class="table table-hover align-middle mb-0" data-testid="{entity}-table">
     <thead class="table-light">
       <tr>
-        <th>{Col1}</th>
-        <th>{Col2}</th>
-        <th class="text-end">Actions</th>
+        <th scope="col">{Col1}</th>
+        <th scope="col">{Col2}</th>
+        <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+          <span class="visually-hidden">Row actions</span>
+        </th>
       </tr>
     </thead>
     <tbody>
-      <tr data-testid="{entity}-row">
-        <td>{value}</td>
-        <td>{value}</td>
-        <td class="text-end">
-          <div class="btn-group btn-group-sm" role="group">
-            <button class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="View"
-                    data-testid="view-{entity}-btn">
-              <i class="fa-solid fa-eye"></i>
+      <tr data-testid="{entity}-row-{{ id }}">
+        <td>{…}</td>
+        <td>
+          <a href="{detail-url}" class="hg-list-name-link fw-semibold d-inline-block"
+             data-testid="{entity}-row-name-{{ id }}">{{ display_name }}</a>
+        </td>
+        <td class="text-end ps-3 align-middle">
+          <div class="dropdown d-inline-block">
+            <button type="button" class="btn btn-sm btn-outline-secondary border-0 px-2"
+                    id="{entity}-row-menu-{{ id }}"
+                    data-bs-toggle="dropdown"
+                    data-bs-popper-config='{"strategy":"fixed"}'
+                    aria-expanded="false" aria-haspopup="true"
+                    aria-label="Actions for {{ display_name }}"
+                    data-testid="{entity}-row-actions-{{ id }}">
+              <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
             </button>
-            <button class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Edit"
-                    data-testid="edit-{entity}-btn">
-              <i class="fa-solid fa-pen"></i>
-            </button>
-            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Delete"
-                    data-testid="delete-{entity}-btn">
-              <i class="fa-solid fa-trash"></i>
-            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="{entity}-row-menu-{{ id }}">
+              <li><a class="dropdown-item" href="{edit-url}" data-testid="{entity}-action-edit-{{ id }}">…</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{delete-url}" data-testid="{entity}-action-delete-{{ id }}">…</a></li>
+            </ul>
           </div>
         </td>
       </tr>
@@ -461,6 +494,21 @@ CSS:
   </table>
 </div>
 ```
+
+**Exceptions:**
+
+- **Dense authoring grids** (e.g. Variables / Tables rows inside CREATE/EDIT forms) may keep **inline duplicate/remove** icon pairs — that is not LIST+FIND.
+- Choose whichever column is the stable human identifier per entity (Playbook **Name**, FRAGO **Title**, SitRep **Headline**, …).
+
+#### Detail VIEW — primary tabs (Playbook, Project, …)
+
+For entity VIEW screens with multiple large regions, use the **same card + tabs pattern** as Project detail (`ui/templates/ui/projects/detail.html`):
+
+- Wrapper: **`card … hg-detail-tabs-card`**
+- Tabs: **`ul.nav.nav-tabs.card-header-tabs`** with **`role="tablist"`**; each tab is an **`a.nav-link`** (full-page navigation via query string is fine for MVP).
+- Panels: **`div.card-body`** with **`role="tabpanel"`** / **`aria-labelledby`** matching tab ids.
+
+Example Playbook VIEW: tabs **Playbook** (current snapshot: Metadata, Workflow, Variables, Tables, Used by) and **Versions** (immutable version log). Top toolbar stays **above** the tab card (Validate, Clone, Edit).
 
 #### Empty State
 
@@ -512,20 +560,22 @@ CSS:
 
 #### Page Header
 
+Use **`rounded-2`** on the header panel where the shell matches Projects / Playbooks (white bar inside `main`). Primary actions follow **§3.4** (right-aligned group, **vertically centered** with the title block).
+
 ```html
-<div class="hg-page-header">
-  <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <h1 class="hg-page-title">{Page Title} <span class="badge bg-secondary">{count}</span></h1>
-        <p class="hg-page-meta mb-0">{subtitle / last refresh}</p>
-      </div>
-      <div class="d-flex gap-2">
-        {top action buttons}
-      </div>
-    </div>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1">{Page Title}</h1>
+    <p class="text-muted small mb-0">{subtitle · meta}</p>
   </div>
-</div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0"
+       role="toolbar" aria-label="{Entity} actions">
+    <!-- Outline / secondary actions first; primary CTA last when matching Project VIEW -->
+    <button type="button" class="btn btn-outline-primary btn-sm">…</button>
+    <a class="btn btn-outline-secondary btn-sm" href="#">…</a>
+    <a class="btn btn-primary btn-sm" href="#">…</a>
+  </div>
+</section>
 ```
 
 ```css

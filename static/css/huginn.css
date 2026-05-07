@@ -486,3 +486,74 @@ main.hg-main {
     padding: 0.5rem;
   }
 }
+
+/* Playbook Workflow — server-rendered Markdown (mock + future read panels) */
+.hg-markdown-workflow {
+  color: var(--hg-ink);
+}
+
+.hg-markdown-workflow > :first-child {
+  margin-top: 0;
+}
+
+.hg-markdown-workflow > :last-child {
+  margin-bottom: 0;
+}
+
+.hg-markdown-workflow h1,
+.hg-markdown-workflow h2,
+.hg-markdown-workflow h3 {
+  color: var(--hg-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1rem 0 0.35rem;
+}
+
+.hg-markdown-workflow h1:first-child,
+.hg-markdown-workflow h2:first-child,
+.hg-markdown-workflow h3:first-child {
+  margin-top: 0;
+}
+
+.hg-markdown-workflow p {
+  margin: 0 0 0.5rem;
+}
+
+.hg-markdown-workflow ul,
+.hg-markdown-workflow ol {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+.hg-markdown-workflow code {
+  font-size: 0.9em;
+}
+
+/* LIST+FIND — entity name as primary drill-down to VIEW (see mockups Data Sources list) */
+.hg-list-name-link {
+  border-radius: 0.25rem;
+  color: var(--hg-ink);
+  text-decoration: none;
+}
+
+.hg-list-name-link:hover,
+.hg-list-name-link:focus-visible {
+  color: var(--hg-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* Mimir logo on Import-from-Mimir toolbar buttons (mock) */
+.hg-mimir-btn-icon {
+  height: 1rem;
+  width: auto;
+  max-width: 1.35rem;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Disabled mock CTAs: keep full opacity so they read clearly on pale card headers */
+.btn.hg-btn-disabled-visible:disabled {
+  opacity: 1;
+}

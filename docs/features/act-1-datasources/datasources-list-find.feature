@@ -23,7 +23,8 @@ Feature: DATASOURCES-LIST+FIND-1 Browse and filter Data Sources
       | Type         | GitLab                     |
       | Name         | company-gitlab             |
       | Status       | Connected                  |
-    And the row has columns: Type, Name, Base URL, Token expires, Status, Last activity, Actions
+    And the row has columns: Type, Name, Base URL, Token expires, Status, Last activity
+    And each row exposes a single overflow menu for secondary actions (no visible "Actions" column header)
 
   Scenario: DATASOURCES-LIST+FIND-03 Status badge shows Connected (green) for healthy source
     Given a DataSource "company-gitlab" with status Connected
@@ -47,19 +48,19 @@ Feature: DATASOURCES-LIST+FIND-1 Browse and filter Data Sources
   # Navigation — row actions
   # ---------------------------------------------------------------------------
 
-  Scenario: DATASOURCES-LIST+FIND-07 View action navigates to DataSource detail
+  Scenario: DATASOURCES-LIST+FIND-07 Clicking the DataSource name navigates to detail (VIEW)
     Given a DataSource "company-gitlab" exists
-    When I click the "View" row action for "company-gitlab"
+    When I click the Name link "company-gitlab"
     Then I am on the screen "DATASOURCES-VIEW_DATASOURCE-1" for "company-gitlab"
 
   Scenario: DATASOURCES-LIST+FIND-08 Edit action navigates to edit form
     Given a DataSource "company-gitlab" exists
-    When I click the "Edit" row action for "company-gitlab"
+    When I choose "Edit connection" from the row overflow menu for "company-gitlab"
     Then I am on the screen "DATASOURCES-EDIT_DATASOURCE-1" for "company-gitlab"
 
-  Scenario: DATASOURCES-LIST+FIND-09 Delete action opens confirmation modal
+  Scenario: DATASOURCES-LIST+FIND-09 Disconnect action opens confirmation modal
     Given a DataSource "company-gitlab" exists
-    When I click the "Delete" row action for "company-gitlab"
+    When I choose "Disconnect" from the row overflow menu for "company-gitlab"
     Then the screen "DATASOURCES-DELETE_DATASOURCE-1" confirmation modal is open
 
   Scenario: DATASOURCES-LIST+FIND-10 Import Projects action is enabled for Connected source

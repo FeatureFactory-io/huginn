@@ -1,16 +1,52 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}Delete {{ pb.name }} · Playbook{% endblock %}
+{% block title %}Delete {{ pb.name }} · Playbooks{% endblock %}
+
+{% block body_class %}bg-secondary bg-opacity-10{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="PLAYBOOKS-DELETE_PLAYBOOK-1" screen_testid="playbooks-delete-playbook-loaded" %}
 
-<div class="modal fade show d-block py-5" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
-  <div class="modal-content">
-    <div class="modal-header border-0"><h1 class="modal-title fs-5">Delete '{{ pb.name }}'?</h1></div>
-    <div class="modal-body"><p>{{ project_count }} project(s) referencing this playbook — delete unavailable in mock unless zero.</p></div>
-    <div class="modal-footer border-0"><button onclick="history.back()" class="btn btn-outline-secondary">Cancel</button>
-      {% if project_count == 0 %}<a class="btn btn-danger" href="{% url 'mockup-playbooks-list' %}">Delete</a>{% else %}<button class="btn btn-danger disabled" disabled>Delete</button>{% endif %}
+<div class="modal fade show d-block" id="playbook-delete-modal" tabindex="-1"
+     role="dialog" aria-modal="true"
+     aria-labelledby="playbook-delete-modal-label"
+     data-testid="playbooks-delete-modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header border-0 pb-0">
+        <h1 class="modal-title fs-5" id="playbook-delete-modal-label">Delete '{{ pb.name }}'?</h1>
+        <a href="{% url 'mockup-playbooks-list' %}" class="btn-close" aria-label="Close and return to list"></a>
+      </div>
+      <div class="modal-body pt-2">
+        {% if delete_disabled %}
+          <p class="mb-2">Used by <strong>{{ project_count }}</strong> project(s). Reassign or archive those projects first.</p>
+          <ul class="list-unstyled small mb-0" data-testid="playbooks-delete-used-projects">
+            {% for p in used_projects %}
+              <li class="mb-1">
+                <a href="{% url 'mockup-projects-view' p.id %}">{{ p.source_path }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="mb-0">Used by <strong>{{ project_count }}</strong> project(s). This action cannot be undone.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <a href="{% url 'mockup-playbooks-list' %}" class="btn btn-outline-secondary" data-testid="playbooks-delete-cancel-btn">
+          Cancel
+        </a>
+        {% if delete_disabled %}
+          <button type="button" class="btn btn-danger" disabled aria-disabled="true"
+                  data-bs-toggle="tooltip" title="Used by {{ project_count }} project(s)"
+                  data-testid="playbooks-delete-confirm-disabled">
+            <i class="fa-solid fa-trash me-1"></i> Delete
+          </button>
+        {% else %}
+          <a href="{% url 'mockup-playbooks-list' %}" class="btn btn-danger" data-testid="playbooks-delete-confirm-btn">
+            <i class="fa-solid fa-trash me-1"></i> Delete
+          </a>
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>

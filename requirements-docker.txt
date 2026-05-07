@@ -18,5 +18,6 @@ jira>=3.8
 
 django-htmx>=1.21
 whitenoise>=6.8
+markdown>=3.6
 
 tenacity>=9.0

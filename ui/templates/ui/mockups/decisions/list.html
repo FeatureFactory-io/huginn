@@ -5,9 +5,13 @@
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="DECISIONS-LIST+FIND-1" screen_testid="decisions-list-find-loaded" %}
 
-<section class="hg-page-header rounded-2 mb-3 d-flex justify-content-between flex-wrap gap-2">
-  <h1 class="hg-page-title" data-testid="page-title">Decisions · atlas-backend</h1>
-  <button class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-sliders"></i></button>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-0" data-testid="page-title">Decisions · atlas-backend</h1>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Decisions list actions">
+    <button type="button" class="btn btn-outline-secondary btn-sm" aria-label="Filter decisions"><i class="fa-solid fa-sliders"></i></button>
+  </div>
 </section>
 
 <div class="card border-0 shadow-sm rounded-3">

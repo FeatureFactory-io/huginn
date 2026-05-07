@@ -20,6 +20,7 @@ jira>=3.8
 # UI
 django-htmx>=1.21
 whitenoise>=6.8
+markdown>=3.6
 
 # Testing
 pytest>=8.0

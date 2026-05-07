@@ -7,8 +7,10 @@
 
 <nav aria-label="breadcrumb"><ol class="breadcrumb small mb-3"><li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li><li class="breadcrumb-item">{{ project_slug }}</li><li class="breadcrumb-item active">SitReps</li></ol></nav>
 
-<section class="hg-page-header rounded-2 mb-4">
-  <h1 class="hg-page-title" data-testid="page-title">SitReps · {{ project_slug }}</h1>
+<section class="hg-page-header rounded-2 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title" data-testid="page-title">SitReps · {{ project_slug }}</h1>
+  </div>
 </section>
 
 <div class="card border-danger mb-4">
@@ -35,7 +37,7 @@
     <table class="table table-hover mb-0 align-middle" data-testid="sitrep-history-table">
       <thead class="table-light">
         <tr>
-          <th>Generated</th><th>Status</th><th>Headline</th><th class="text-center">Proposed</th><th class="text-center">Accepted</th><th>Playbook</th><th class="text-end">Actions</th>
+          <th>Generated</th><th>Status</th><th>Headline</th><th class="text-center">Proposed</th><th class="text-center">Accepted</th><th>Playbook</th>
         </tr>
       </thead>
       <tbody>
@@ -43,10 +45,13 @@
           <tr data-testid="sitrep-row-{{ r.id }}">
             <td>{{ r.generated_at }}</td>
             <td><span class="badge text-uppercase {% if r.status == 'red' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.status }}</span></td>
-            <td>{{ r.headline }}</td>
+            <td>
+              <a href="{% url 'mockup-sitrep-view' r.id %}"
+                 class="hg-list-name-link fw-medium d-inline-block"
+                 data-testid="sitrep-row-headline-{{ r.id }}">{{ r.headline }}</a>
+            </td>
             <td class="text-center">{{ r.decisions_proposed }}</td><td class="text-center">{{ r.decisions_accepted }}</td>
             <td>v{{ r.pb_version }}</td>
-            <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="{% url 'mockup-sitrep-view' r.id %}">View</a></td>
           </tr>
         {% endfor %}
       </tbody>

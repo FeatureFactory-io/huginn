@@ -1,18 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Data Sources · Huginn{% endblock %}
 {% block content %}
-<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap justify-content-between align-items-start gap-2">
-  <div>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
     <span class="badge bg-secondary rounded-pill me-2" data-testid="datasources-count-badge">Data Sources ({{ datasources|length }})</span>
     <h1 class="hg-page-title d-inline" data-testid="page-title">Data Sources</h1>
     <p class="text-muted small mb-0">Manage GitLab connections (Jira coming soon).</p>
   </div>
-  <a class="btn btn-primary btn-sm"
-     href="{% url 'datasources-create' %}"
-     data-bs-toggle="tooltip" title="Add a GitLab PAT connection"
-     data-testid="add-datasource-btn">
-    <i class="fa-solid fa-plus me-1"></i> Add Data Source
-  </a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Data source list actions">
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'datasources-create' %}"
+       data-bs-toggle="tooltip" title="Add a GitLab PAT connection"
+       data-testid="add-datasource-btn">
+      <i class="fa-solid fa-plus me-1"></i> Add Data Source
+    </a>
+  </div>
 </section>
 
 <form class="row g-3 mb-3" method="get" data-testid="datasources-filter-form">
@@ -50,14 +52,20 @@
               <th scope="col">Token expires</th>
               <th scope="col">Status</th>
               <th scope="col">Last activity</th>
-              <th class="text-end" scope="col">Actions</th>
+              <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+                <span class="visually-hidden">Row actions</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {% for ds in datasources %}
               <tr data-testid="datasource-row-{{ ds.pk }}">
                 <td><span class="badge bg-light text-dark border">{{ ds.get_datasource_type_display }}</span></td>
-                <td class="fw-medium">{{ ds.name }}</td>
+                <td>
+                  <a href="{% url 'datasource-detail' pk=ds.pk %}"
+                     class="hg-list-name-link fw-semibold d-inline-block"
+                     data-testid="datasource-row-name-{{ ds.pk }}">{{ ds.name }}</a>
+                </td>
                 <td class="small text-break">{{ ds.base_url }}</td>
                 <td class="small">
                   {% if ds.token_expires_at %}
@@ -84,26 +92,43 @@
                 <td class="small text-muted">
                   {% if ds.last_activity_at %}{{ ds.last_activity_at|date:"Y-m-d H:i" }}{% else %}—{% endif %}
                 </td>
-                <td class="text-end">
-                  <div class="btn-group btn-group-sm">
-                    <a class="btn btn-outline-secondary" href="{% url 'datasource-detail' pk=ds.pk %}"
-                       data-bs-toggle="tooltip" title="View" data-testid="datasource-action-view-{{ ds.pk }}">
-                      <i class="fa-solid fa-eye"></i>
-                    </a>
-                    <a class="btn btn-outline-secondary" href="{% url 'datasource-edit' pk=ds.pk %}"
-                       data-bs-toggle="tooltip" title="Edit" data-testid="datasource-action-edit-{{ ds.pk }}">
-                      <i class="fa-solid fa-pen"></i>
-                    </a>
-                    <a class="btn btn-outline-secondary" href="{% url 'projects-import' %}?datasource={{ ds.pk }}"
-                       {% if ds.computed_status != "connected" %}tabindex="-1" aria-disabled="true"{% endif %}
-                       data-bs-toggle="tooltip" title="Import projects"
-                       data-testid="datasource-action-import-{{ ds.pk }}">
-                      <i class="fa-solid fa-download"></i>
-                    </a>
-                    <a class="btn btn-outline-danger" href="{% url 'datasource-delete' pk=ds.pk %}"
-                       data-bs-toggle="tooltip" title="Disconnect" data-testid="datasource-action-delete-{{ ds.pk }}">
-                      <i class="fa-solid fa-plug-circle-xmark"></i>
-                    </a>
+                <td class="text-end ps-3 align-middle">
+                  <div class="dropdown d-inline-block">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary border-0 px-2"
+                            id="datasource-row-menu-{{ ds.pk }}"
+                            data-bs-toggle="dropdown"
+                            data-bs-popper-config='{"strategy":"fixed"}'
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-label="Actions for {{ ds.name }}"
+                            data-testid="datasource-row-actions-{{ ds.pk }}">
+                      <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="datasource-row-menu-{{ ds.pk }}">
+                      <li>
+                        <a class="dropdown-item" href="{% url 'datasource-edit' pk=ds.pk %}" data-testid="datasource-action-edit-{{ ds.pk }}">
+                          <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit connection
+                        </a>
+                      </li>
+                      <li>
+                        {% if ds.computed_status == "connected" %}
+                          <a class="dropdown-item" href="{% url 'projects-import' %}?datasource={{ ds.pk }}" data-testid="datasource-action-import-{{ ds.pk }}">
+                            <i class="fa-solid fa-download fa-fw me-2 text-muted" aria-hidden="true"></i>Import projects
+                          </a>
+                        {% else %}
+                          <span class="dropdown-item disabled small text-muted" aria-disabled="true" data-testid="datasource-action-import-{{ ds.pk }}">
+                            <i class="fa-solid fa-download fa-fw me-2" aria-hidden="true"></i>Import projects (connect first)
+                          </span>
+                        {% endif %}
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        <a class="dropdown-item text-danger" href="{% url 'datasource-delete' pk=ds.pk %}" data-testid="datasource-action-delete-{{ ds.pk }}">
+                          <i class="fa-solid fa-plug-circle-xmark fa-fw me-2" aria-hidden="true"></i>Disconnect
+                        </a>
+                      </li>
+                    </ul>
                   </div>
                 </td>
               </tr>

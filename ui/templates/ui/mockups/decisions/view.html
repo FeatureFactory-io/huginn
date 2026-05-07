@@ -7,10 +7,14 @@
 
 <nav aria-label="breadcrumb"><ol class="breadcrumb small"><li class="breadcrumb-item"><a href="{% url 'mockup-decisions-list' %}">Decisions</a></li><li class="breadcrumb-item active">{{ d.title }}</li></ol></nav>
 
-<section class="hg-page-header rounded-2 mb-3">
-  <h1 class="hg-page-title" data-testid="page-title">{{ d.title }}</h1>
-  <span class="badge bg-primary">{{ proposal_status }}</span>
-  <small class="ms-3 text-muted">Source SitRep {{ d.sitrep_ref }}</small>
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1" data-testid="page-title">{{ d.title }}</h1>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="badge bg-primary">{{ proposal_status }}</span>
+      <small class="text-muted">Source SitRep {{ d.sitrep_ref }}</small>
+    </div>
+  </div>
 </section>
 
 <div class="vstack gap-4">

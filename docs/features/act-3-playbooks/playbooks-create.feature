@@ -42,9 +42,11 @@ Feature: PLAYBOOKS-CREATE_PLAYBOOK-1 Author a new Playbook
   # Region 2 — Workflow markdown
   # ---------------------------------------------------------------------------
 
-  Scenario: PLAYBOOKS-CREATE_PLAYBOOK-06 Workflow editor shows live side-by-side preview
-    When I type "## Roles\nDonland — commander; Stark — engineering lead" into the Workflow editor
-    Then the rendered preview shows a heading "Roles" followed by the names
+  Scenario: PLAYBOOKS-CREATE_PLAYBOOK-06 Workflow preview renders Markdown as HTML beside the source editor
+    When I open New Playbook with Workflow pre-filled from the seed Playbook (clone-from-seed)
+    Then the Workflow preview shows a rendered heading "Roles"
+    And the Workflow preview shows a rendered heading "OO / DA"
+    And I do NOT see the literal characters "##" in the Workflow preview panel
 
   Scenario: PLAYBOOKS-CREATE_PLAYBOOK-07 Workflow Import-from-Mimir CTA is disabled in MVP
     Then the "Import from Mimir" button is disabled

@@ -93,7 +93,7 @@ The one-time setup: connect a data source, import the projects you care about, w
 #### Screen: AUTH-LOGIN-1
 
 **Layout**:
-- **Header**: Huginn wordmark + tagline "Human-AI OODA for PM"
+- **Header**: Huginn wordmark + tagline "Human-AI Command Composite"
 - **Form** (centered, single column):
   - Email (`data-testid="login-email"`)
   - Password (`data-testid="login-password"`)
@@ -194,11 +194,11 @@ This is the **Huginn-side** Project list (different from the Projects Dashboard 
   - [+ Import Projects] button (primary) → `PROJECTS-IMPORT-1`
 - **Filter**: DataSource | Status (Active / Archived / Orphaned) | Playbook
 - **Table** with columns:
-  - Name | DataSource | Playbook (name + version) | Last sync | Status | Actions
-- **Row Actions**:
-  - [View] → `PROJECTS-VIEW_PROJECT-1`
-  - [Edit] → `PROJECTS-EDIT_PROJECT-1` (assign Playbook, change pin, etc.)
-  - [Archive] → `PROJECTS-ARCHIVE_PROJECT-1`
+  - Name | DataSource | Playbook (name + version) | Last sync | Status
+  - No visible **Actions** column; each row ends with a single overflow menu (⋯) for secondary commands (see `docs/ux/IA_guidelines.md` §5.2 — LIST+FIND Table).
+- **Row navigation**:
+  - **Name** links to `PROJECTS-VIEW_PROJECT-1`
+  - Overflow menu: **Edit project** → `PROJECTS-EDIT_PROJECT-1` | **Archive** → `PROJECTS-ARCHIVE_PROJECT-1`
 - **Empty State**:
   - "No projects imported yet"
   - "Import projects from a connected data source."
@@ -288,15 +288,14 @@ Donland clicks **Playbooks** in the main nav.
 
 **Layout**:
 - **Header**: "Playbooks" with count badge
-- **Top Actions**: [+ New Playbook] (primary)
+- **Top Actions**: **[Import from Mimir]** (secondary outline, Mimir icon, disabled — MVP stub; IA toolbar) | **[+ New Playbook]** (primary → CREATE)
 - **Filter**: Author | Used by Project (yes / no) | Updated within
 - **Table**:
-  - Name | Latest version | Used by N projects | Updated | Actions
-- **Row Actions**:
-  - [View] → `PLAYBOOKS-VIEW_PLAYBOOK-1`
-  - [Edit] → `PLAYBOOKS-EDIT_PLAYBOOK-1` (creates a new version on save)
-  - [Clone] → opens CREATE pre-filled with current content as starting draft
-  - [Delete] → `PLAYBOOKS-DELETE_PLAYBOOK-1` (only if used by 0 Projects)
+  - Name | Author | Latest version | Used by N projects | Updated
+  - No visible **Actions** column; each row ends with a single overflow menu (⋯) for secondary commands (see `docs/ux/IA_guidelines.md` §5.2 — LIST+FIND Table).
+- **Row navigation**:
+  - **Name** links to `PLAYBOOKS-VIEW_PLAYBOOK-1`
+  - Overflow menu: **Edit** → `PLAYBOOKS-EDIT_PLAYBOOK-1` (creates a new version on save) | **Clone to new Playbook** → `PLAYBOOKS-CREATE_PLAYBOOK-1` pre-filled | **Delete** → `PLAYBOOKS-DELETE_PLAYBOOK-1` when unused (disabled with reason when any Project uses this Playbook)
 - **Empty State**: "No Playbooks yet. Write one to define expectations for your Projects."
 
 #### Screen: PLAYBOOKS-CREATE_PLAYBOOK-1
@@ -341,19 +340,15 @@ Donland clicks **Playbooks** in the main nav.
 
 #### Screen: PLAYBOOKS-VIEW_PLAYBOOK-1
 
-**Layout** (two-column):
-- **Left — current version content** (read-only):
-  - **Metadata**: Name, Description
-  - **Workflow**: rendered markdown
-  - **Variables panel** (below the Workflow): the Variables table in read-only form, columns Name | Abbrev | Calculating | Interpreting | Hover | Dimensions. Empty-state if the Playbook has no Variables: "This Playbook has no Variables yet — only Vitals and any Tables will render on assigned Projects."
-  - **Tables panel** (below the Variables): the Tables list in read-only form, columns Entity | Slicer | Dimensions. Empty-state: "This Playbook pins no Tables — only Vitals (plus any Variable-derived tabs) will render on assigned Projects." If any row references an entity no longer in the canonical model or a slicer no longer registered for that entity, the offending row is rendered with an inline warning *"Entity/Slicer no longer in catalog — fix in Edit"*.
-- **Right — Versions panel**:
-  - List of versions: vN | created on | author | change summary
-  - Click version to view that version's content (left panel updates — Workflow, Variables, and Tables all reflect the selected version)
-  - [Compare with current] (diff view — Workflow, Variables, and Tables)
-- **Used by**: list of Projects assigned to this Playbook (each linked to `PROJECTS-VIEW_PROJECT-1`); for each Project, indicator whether it auto-tracks latest or pins a specific version
-- **Validate Playbook**: top-of-panel CTA `[Validate Playbook]` runs a scan across **every version** of this Playbook and reports any PlaybookTable rows whose `entity` or `(entity, slicer)` no longer match the current in-code catalog. Results render in a side panel grouped by version: each finding shows `vN → row #M → Entity 'X' / Slicer 'Y'` with a `[Fix in Edit]` deep-link to `PLAYBOOKS-EDIT_PLAYBOOK-1` opened on the latest version (the canonical place to remediate). Empty result: *"No catalog drift detected across N versions."* The CTA is purely diagnostic — it never modifies versions.
-- **Top Actions**: [Edit] (creates new version) | [Clone]
+**Layout** (matches Project detail tab pattern — `hg-detail-tabs-card` + `nav-tabs card-header-tabs`):
+
+- **Tabs**
+  - **Playbook** — read-only snapshot for the version in focus (default: **latest**): Metadata, Workflow (rendered markdown), Variables table, Tables panel, **Used by** (Projects + tracking indicator with links to `PROJECTS-VIEW_PROJECT-1`).
+  - **Versions** — immutable version log: vN, date, author, change summary (newest first); **[Compare with current]** when wired (diff across Workflow, Variables, Tables). Selecting a prior version to hydrate the Playbook tab is product wiring (same intent as before; navigation may use query params or in-page state).
+
+- **Validate Playbook**: **`[Validate Playbook]`** lives in the **page header toolbar** (with Edit, Clone). It runs a catalog drift scan across **every saved version** and expands/collapses a results panel below the header (above the tab card). Empty result: *"No catalog drift detected across N versions."* Findings deep-link **[Fix in Edit]** to `PLAYBOOKS-EDIT_PLAYBOOK-1` on the latest version. Diagnostic only — never modifies versions.
+
+- **Top Actions** (header toolbar): **[Validate Playbook]** | **[Clone]** | **[Edit]**
 
 #### Screen: PLAYBOOKS-EDIT_PLAYBOOK-1
 
