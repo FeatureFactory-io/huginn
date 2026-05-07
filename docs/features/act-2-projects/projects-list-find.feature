@@ -87,9 +87,9 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
     Then "lost-service" is shown in the list
 
   Scenario: PROJECTS-LIST+FIND-14 Filter by Playbook shows only projects assigned that Playbook
-    Given some projects have Playbook "Standard Engineering" assigned
-    When I filter by Playbook "Standard Engineering"
-    Then only projects using "Standard Engineering" are shown
+    Given some projects have Playbook "FeatureFactory Playbook" assigned
+    When I filter by Playbook "FeatureFactory Playbook"
+    Then only projects using "FeatureFactory Playbook" are shown
 
   # ---------------------------------------------------------------------------
   # Empty state

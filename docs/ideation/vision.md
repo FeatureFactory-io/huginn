@@ -76,8 +76,8 @@ The side cycling faster wins. The composite  multiplies your tempo giving you an
 
 **Implications for the product** (to carry into ESM):
 - Primary landing surface is the **Projects Dashboard** (color-coded health), not a generic dashboard or a single-Project SitRep.
-- **Playbook** is the user-authored guidance for what good looks like. Free-form markdown in MVP. Versioned. Shared: one Playbook can be assigned to many Projects. Each Project pins a (Playbook, version), auto-tracking the latest version by default.
-- **FRAGO** is a per-Project markdown override of Playbook expectations with optional scope (day-of-week, date range, Sprint/Milestone) and an optional Variable-section tag. Not a watcher with triggers — it modifies how SitReps are produced.
+- **Playbook** is the user-authored guidance for what good looks like. Composed of metadata + a Workflow markdown body + a structured list of PlaybookVariables. Versioned. Shared: one Playbook can be assigned to many Projects. Each Project pins a (Playbook, version), auto-tracking the latest version by default.
+- **FRAGO** is a per-Project markdown override of Playbook expectations with optional scope (day-of-week, date range, Sprint/Milestone) and an optional `PlaybookVariable` tag. May retune a variable's `interpreting` for a window; cannot introduce new variables. Not a watcher with triggers — it modifies how SitReps are produced.
 - **Decision** has a 3-branch acceptance flow (FRAGO / Situational Awareness extension / `HUGINN`-tagged Jira issue), mutually exclusive per Decision.
 - **Action Stations** is a read-only mirror of `HUGINN`-tagged Jira issues. The only Huginn → Jira write is the issue creation from Decision Branch C. No annotation, no comment write-back.
 - **Jira / GitLab / etc.** are systems of record for raw work data. Huginn ingests via DataSources; the only thing it writes back to Jira is `HUGINN`-tagged issues from accepted Decisions.
@@ -112,12 +112,16 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
-| **SitRep** | Huginn | Generated per Project after each successful sync. Snapshot of Master Variable values + situation assessment narrative + proposed Decisions, evaluated against the Project's pinned Playbook version with active FRAGOs applied. Read-only once finalized. |
+| **SitRep** | Huginn | Generated per Project after a successful sync (subject to SitRep cadence, which may be coarser than sync cadence). Carries situation assessment narrative + proposed Decisions + an embedded `variables_snapshot` JSON of shape `[{name, abbrev, hover, value, color}, …]` — the canonical record of what Gjallarhorn saw at time T against PlaybookVersion V with active FRAGOs applied. The same values are written denormalized to `VariableDatapoint` rows for trend queries. Read-only once finalized. |
 | **Decision** | Huginn | DA-loop primitive. Proposed by Gjallarhorn in each SitRep, accepted/rejected by Commander with rationale. **Accepting branches into exactly one of three mutually-exclusive outcomes**: (a) create a new FRAGO, (b) append an entry to the Project's Situational Awareness, or (c) create a `HUGINN`-tagged Jira issue via the Jira API. Full history is the DA-loop log. |
-| **FRAGO** | Huginn | Per-Project, in-flight override of Playbook expectations. Free-form markdown body with optional scope (day-of-week, date range, Sprint/Milestone) and an optional Variable-section tag. Has an `enabled` flag the Commander toggles from the list/detail view — **disabled FRAGOs are excluded by Gjallarhorn at SitRep generation regardless of their effective window**, useful for short-term suspension. Gjallarhorn reads enabled, in-window FRAGOs alongside the Playbook when generating a SitRep. Soft-delete (revoke) preserves history; revoked FRAGOs cannot be re-enabled. Not a watcher — does not trigger; modifies how SitReps are produced. |
+| **FRAGO** | Huginn | Per-Project, in-flight override of Playbook expectations. Free-form markdown body with optional scope (day-of-week, date range, Sprint/Milestone) and an optional `PlaybookVariable` tag. **May retune the `interpreting` of an existing PlaybookVariable for its effective window; cannot introduce new variables.** Has an `enabled` flag the Commander toggles from the list/detail view — disabled FRAGOs are excluded by Gjallarhorn at SitRep generation regardless of their effective window, useful for short-term suspension. Gjallarhorn reads enabled, in-window FRAGOs alongside the Playbook when generating a SitRep. Soft-delete (revoke) preserves history; revoked FRAGOs cannot be re-enabled. Not a watcher — does not trigger; modifies how SitReps are produced. |
 | **SituationalAwareness** | Huginn | Per-Project durable narrative memory. Versioned. Extended via Decision Branch B; read by Gjallarhorn alongside the Playbook when generating SitReps. |
-| **Playbook** | Huginn | What good looks like for a project: roles, key Variables, expected values and thresholds, what to look for. **Free-form markdown content** in MVP (structured fields may be added later). Shared: one Playbook can be assigned to many Projects. Distinct from the OO/DA *procedures* run internally by Gjallarhorn. |
-| **PlaybookVersion** | Huginn | Immutable snapshot of a Playbook's content. Created on every Playbook edit. Has version number, change summary, author, content. A Project pins a (Playbook, version) — auto-tracks latest by default; can be pinned explicitly to keep an older version. |
+| **Playbook** | Huginn | What good looks like for a project. Composed of (a) **metadata** — name, description; (b) a **Workflow** — free-form markdown describing the OO/DA narrative for this Project, who is who, what to look for; (c) an ordered list of **PlaybookVariables** (structured); and (d) an ordered list of **PlaybookTables** (structured). Workflow can be typed inline, uploaded as MD, or pulled from Mimir Server (post-MVP). Shared: one Playbook can be assigned to many Projects. Distinct from the OO/DA *procedures* run internally by Gjallarhorn. |
+| **PlaybookVersion** | Huginn | Immutable snapshot of a Playbook. Created on every Playbook edit. Has version number, change summary, author, `workflow_markdown`, a snapshot of the PlaybookVariables, and a snapshot of the PlaybookTables defined at that version. A Project pins a (Playbook, version) — auto-tracks latest by default; can be pinned explicitly to keep an older version. |
+| **PlaybookVariable** | Huginn | Per-PlaybookVersion definition of one measurement. Fields: `name` (e.g. "Cycle Time"), `abbreviation` ("CT"), `calculating` (free text — may be a JQL query, a count/ratio expression, or a natural-language prompt; the Agent decides how to apply), `interpreting` (rules mapping value → color, e.g. "<5d & not climbing → green; climbing → orange; >5d → red"), `hover` (tooltip text shown on the project card and in the SitRep snapshot), `dimensions` (list of free-text labels, e.g. `["Vitals", "Team Fitness"]`, controlling which Project view tabs render this Variable — see *Project view tabs* below; the label `"Vitals"` is reserved and routes to the hardcoded Vitals tab). FRAGOs may retune `interpreting` for a window. |
+| **PlaybookTable** | Huginn | Per-PlaybookVersion pin of a canonical entity table to one or more dimensions. Fields: `entity` (one of the canonical types: `UnitOfWork`, `Increment`, `Milestone`, `Sprint`, `Contributor`), `slicer` (named filter from Huginn's shipped catalog, scoped to the entity — e.g. `this_week` for Increment, `open` for UnitOfWork), `dimensions` (list of free-text labels, same routing rule as `PlaybookVariable.dimensions`). Columns and filter grammar are not Playbook-defined; they live in code. A PlaybookTable referencing an unknown `entity` or an invalid `(entity, slicer)` pair is rejected at write time by the Playbook editor and API; if a previously-saved PlaybookVersion references an entity/slicer that has since been removed from the in-code catalog, the Project view renders the affected tile in an inline-error or graceful-empty state — see the *PlaybookTable authoring-error UI* and *Slicer catalog drift* resolutions below, and `user_journey.md` Acts 2 + 3 for the UI behaviour. |
+
+**Project view tabs** are derived: `{ Vitals (hardcoded) } ∪ distinct dimension across the active PlaybookVersion's PlaybookVariables and PlaybookTables`. Vitals additionally carries the Project's Identity / Playbook / Sync metadata cards regardless of Variable or Table membership; any PlaybookVariable or PlaybookTable whose `dimensions` includes `"Vitals"` renders as an extra card/tile on it. When no Playbook is assigned (or the Playbook has no Variables and no Tables), only Vitals renders. The **seed Playbook** (**FeatureFactory Playbook**) pins `Increment-Table` to a default `Increments` dimension so a freshly-imported Project on **FeatureFactory Playbook** still sees an Increments tab; a Playbook that drops the Increment-Table pin loses the Increments tab.
 
 ### Measurement & Events (append-only)
 
@@ -126,7 +130,7 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 | **UoWStateChange** | Huginn (ingested) | Transitions of a UoW (state, assignee, estimate, sprint). Each change *advances* the UoW through its lifecycle. Feeds cycle time, lead time, estimation drift. |
 | **Increment** | Huginn (ingested) | A discrete contribution — commit, PR, review, doc update — attributed to a Contributor and linked to the UoW it advances. |
 | **TestResult** | Huginn (ingested, XRay) | Red / green / gray; feeds Quality variable. Shown in the Canonical Work Model diagram (UoW ← verified by — TestResult) rather than Measurement, because the relationship is to the work item, not the Project aggregate. |
-| **MasterVariableDatapoint** | Huginn (computed) | Snapshot of all Master Variables (Transparency, Throughput, Cycle/Lead Time, Rework, Quality, Complexity, Contribution) for a Project at time T. |
+| **VariableDatapoint** | Huginn (computed) | Single (Project, PlaybookVariable, time T, value, color, agent_invocation_ref) row. Denormalized from `SitRep.variables_snapshot` so trend queries (Variables Deep-Dive, history charts) stay cheap. When the Agent cannot compute a value (insufficient data, tool failure), `color = 'grey'` and `value = null`. |
 
 ### Cross-cutting
 
@@ -140,9 +144,10 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 |--------|----------------|-------|
 | **User** | Huginn | Huginn account. Roles: `Commander`, `Analyst` (TBD if distinct). |
 | **Contributor** | Huginn (reconciled) | Developer identity unified across git author / Jira assignee / Slack handle. Derived profile: Pathfinder / Mastermind / Firefighter / Observer. |
-| **Project** | Huginn (imported) | An imported project from a single DataSource (one upstream project = one Project; e.g., one GitLab project). Defines the analytical scope and pins a (Playbook, version) it is evaluated against. **Cannot be created from a blank form** — only via Project Import. |
+| **Project** | Huginn (imported) | An imported project from a single DataSource (one upstream project = one Project; e.g., one GitLab project). Defines the analytical scope and pins a (Playbook, version) it is evaluated against. Has a **sync schedule** — `daily | hourly | minutely` — each with a pattern (e.g. `daily 08:00`, `hourly :30`, `every 5m from :00`). **SitRep cadence may be coarser than sync cadence** to bound LLM cost (see Open Questions). **Cannot be created from a blank form** — only via Project Import. |
 | **DataSource** | Huginn config | Connection to GitLab / Jira / etc. (credentials, base URL, expiry tracking). Source of one or more Projects via import. |
-| **MasterVariableDefinition** | Huginn config | Formulas and units per Master Variable. Used by Gjallarhorn to compute MasterVariableDatapoints. FRAGOs may *tag* a Master Variable section but do not reference specific definitions. |
+| **Agent** | Huginn config | Reusable AI task definition. Fields: `name`, `model` (e.g. `claude-sonnet-4.6`), `base_prompt`, `embedding` (vector index handle, optional), `context_data` / `howto` (optional). Gjallarhorn's behaviors — compute a PlaybookVariable, draft a SitRep section, propose a Decision — are concrete Agent invocations. **Model id and prompt strings live here, not on Playbook or PlaybookVariable**, so swapping Claude for a local model is a config change. |
+| **AgentInvocation** | Huginn (append-only) | One row per Agent run: `agent`, `inputs_hash`, `started_at`, `finished_at`, `status`, `output_ref` (e.g. SitRep section id, VariableDatapoint id). Lets us audit *why* a Variable got the value it did at time T, and replay against a different Agent if needed. |
 
 ---
 
@@ -160,6 +165,9 @@ erDiagram
     Project ||--o{ SitRep : produces
     Project ||--o{ FRAGO : "scoped to"
     Project }o--|| Playbook : assigned
+    Playbook ||--o{ PlaybookVersion : versions
+    PlaybookVersion ||--o{ PlaybookVariable : defines
+    PlaybookVersion ||--o{ PlaybookTable : "pins (entity, slicer)"
     Sprint }o--|| Milestone : targets
     Sprint ||--o{ UnitOfWork : contains
     SitRep ||--o{ Decision : proposes
@@ -195,6 +203,9 @@ erDiagram
     Project }o--|| Playbook : assigned
     Project }o--o| PlaybookVersion : "pinned (else auto-tracks latest)"
     Playbook ||--o{ PlaybookVersion : versions
+    PlaybookVersion ||--o{ PlaybookVariable : defines
+    PlaybookVersion ||--o{ PlaybookTable : "pins (entity, slicer)"
+    FRAGO }o--o| PlaybookVariable : "may override interpreting"
     User ||--o{ Decision : makes
     User ||--o{ FRAGO : issues
     SitRep ||--o{ Decision : proposes
@@ -205,16 +216,28 @@ erDiagram
 
 **Decision outcome semantics**: an accepted Decision creates **exactly one** of FRAGO / SituationalAwareness extension / `HUGINN`-tagged UoW. The mermaid `}o--o|` cardinalities show each as optional individually; XOR across the three is enforced at the application layer.
 
+#### Agents
+
+```mermaid
+erDiagram
+    Agent ||--o{ AgentInvocation : runs
+    AgentInvocation }o--o| VariableDatapoint : "may produce"
+    AgentInvocation }o--o| SitRep : "may produce"
+```
+
+`Agent` carries the model id, base prompt, and optional embedding/context. Every AI step in Gjallarhorn — computing a PlaybookVariable, drafting a SitRep section, proposing a Decision — is an `AgentInvocation`. This keeps doctrine entities (Playbook, PlaybookVariable, FRAGO) free of model/prompt strings.
+
 ### Measurement
 
 ```mermaid
 erDiagram
-    Project ||--o{ MasterVariableDatapoint : measures
-    MasterVariableDefinition ||--o{ MasterVariableDatapoint : "shape of"
-    SitRep }o--o{ MasterVariableDatapoint : snapshots
+    Project ||--o{ VariableDatapoint : measures
+    PlaybookVariable ||--o{ VariableDatapoint : "shape of"
+    SitRep ||--o{ VariableDatapoint : "snapshots (denormalized; embedded JSON is canonical)"
+    AgentInvocation }o--o| VariableDatapoint : "may produce"
 ```
 
-(FRAGO no longer references MasterVariableDefinition. A FRAGO has an optional `variable_tag` string for filtering, but does not reference a specific definition record.)
+The embedded `SitRep.variables_snapshot` JSON is the canonical record of what Gjallarhorn saw at SitRep generation time. `VariableDatapoint` rows carry the same values denormalized for cheap trend queries (Variables Deep-Dive, history charts). FRAGOs may tag a `PlaybookVariable` and override its `interpreting` rules for a window, but never introduce new variables.
 
 ### Cross-cutting — Artifact Attachments
 
@@ -246,15 +269,21 @@ flowchart LR
 
 **Open questions** (to resolve before ESM Activity 04 formalizes this):
 1. **UoW ↔ Milestone**: can a UoW commit directly to a Milestone without going through a Sprint? (Assumed yes — matches Jira's `fixVersion` without an active sprint.)
-2. **SitRep ↔ MasterVariableDatapoint**: does a SitRep *reference* the datapoints (shared, pointer) or *embed* them (snapshot copy)? Pointer is cheaper; embed is safer for reproducibility.
-3. **Decision outcome XOR enforcement**: enforce mutual exclusion at DB level (CHECK constraint over three nullable FKs) or at application level only? Affects how loud failures are when invariants drift.
-4. **PlaybookVersion content immutability**: confirmed immutable in MVP. Future question: rebase / cherry-pick across versions?
-5. **Contributor reconciliation**: identity unification across git/Jira/Slack is a known-hard problem. MVP assumes manual mapping table.
-6. **Single-Project MVP?**: the model supports N Projects, but MVP UI may treat the Projects Dashboard as the single landing surface and not expose Project-switching elsewhere. Affects navigation and scope-picker placement.
+2. **Decision outcome XOR enforcement**: enforce mutual exclusion at DB level (CHECK constraint over three nullable FKs) or at application level only? Affects how loud failures are when invariants drift.
+3. **PlaybookVersion content immutability**: confirmed immutable in MVP. Future question: rebase / cherry-pick across versions?
+4. **Contributor reconciliation**: identity unification across git/Jira/Slack is a known-hard problem. MVP assumes manual mapping table.
+5. **Single-Project MVP?**: the model supports N Projects, but MVP UI may treat the Projects Dashboard as the single landing surface and not expose Project-switching elsewhere. Affects navigation and scope-picker placement.
+6. **SitRep cadence vs sync cadence**: sync can be `minutely`; SitRep generation is LLM-expensive. Likely SitReps run on a coarser beat (≥ hourly) even when sync is minutely; `VariableDatapoint` may still tick per-sync. To confirm before implementation.
+7. **PlaybookVariable.calculating typing**: leave as free text and let the Agent route between deterministic evaluation (e.g. JQL, count expression) and LLM interpretation, or add an explicit `calc_kind: query | formula | prompt` hint? Current default: free text + Agent decides.
 
 **Resolved** (no longer open):
-- ~~Playbook scope~~: shared across Projects, versioned, Project pins (Playbook, version) with auto-track-latest as default. Free-form markdown content in MVP.
-- ~~FRAGO trigger semantics~~: FRAGO is not a watcher. It is a markdown override of Playbook expectations consumed by Gjallarhorn at SitRep generation time. No triggers, no notification routes.
+- ~~Playbook scope~~: shared across Projects, versioned, Project pins (Playbook, version) with auto-track-latest as default. Composed of metadata + Workflow markdown + ordered list of `PlaybookVariable` (structured).
+- ~~FRAGO trigger semantics~~: FRAGO is not a watcher. It is a markdown override of Playbook expectations consumed by Gjallarhorn at SitRep generation time. May retune `interpreting` of an existing PlaybookVariable for its window; cannot introduce new variables.
+- ~~SitRep ↔ Variable storage~~: **embed in SitRep** (`variables_snapshot` JSON, canonical) **+ denormalized `VariableDatapoint` rows** for trend queries. Both written at SitRep generation time.
+- ~~Variables as platform Master Variables~~: Variables are PlaybookVersion children (`PlaybookVariable`). The seven master variables (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution) become the **starter set on FeatureFactory Playbook** (the seed Playbook), not platform invariants. `MasterVariableDefinition` is removed.
+- ~~AI model identity location~~: model id, base prompt, and embedding live on `Agent`, not on Playbook or PlaybookVariable. Every AI step is an `AgentInvocation` for audit.
+- ~~PlaybookTable authoring-error UI~~: an unknown `entity` or invalid `(entity, slicer)` pair on a PlaybookTable renders an inline error tile on the Project view; the rest of the tab/Playbook continues to render normally. Storage is plain strings on the row (no FK to a Huginn table). The Playbook editor and the API enforce against the in-code catalog at **write time** — Entity is a closed dropdown; Slicer is validated server-side against the registered slicers for that Entity. Authoring-time typos are therefore impossible; the inline error tile only ever shows when a previously-saved PlaybookVersion references an entity/slicer that has since been removed from the in-code catalog. A `Validate Playbook` action on `PLAYBOOKS-VIEW_PLAYBOOK-1` scans every version for catalog drift and deep-links each finding to a fix.
+- ~~Slicer catalog drift~~: when a Slicer (or Entity) is removed/renamed in a Huginn upgrade, existing PlaybookVersions pinning it stay loadable. The corresponding tile renders in a **graceful-empty** state on the Project view: tile shows the slicer name, an empty result, and a soft "slicer no longer in catalog — fix in Playbook editor" hint with a link to `PLAYBOOKS-EDIT_PLAYBOOK-1`. This is distinct from the inline error tile (which is reserved for the legacy / post-upgrade catalog-drift case where the entity itself is gone). Catalog ownership: shipped per-canonical-entity in code; growth is driven by real Playbook needs.
 
 ---
 
@@ -274,7 +303,12 @@ flowchart LR
 
 ## How do we read data
 These are dimensions we analyze through the OODA cycle: codebase, backlog, production cycle, release, [infra] environment, UX (user experience), DX (developer experience).
-There is a set of Master Variables [prelim] we assess as part of the OODA cycle:
+
+**Variables are user-defined per Playbook** (see `PlaybookVariable` in Command & Doctrine). The set below is the **starter pack** shipped with **FeatureFactory Playbook** (the seed Playbook); any Playbook may add, remove, or replace any of them. FRAGOs may retune a variable's `interpreting` for a window, but cannot introduce new variables.
+
+The **seed Playbook** (**FeatureFactory Playbook**) ships with each starter Variable already defined — name, abbreviation, default `calculating`, default `interpreting`, and a `dimensions` value that pre-wires the standard Project tabs (e.g. Throughput on `["Vitals", "Engineering"]`, Quality on `["Vitals", "Engineering"]`, Contribution on `["Team Fitness"]`). Donland can clone or edit **FeatureFactory Playbook**; the Project view's tab layout follows the Variables.
+
+Default starter Variables:
 
 TRANSPARENCY: do we know whats actually happening - do our systems contain enough fresh data to make decisions?
 THROUGHPUT: WoW do we push more work or less, both as user-visible story points and hidden function-based complexity-adjusted pts?
@@ -285,20 +319,32 @@ COMPLEXITY: looking at the current project (lets assume 1 project is one repo; c
 CONTRIBUTION: in terms of profile "Y for new code and X axis for churn in existing" who are pathfinders (new code mostly), masterminds (both new and churn - all over the system), firefighters (mostly churn existing codebase), observers (their contribution is too small to classify them eiether way)
 [ To be extended later]
 
+### Slicer catalog
+
+`Slicer` is **not** a Huginn entity — it is a fixed catalog Huginn ships with the slicer registry. PlaybookTables reference Slicers by name; the registry is per-canonical-entity (only valid `(entity, slicer)` pairings exist). Catalog evolution lives in code; Playbooks reference by name. The Playbook editor and the API enforce against the in-code catalog at **write time** (Entity is a closed dropdown; Slicer is validated server-side against the slicers registered for the picked Entity), so authoring-time invalid pairs are impossible. Slicers removed from the catalog in a later upgrade leave existing PlaybookVersions intact but cause the corresponding tile on the Project view to render in a graceful-empty state (see Open Questions / Resolved).
+
+Starter catalog (per canonical entity):
+
+- **UnitOfWork**: `today`, `this_week`, `last_2w`, `open`, `closed`, `mine`, `stale_7d`, `priority_high`
+- **Increment**: `today`, `yesterday`, `this_week`, `last_week`, `last_2w`, `last_14d`, `mine`
+- **Milestone**: `active`, `at_risk`, `due_this_week`, `closed`
+- **Sprint**: `current`, `previous`, `next`
+- **Contributor**: `active_this_week`, `inactive_14d`, `unmapped`
+
 SitRep: momentary snapshot of the current values + AI performing first pass of analysis: hypothesi on why there are undesired deviations + suggested Actions to test hypothesi + Decisions to  make -> execute.
 
 ## OO Procedure (Gjallarhorn internal)
 
-> *Note*: this is Gjallarhorn's internal procedure for producing a SitRep — system behavior, not the user-editable **Playbook** entity. The Playbook entity is the user-authored markdown describing what good looks like for a specific Project; this procedure describes how Gjallarhorn evaluates against it.
+> *Note*: this is Gjallarhorn's internal procedure for producing a SitRep — system behavior, not the user-editable **Playbook** entity. The Playbook entity (Workflow markdown + ordered PlaybookVariables) is what good looks like for a specific Project; this procedure describes how Gjallarhorn evaluates against it.
 
-0. Load Situational Awareness / latest SitRep / active FRAGOs / pinned Playbook version — what we know from previous OODA passes, things to watch for per commander's overrides.
+0. Load Situational Awareness / latest SitRep / active FRAGOs / pinned PlaybookVersion (Workflow + PlaybookVariables) — what we know from previous OODA passes, things to watch for per commander's overrides.
 1. Check transparency — how stale are updates on Jira issues & pushes? Stale (not today) → flag first.
 2. Reconstruct the flow: how Unit of Work travels into the Milestone. If we don't know — flag it.
 3. Operate on Sprints → culminates in Milestone. Check burndown — burning down? scope expanding? no visible progress measured in closed stories?
 4. Check quality of reqs: too big (root cause for no burndown). Bad → flag for improvement.
 5. Assess quality of the pipeline. Unstable → flag for fix.
 6. Assess architecture readiness — anything missing for the stories at hand? Missing → flag for action.
-[ etc — full list to cover all Master Variables ]
+[ etc — full list to cover every PlaybookVariable in the active Playbook ]
 
 Output: a **SitRep** with situation assessment ("how bad things are") and proposed **Decisions** ("how to set things straight").
 
@@ -306,10 +352,12 @@ Output: a **SitRep** with situation assessment ("how bad things are") and propos
 
 > *Note*: this is the system behavior of the Decision-Action loop, not the user-editable Playbook.
 
-1. Take a sitrep for every aspect of the Master Variables (think "Project Status Report").
+1. Take a sitrep covering every PlaybookVariable in the active Playbook (think "Project Status Report").
 2. Read problematic areas and propose Decisions: *"I agree with your assessment; my decision is that we need a Daily Increment pushed by every developer. We shall have a list of those who is listed among authors but haven't pushed anything today."*
 3. Commander accepts / rejects each Decision. Acceptance branches into exactly one of three outcomes: **(a)** new FRAGO ("Disregard broken builds tomorrow"), **(b)** extension of Situational Awareness ("This is because of the GitLab outage — expect unsuccessful data dumps tomorrow"), or **(c)** new Jira issue tagged `HUGINN` ("Create a Task for the QA Architect to draft AI testing strategy").
 4. Collect content of the OODA cycle and perform write-back: update Situational Awareness / extend/add/drop FRAGOs / save SitRep. *(The Playbook entity itself is edited deliberately and separately — it is doctrine, not session output.)*
+
+Each AI step in the OO and DA procedures (compute a PlaybookVariable's value, draft a SitRep section, propose a Decision) is a named **Agent invocation** — see the Agents entity. Agents carry the model id, base prompt, and optional embedding; doctrine entities (Playbook, PlaybookVariable, FRAGO) carry no model or prompt strings, so the model+prompt mix can evolve independently.
 
 # Stack
 
@@ -317,9 +365,10 @@ Output: a **SitRep** with situation assessment ("how bad things are") and propos
 
 1. **Data**: PostgreSQL + Django ORM. State history as append-only tables (no graph DB). Redis for Celery broker + cache.
 2. **Application**: Docker Compose deployment — `web` (Django), `worker` (Celery), `beat` (Celery scheduler), `redis`, `db` (PostgreSQL).
-    - Django apps: `ingestion/`, `analytics/`, `sitrep/`, `ui/`, `gjallarhorn/`
-    - Extraction jobs (Celery Beat, hourly) pull data from GitLab (`python-gitlab`), Jira (`jira`) — further sources TBD
+    - Django apps: `ingestion/`, `analytics/`, `sitrep/`, `ui/`, `gjallarhorn/`, `agents/`
+    - `agents/` holds Agent definitions and the dispatch layer. Gjallarhorn calls into Agents rather than embedding model/prompt strings inline; every AI step (variable computation, SitRep section drafting, Decision proposal) is an `AgentInvocation` audit row.
+    - Extraction jobs (Celery Beat) pull data from GitLab (`python-gitlab`), Jira (`jira`) on the per-Project sync schedule (`daily | hourly | minutely`); further sources TBD.
     - Gjallarhorn AI assesses situation per OO → SitRep (FastMCP interface)
     - Django + HTMX + Apache ECharts for the PM dashboard and DA chat
-    - Configuration (API tokens etc.) externalized as env vars
+    - Configuration externalized as env vars: API tokens (Jira/GitLab), Anthropic key, base model id, and per-Agent prompt overrides — none of which live on Playbook entities.
 3. **Deploy**: AWS Elastic Beanstalk + GitLab Pipelines. Docker Compose in prod.

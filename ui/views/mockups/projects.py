@@ -12,7 +12,7 @@ MOCK_PROJECT = {
 MOCK_LIST = [
     {
         **MOCK_PROJECT,
-        "playbook": "Standard Engineering · v12 (auto-track)",
+        "playbook": "FeatureFactory Playbook · v12 (auto-track)",
         "last_sync": "8 min ago",
         "sync_status": "Active",
         "row_status": "Active",
@@ -113,7 +113,7 @@ def projects_view(request, pk: int):  # noqa: ARG001
             "imported_on": "2026-05-01",
             "imported_by": "donland@example.com",
             "source_url": "https://gitlab.example.com/atlas/backend",
-            "playbook_display": "Standard Engineering · v12 (auto-track latest)",
+            "playbook_display": "FeatureFactory Playbook · v12 (auto-track latest)",
             "sync_last": "8 min ago",
             "sync_next": "scheduled hourly",
             "sync_schedule_display": "Hourly",

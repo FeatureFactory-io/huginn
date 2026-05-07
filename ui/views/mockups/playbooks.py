@@ -1,6 +1,6 @@
 from django.shortcuts import render
 
-PB = {"id": 3, "name": "Standard Engineering", "latest_version": 12}
+PB = {"id": 3, "name": "FeatureFactory Playbook", "latest_version": 12}
 
 
 def playbooks_list(request):
@@ -21,7 +21,7 @@ def playbooks_view(request, pk: int):  # noqa: ARG001
         "pk": pk,
         "pb": {
             **PB,
-            "content_md": "# Standard Engineering Playbook\n\n## Roles\n…\n\n## Variables to watch\n…",
+            "content_md": "# FeatureFactory Playbook\n\n## Roles\n…\n\n## Variables to watch\n…",
             "versions": [
                 {"n": 12, "on": "2026-05-02", "author": "Donland", "summary": "Tightened bug-count guidance"},
                 {"n": 11, "on": "2026-04-10", "author": "Donland", "summary": "Clarified throughput section"},

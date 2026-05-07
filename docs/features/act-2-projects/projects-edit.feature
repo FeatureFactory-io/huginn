@@ -38,27 +38,27 @@ Feature: PROJECTS-EDIT_PROJECT-1 Edit a Project's configuration
   # ---------------------------------------------------------------------------
 
   Scenario: PROJECTS-EDIT_PROJECT-05 Playbook dropdown lists available Playbooks
-    Given Playbooks "Standard Engineering" and "Sprint Delivery" exist
+    Given Playbooks "FeatureFactory Playbook" and "Sprint Delivery" exist
     When I open the "Assigned Playbook" dropdown
-    Then I see "Standard Engineering" in the dropdown
+    Then I see "FeatureFactory Playbook" in the dropdown
     And I see "Sprint Delivery" in the dropdown
     And I see an option "None" (unassign)
 
   Scenario: PROJECTS-EDIT_PROJECT-06 Assigning a Playbook saves the assignment
-    Given Playbook "Standard Engineering" exists
-    When I select "Standard Engineering" from the Playbook dropdown
+    Given Playbook "FeatureFactory Playbook" exists
+    When I select "FeatureFactory Playbook" from the Playbook dropdown
     And I click "Save Changes"
-    Then the Project "atlas-backend" has Playbook "Standard Engineering" assigned
+    Then the Project "atlas-backend" has Playbook "FeatureFactory Playbook" assigned
     And the version tracking defaults to "auto-track latest"
 
   Scenario: PROJECTS-EDIT_PROJECT-07 Pinning a specific Playbook version saves the pin
-    Given Playbook "Standard Engineering" with versions v1 and v2 exists
-    When I select "Standard Engineering v1" to pin a specific version
+    Given Playbook "FeatureFactory Playbook" with versions v1 and v2 exists
+    When I select "FeatureFactory Playbook v1" to pin a specific version
     And I click "Save Changes"
-    Then the Project "atlas-backend" is pinned to Playbook "Standard Engineering" version v1
+    Then the Project "atlas-backend" is pinned to Playbook "FeatureFactory Playbook" version v1
 
   Scenario: PROJECTS-EDIT_PROJECT-08 Removing Playbook assignment clears the assignment
-    Given the project has Playbook "Standard Engineering" assigned
+    Given the project has Playbook "FeatureFactory Playbook" assigned
     When I select "None" from the Playbook dropdown
     And I click "Save Changes"
     Then the Project "atlas-backend" has no Playbook assigned

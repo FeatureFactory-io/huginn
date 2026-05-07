@@ -44,8 +44,8 @@ Feature: PROJECTS-VIEW_PROJECT-1 View Project details
     And I see a link to assign a Playbook
 
   Scenario: PROJECTS-VIEW_PROJECT-04 Playbook section shows Playbook name and version when assigned
-    Given the project has Playbook "Standard Engineering v2" assigned
-    Then the Playbook section shows "Standard Engineering v2"
+    Given the project has Playbook "FeatureFactory Playbook v2" assigned
+    Then the Playbook section shows "FeatureFactory Playbook v2"
 
   # ---------------------------------------------------------------------------
   # Sync section
