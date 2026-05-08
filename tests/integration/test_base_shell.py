@@ -15,6 +15,8 @@ def test_authenticated_projects_list_includes_navbar_and_brand(commander_client)
     assert 'data-testid="main-navbar"' in body
     assert 'data-testid="nav-brand"' in body
     assert "Huginn.jpeg" in body
+    assert 'data-testid="nav-fragos"' in body
+    assert 'data-testid="nav-sitawareness"' in body
 
 
 @pytest.mark.django_db
