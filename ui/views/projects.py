@@ -19,12 +19,69 @@ from ui.services.increments_service import RANGE_LABELS, IncrementsService, norm
 from ui.services.project_vitals_service import ProjectVitalsService
 from ui.services.projects_service import ProjectsService
 
+VARIABLES_PERIOD_LABELS: dict[str, str] = {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "this_week": "This week",
+    "last_week": "Last week",
+    "last_30d": "30 days",
+}
+VARIABLES_PERIOD_ORDER = ("today", "yesterday", "this_week", "last_week", "last_30d")
 
-def _project_detail_query(*, tab: str, range_key: str | None = None) -> str:
+
+def _normalize_variables_period(raw: str | None) -> str:
+    key = (raw or "").strip().lower()
+    return key if key in VARIABLES_PERIOD_LABELS else "this_week"
+
+
+def _effective_playbook_version(project: Project) -> PlaybookVersion | None:
+    if not project.assigned_playbook_id:
+        return None
+    pinned = project.pinned_playbook_version
+    if pinned is not None:
+        return pinned
+    return PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by("-version_number").first()
+
+
+def _playbook_variables_for_variables_tab(project: Project) -> list[dict]:
+    ver = _effective_playbook_version(project)
+    if ver is None:
+        return []
+    return list(ver.variables.order_by("sort_order").values("name", "abbrev"))
+
+
+def _informer_bar_dots(project: Project) -> list[dict]:
+    """One dot per Playbook Variable — grey until SitRep wiring supplies colors."""
+    ver = _effective_playbook_version(project)
+    if ver is None:
+        return []
+    out = []
+    for row in ver.variables.order_by("sort_order").values("name", "abbrev"):
+        out.append(
+            {
+                "name": row["name"],
+                "abbrev": row["abbrev"],
+                "color": "grey",
+                "value": None,
+            },
+        )
+    return out
+
+
+def _project_detail_query(
+    *,
+    tab: str,
+    range_key: str | None = None,
+    variables_period: str | None = None,
+) -> str:
     q: dict[str, str] = {}
     if tab == "increments":
         q["tab"] = "increments"
         q["range"] = normalize_range_key(range_key)
+    elif tab == "variables":
+        q["tab"] = "variables"
+        vp = _normalize_variables_period(variables_period)
+        q["period"] = vp
     else:
         q["tab"] = "vitals"
     return urlencode(q)
@@ -192,13 +249,17 @@ class ProjectsDetailView(View):
             pk=pk,
         )
         tab = (request.GET.get("tab") or "vitals").strip().lower()
-        if tab not in {"vitals", "increments"}:
+        if tab not in {"vitals", "increments", "variables"}:
             tab = "vitals"
         inc_range = normalize_range_key(request.GET.get("range"))
+        variables_period = _normalize_variables_period(request.GET.get("period"))
         increments = list(IncrementsService().increments_for_project(project.pk, inc_range))
         range_order = ["today", "yesterday", "this_week", "last_week", "last_14d"]
         time_range_choices = [(k, RANGE_LABELS[k]) for k in range_order]
         latest_commit_at = ProjectVitalsService().latest_increment_occurred_at(project.pk)
+        variables_period_choices = [(k, VARIABLES_PERIOD_LABELS[k]) for k in VARIABLES_PERIOD_ORDER]
+        playbook_variables = _playbook_variables_for_variables_tab(project)
+        informer_bar_dots = _informer_bar_dots(project)
         return render(
             request,
             self.template_name,
@@ -210,6 +271,10 @@ class ProjectsDetailView(View):
                 "time_range_choices": time_range_choices,
                 "increments": increments,
                 "latest_commit_at": latest_commit_at,
+                "variables_period": variables_period,
+                "variables_period_choices": variables_period_choices,
+                "playbook_variables": playbook_variables,
+                "informer_bar_dots": informer_bar_dots,
             },
         )
 
@@ -230,9 +295,13 @@ class ProjectsSyncNowView(View):
             messages.info(request, "Sync has been queued.")
         tab = (request.POST.get("tab") or "vitals").strip().lower()
         range_raw = (request.POST.get("range") or "").strip()
+        period_raw = (request.POST.get("period") or "").strip()
+        valid_tabs = {"vitals", "increments", "variables"}
+        norm_tab = tab if tab in valid_tabs else "vitals"
         query = _project_detail_query(
-            tab=tab if tab in {"vitals", "increments"} else "vitals",
-            range_key=range_raw if tab == "increments" else None,
+            tab=norm_tab,
+            range_key=range_raw if norm_tab == "increments" else None,
+            variables_period=period_raw if norm_tab == "variables" else None,
         )
         url = reverse("projects-detail", args=[project.pk]) + "?" + query
         return redirect(url)

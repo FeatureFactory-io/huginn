@@ -558,6 +558,40 @@ main.hg-main {
   opacity: 1;
 }
 
+/* Project detail — informer bar (Playbook Variables snapshot strip, #52) */
+.hg-informer-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--bs-font-monospace, ui-monospace, monospace);
+  font-size: 0.7rem;
+  font-weight: 600;
+  min-width: 2.4rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.hg-informer-dot--green {
+  background-color: var(--bs-success-bg-subtle, #d1e7dd);
+  color: var(--bs-success-text-emphasis, #0a3622);
+}
+
+.hg-informer-dot--orange {
+  background-color: var(--bs-warning-bg-subtle, #fff3cd);
+  color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.hg-informer-dot--red {
+  background-color: var(--bs-danger-bg-subtle, #f8d7da);
+  color: var(--bs-danger-text-emphasis, #58151c);
+}
+
+.hg-informer-dot--grey {
+  background-color: var(--bs-secondary-bg, #e9ecef);
+  color: var(--bs-secondary-color, #495057);
+}
+
 /* LIST+FIND filter controls — IA guidelines §5.2 (soft fields on page background) */
 select.form-select-sm.hg-filter-control,
 input.form-control-sm.hg-filter-control {

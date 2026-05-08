@@ -62,6 +62,7 @@ def test_vitals_01_tab_labels_and_testids(commander_client):
     p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
     assert 'data-testid="project-tab-vitals"' in body
+    assert 'data-testid="project-tab-variables"' in body
     assert 'data-testid="project-tab-increments"' in body
     assert "Vitals</a>" in body
     assert "Increments" in body
@@ -135,6 +136,7 @@ def test_project_detail_renders(commander_client):
     assert "project-sitreps-placeholder" in body
     assert "project-playbook-section" in body
     assert "project-tab-vitals" in body
+    assert "project-tab-variables" in body
     assert "project-tab-increments" in body
     assert "projects-placeholder-activity" not in body
 

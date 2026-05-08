@@ -25,6 +25,7 @@ def test_increments_01_tabs_visible(commander_client):
     r = commander_client.get(_detail_url(p.pk))
     body = r.content.decode()
     assert 'data-testid="project-tab-vitals"' in body
+    assert 'data-testid="project-tab-variables"' in body
     assert 'data-testid="project-tab-increments"' in body
 
 
