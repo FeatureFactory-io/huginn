@@ -173,6 +173,21 @@ main.hg-main {
   text-align: end;
 }
 
+/*
+ * Tactical Plot — project cards: sync status as a leading tab only.
+ * Bootstrap `.border-success` (etc.) sets border-color on every edge; list-group items
+ * still draw top/end/bottom separators — without this reset the whole card reads as a
+ * solid colored rectangle.
+ */
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-success,
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-danger,
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-warning,
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-secondary {
+  border-top-color: var(--bs-list-group-border-color);
+  border-inline-end-color: var(--bs-list-group-border-color);
+  border-bottom-color: var(--bs-list-group-border-color);
+}
+
 @media (min-width: 1200px) {
   .hg-tactical-plot-grid .hg-plot-work-queue {
     flex: 1 1 auto;
