@@ -9,9 +9,11 @@
     <div class="d-flex align-items-center mb-4">
       <h1 class="mb-0 me-3">Huginn</h1>
       {% if status == "healthy" %}
-        <span class="badge bg-success fs-6">Healthy</span>
+        <span class="badge bg-success fs-6" data-testid="welcome-status-healthy">Healthy</span>
+      {% elif status == "degraded" %}
+        <span class="badge bg-warning text-dark fs-6" data-testid="welcome-status-degraded">Degraded</span>
       {% else %}
-        <span class="badge bg-danger fs-6">Degraded</span>
+        <span class="badge bg-danger fs-6" data-testid="welcome-status-unhealthy">Unhealthy</span>
       {% endif %}
     </div>
 

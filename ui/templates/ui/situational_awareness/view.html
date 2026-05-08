@@ -66,14 +66,16 @@
       <pre class="small bg-light border rounded p-2 mb-3 overflow-auto" data-testid="sitawareness-compare-diff">{{ compare_diff }}</pre>
       {% endif %}
       <div class="vstack gap-4">
-        <section class="card border-0 shadow-sm rounded-3" aria-labelledby="sitawareness-standing-heading">
+        <section class="card border-0 shadow-sm rounded-3" aria-labelledby="sitawareness-disposition-heading">
           <div class="card-header bg-white border-bottom py-2 px-3">
-            <h2 id="sitawareness-standing-heading" class="h6 mb-0 fw-semibold">Standing context</h2>
+            <h2 id="sitawareness-disposition-heading" class="h6 mb-0 fw-semibold">Disposition</h2>
           </div>
           <div class="card-body vstack gap-3">
             {% for e in standing_entries %}
             <article class="border-bottom pb-3 {% if not forloop.last %}mb-1{% endif %}" data-testid="sitawareness-standing-entry-{{ forloop.counter }}">
+              {% if e.show_title %}
               <h3 class="h6 mb-1">{{ e.title }}</h3>
+              {% endif %}
               <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
               <div class="small hg-markdown-workflow" data-testid="sitawareness-standing-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
               {% if e.decision_label %}
@@ -93,12 +95,16 @@
           <div class="card-body vstack gap-3">
             {% for e in active_entries %}
             <article data-testid="sitawareness-active-entry-{{ forloop.counter }}">
-              <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
-                <h3 class="h6 mb-0">{{ e.title }}</h3>
+              {% if e.show_title or e.temporal_note %}
+              <div class="d-flex flex-wrap align-items-start gap-2 mb-1{% if not e.show_title and e.temporal_note %} justify-content-end{% endif %}">
+                {% if e.show_title %}
+                <h3 class="h6 mb-0 flex-grow-1">{{ e.title }}</h3>
+                {% endif %}
                 {% if e.temporal_note %}
-                <span class="badge bg-info text-dark align-self-start">{{ e.temporal_note }}</span>
+                <span class="badge bg-info text-dark align-self-start{% if e.show_title %} ms-auto{% endif %}">{{ e.temporal_note }}</span>
                 {% endif %}
               </div>
+              {% endif %}
               <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
               <div class="small hg-markdown-workflow" data-testid="sitawareness-active-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
               {% if e.decision_label %}

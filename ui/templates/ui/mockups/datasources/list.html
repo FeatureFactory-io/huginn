@@ -9,9 +9,11 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <span class="badge bg-secondary rounded-pill me-2" data-testid="datasources-count-badge">Data Sources ({{ rows|length }})</span>
-    <h1 class="hg-page-title d-inline" data-testid="page-title">Data Sources</h1>
-    <p class="text-muted small mb-0">Manage GitLab connections (Jira coming soon).</p>
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-plug hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Data Sources</span>
+    </h1>
+    <p class="text-muted small mb-0"><span data-testid="datasources-count-badge">Data Sources ({{ rows|length }})</span> · Manage GitLab connections (Jira coming soon).</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Data source list actions">
     <a class="btn btn-primary btn-sm"

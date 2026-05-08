@@ -7,8 +7,11 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <h1 class="hg-page-title" data-testid="page-title">Contributors · {{ project_slug }}</h1>
-    <span class="small text-muted">Inc / Closed UoWs per weekday</span>
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-users hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Contributors · {{ project_slug }}</span>
+    </h1>
+    <p class="small text-muted mb-0">Inc / Closed UoWs per weekday</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Contributors date range">
     <div class="btn-group btn-group-sm" role="group" aria-label="Week range">

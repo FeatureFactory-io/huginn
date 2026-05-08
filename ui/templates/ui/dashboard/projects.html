@@ -6,7 +6,10 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex align-items-start justify-content-between flex-wrap gap-2">
   <div>
-    <h1 class="hg-page-title mb-1" data-testid="tactical-plot-page-title">Tactical Plot</h1>
+    <h1 class="hg-page-title mb-1 d-flex align-items-center gap-2 flex-wrap" data-testid="tactical-plot-page-title">
+      <i class="fa-sharp fa-solid fa-wave-pulse hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Tactical Plot</span>
+    </h1>
     <p class="text-muted mb-0 small" data-testid="tactical-plot-last-sync">
       {% if plot_last_sync_at %}
         Latest project sync <strong>{{ plot_last_sync_at|naturaltime }}</strong>
@@ -28,18 +31,45 @@
         <i class="fa-solid fa-map-location-dot me-2 text-primary" aria-hidden="true"></i>
         <span>Situational Awareness</span>
       </div>
-      <div class="card-body py-3 px-3 pb-3 flex-grow-1">
-        <p class="hg-label-caps mb-2">Global events <span class="text-muted fw-normal">(stub)</span></p>
-        <ul class="list-unstyled mb-0 small">
-          {% for ev in rail_situational_awareness %}
-            <li class="mb-2">
-              <span class="text-decoration-none">{{ ev.text }}</span>
-              {% if ev.severity == 'warning' %}
-                <span class="ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
+      <div class="card-body py-3 px-3 pb-3 flex-grow-1 d-flex flex-column">
+        <div class="flex-grow-1">
+          <p class="hg-label-caps mb-2">Disposition</p>
+          {% if rail_sa_disposition %}
+          <div class="mb-3 small" data-testid="dashboard-rail-sitaware-disposition-list">
+            {% for ev in rail_sa_disposition %}
+              <div class="mb-3 {% if not forloop.last %}border-bottom border-light pb-3{% endif %}">
+                <div class="hg-markdown-workflow hg-plot-rail-sa-markdown" data-testid="dashboard-rail-sitaware-disposition-block-{{ forloop.counter }}">{{ ev.body_html|safe }}</div>
+                {% if ev.severity == 'warning' %}
+                  <span class="ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small fst-italic mb-3" data-testid="dashboard-rail-sitaware-disposition-empty">None yet.</p>
+          {% endif %}
+
+          <p class="hg-label-caps mb-2">Active situations</p>
+          {% if rail_situational_awareness %}
+          <div class="small" data-testid="dashboard-rail-sitaware-list">
+            {% for ev in rail_situational_awareness %}
+              <div class="mb-3 {% if not forloop.last %}border-bottom border-light pb-3{% endif %}">
+                <div class="hg-markdown-workflow hg-plot-rail-sa-markdown" data-testid="dashboard-rail-sitaware-active-block-{{ forloop.counter }}">{{ ev.body_html|safe }}</div>
+                {% if ev.severity == 'warning' %}
+                  <span class="ms-1 text-warning" aria-hidden="true"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small fst-italic mb-0" data-testid="dashboard-rail-sitaware-active-empty">None yet.</p>
+          {% endif %}
+        </div>
+        {% if not rail_sa_disposition and not rail_situational_awareness %}
+        <p class="text-muted small mb-0 mt-3 pt-3 border-top" data-testid="dashboard-rail-sitaware-empty">
+          <a href="{% url 'sitawareness-view' %}" class="fw-medium">Open Situational Awareness</a>
+        </p>
+        {% endif %}
       </div>
     </section>
   </div>
@@ -51,14 +81,29 @@
         <span>FRAGOs in effect</span>
       </div>
       <div class="flex-grow-1 d-flex flex-column min-vh-0">
-      <div class="list-group list-group-flush small">
+      {% if rail_fragos %}
+      <div class="list-group list-group-flush small" data-testid="dashboard-rail-fragos-list">
         {% for fg in rail_fragos %}
-          <div class="list-group-item px-3 py-2">
+          <a class="list-group-item list-group-item-action px-3 py-2 text-reset"
+             href="{% url 'fragos-detail' fg.pk %}"
+             data-testid="dashboard-rail-frago-{{ fg.pk }}">
             <div class="fw-medium mb-1">{{ fg.title }}</div>
-            <div class="text-muted fst-italic" style="font-size:0.75rem;">{{ fg.scope_label }} <span class="text-muted fw-normal">(stub)</span></div>
-          </div>
+            <div class="text-muted fst-italic" style="font-size:0.75rem;">{{ fg.scope_label }}</div>
+            <div class="text-muted mb-1" style="font-size:0.75rem;" data-testid="dashboard-rail-frago-effective-{{ fg.pk }}">{{ fg.effective_label }}</div>
+            {% if fg.body_html %}
+            <div class="small hg-markdown-workflow hg-plot-rail-frago-markdown mt-1" data-testid="dashboard-rail-frago-body-{{ fg.pk }}">{{ fg.body_html|safe }}</div>
+            {% endif %}
+          </a>
         {% endfor %}
       </div>
+      {% else %}
+      <div class="card-body py-3 px-3 small flex-grow-1">
+        <p class="text-muted mb-0" data-testid="dashboard-rail-fragos-empty">
+          No FRAGOs in effect.
+          <a href="{% url 'fragos-list' %}" class="fw-medium d-block mt-2">Browse FRAGOs</a>
+        </p>
+      </div>
+      {% endif %}
       </div>
     </section>
   </div>
@@ -131,22 +176,22 @@
 
   <div class="col-12 col-xl-3 order-4 d-flex" data-testid="dashboard-plot-col-work-queue">
     <div class="hg-plot-work-queue d-flex flex-column gap-3 flex-grow-1 w-100">
-      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card" data-testid="dashboard-plot-decisions-stub">
+      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card d-flex flex-column w-100" data-testid="dashboard-plot-decisions-stub">
         <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center flex-shrink-0">
           <i class="fa-solid fa-gavel me-2 text-primary" aria-hidden="true"></i>
           <span>Decisions to make</span>
         </div>
-        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body mb-0">
+        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body">
           <p class="mb-0">Nothing queued yet.</p>
         </div>
       </section>
 
-      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card" data-testid="dashboard-plot-actions-stub">
+      <section class="card border-0 shadow-sm rounded-3 hg-plot-sidebar-card hg-plot-queue-split-card d-flex flex-column w-100" data-testid="dashboard-plot-actions-stub">
         <div class="card-header bg-white fw-semibold border-bottom py-2 px-3 d-flex align-items-center flex-shrink-0">
           <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
           <span>Tasks assigned to you</span>
         </div>
-        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body mb-0">
+        <div class="card-body py-3 px-3 small text-muted hg-plot-queue-split-body">
           <p class="mb-0">No assignments yet.</p>
         </div>
       </section>

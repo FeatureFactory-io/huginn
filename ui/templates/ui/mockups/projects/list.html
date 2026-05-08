@@ -7,9 +7,11 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <span class="badge bg-secondary rounded-pill me-2">{{ rows|length }} projects</span>
-    <h1 class="hg-page-title d-inline">Projects</h1>
-    <p class="text-muted small mb-0">Imported from connected data sources.</p>
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-folder-open hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Projects</span>
+    </h1>
+    <p class="text-muted small mb-0"><span data-testid="projects-count-badge">{{ rows|length }} projects</span> · Imported from connected data sources.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Project list actions">
     <a class="btn btn-primary btn-sm" href="{% url 'mockup-projects-import' %}" data-testid="projects-import-btn">

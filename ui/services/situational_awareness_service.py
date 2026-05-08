@@ -14,6 +14,14 @@ from sitrep.models import (
     SituationalAwarenessVersion,
 )
 
+# Section headers already name the bucket; hide per-entry titles that only duplicate placeholders.
+_GENERIC_SA_ENTRY_TITLES = frozenset(("content", "disposition", "standing context"))
+
+
+def _show_sa_entry_title(title: str | None) -> bool:
+    key = (title or "").strip().casefold()
+    return bool(key) and key not in _GENERIC_SA_ENTRY_TITLES
+
 
 def get_or_create_awareness() -> SituationalAwareness:
     """Return the workspace singleton capsule (first row by pk, or create one)."""
@@ -41,7 +49,7 @@ def populate_entries_for_version(
                 version=version,
                 section=SituationalAwarenessEntry.Section.STANDING,
                 sort_order=0,
-                title="Standing context",
+                title="Disposition",
                 body_md=standing_md,
                 created_by=created_by,
             ),
@@ -100,6 +108,7 @@ def entries_from_md(md: str, *, temporal_hint: bool) -> list[dict[str, Any]]:
     return [
         {
             "title": "Content",
+            "show_title": _show_sa_entry_title("Content"),
             "author": "—",
             "date": "—",
             "body_html": workflow_md_to_html(text),
@@ -121,8 +130,10 @@ def _serialize_entry_row(ent: SituationalAwarenessEntry, *, temporal_hint: bool)
         u = ent.created_by
         actor = u.get_full_name() or u.email or str(u)
     dt = timezone.localtime(ent.created_at).strftime("%Y-%m-%d %H:%M") if ent.created_at else "—"
+    title = (ent.title or "").strip() or "Content"
     return {
-        "title": ent.title or "Content",
+        "title": title,
+        "show_title": _show_sa_entry_title(title),
         "author": actor,
         "date": dt,
         "body_html": workflow_md_to_html(ent.body_md or ""),

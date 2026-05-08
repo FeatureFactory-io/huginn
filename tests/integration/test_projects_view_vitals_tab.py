@@ -82,35 +82,24 @@ def test_vitals_02_deeplink_tab_vitals_active(commander_client):
 
 @pytest.mark.django_db
 def test_vitals_06_vitals_coexistence_no_increments_table(commander_client):
-    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE)
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, source_path="group/widget")
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
     for tid in (
-        "project-description",
+        "project-widget-transparency",
+        "project-widget-variables",
+        "project-informer-bar",
         "project-source-path",
-        "project-playbook-section",
-        "project-sync-schedule",
     ):
         assert f'data-testid="{tid}"' in body
     assert 'data-testid="increments-table"' not in body
 
 
 @pytest.mark.django_db
-def test_vitals_identity_shows_description(commander_client):
-    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, description="Alpha desc line")
+def test_vitals_header_shows_source_path(commander_client):
+    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, source_path="group/acme")
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
-    assert 'data-testid="project-description"' in body
-    assert "Alpha desc line" in body
-
-
-@pytest.mark.django_db
-def test_vitals_identity_shows_em_dash_for_empty_description(commander_client):
-    p = ProjectFactory(sync_state=Project.SyncState.ACTIVE, description="")
-    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
-    assert 'data-testid="project-description"' in body
-    dd_at = body.index('data-testid="project-description"')
-    close = body.index("</dd>", dd_at)
-    snippet = body[dd_at:close]
-    assert "—" in snippet
+    assert 'data-testid="project-source-path"' in body
+    assert "group/acme" in body
 
 
 @pytest.mark.django_db
@@ -134,7 +123,7 @@ def test_project_detail_renders(commander_client):
     assert "gitlab-co" in body
     assert "project-sync-state" in body
     assert "project-sitreps-placeholder" in body
-    assert "project-playbook-section" in body
+    assert "project-widget-variables" in body
     assert "project-tab-vitals" in body
     assert "project-tab-variables" in body
     assert "project-tab-increments" in body
@@ -142,7 +131,7 @@ def test_project_detail_renders(commander_client):
 
 
 @pytest.mark.django_db
-def test_view_02_shows_imported_by_and_date(commander_client, commander_user):
+def test_view_02_import_metadata_preserved_detail_loads(commander_client, commander_user):
     ds = DataSource.objects.create(
         name="gitlab-co",
         datasource_type=DataSource.Type.GITLAB,
@@ -156,31 +145,33 @@ def test_view_02_shows_imported_by_and_date(commander_client, commander_user):
         sync_state=Project.SyncState.ACTIVE,
     )
     r = commander_client.get(reverse("projects-detail", args=[p.pk]))
+    assert r.status_code == 200
     body = r.content.decode()
-    assert "project-imported-by" in body
-    assert commander_user.email in body or "Commander Donland" in body
-    assert "project-created-at" in body
+    assert 'data-testid="project-detail-name"' in body
+    assert "imp" in body
+    p.refresh_from_db()
+    assert p.imported_by_id == commander_user.pk
 
 
 @pytest.mark.django_db
-def test_view_03_no_playbook_shows_not_assigned(commander_client):
+def test_view_03_no_playbook_shows_informer_empty(commander_client):
     p = ProjectFactory(name="npb", slug="npb", playbook_slug="", sync_state=Project.SyncState.ACTIVE)
-    r = commander_client.get(reverse("projects-detail", args=[p.pk]))
-    assert "Not assigned" in r.content.decode()
-    assert "project-playbook-section" in r.content.decode()
+    body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
+    assert 'data-testid="informer-bar-empty"' in body
+    assert "No Playbook assigned" in body
 
 
 @pytest.mark.django_db
-def test_view_05_shows_sync_schedule(commander_client):
+def test_view_05_edit_form_shows_sync_schedule(commander_client):
     p = ProjectFactory(
         name="sched",
         slug="sched",
         sync_schedule=Project.SyncSchedule.DAILY,
         sync_state=Project.SyncState.ACTIVE,
     )
-    r = commander_client.get(reverse("projects-detail", args=[p.pk]))
+    r = commander_client.get(reverse("projects-edit", args=[p.pk]))
     body = r.content.decode()
-    assert "project-sync-schedule" in body
+    assert 'data-testid="projects-edit-sync-schedule"' in body
     assert "Daily" in body
 
 

@@ -7,9 +7,11 @@
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <span class="badge bg-secondary">{{ rows|length }} issues</span>
-    <h1 class="hg-page-title d-inline">Action Stations</h1>
-    <p class="text-muted mb-0 small">Read-only mirror of <span class="font-monospace">HUGINN</span>-tagged Jira tickets.</p>
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-list-check hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Action Stations</span>
+    </h1>
+    <p class="text-muted mb-0 small"><span data-testid="action-stations-count-badge">{{ rows|length }} issues</span> · Read-only mirror of <span class="font-monospace">HUGINN</span>-tagged Jira tickets.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Action Stations actions">
     <button type="button" class="btn btn-outline-secondary btn-sm" data-testid="action-stations-sync"><i class="fa-solid fa-rotate"></i> Sync</button>

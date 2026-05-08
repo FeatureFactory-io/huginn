@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — LIST+FIND data table shell (Playbooks-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (§3.4).
+> Last updated: May 2026 — List page headers with entity icon (3.5); LIST+FIND data table shell (Playbooks-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (3.4).
 
 ---
 
@@ -245,26 +245,38 @@ On **VIEW**, **LIST+FIND** (when a single primary CTA sits beside the title), an
 
 Apply the same pattern to mockups and new surfaces (e.g. Playbook VIEW, Playbooks list header with **New Playbook**) so detail-adjacent headers stay visually consistent with Projects.
 
+### 3.5 List page headers — entity icon (default)
+
+**LIST** and **LIST+FIND** screens (and the Tactical Plot index) use a single **page title row** that identifies the surface at a glance:
+
+| Rule | Detail |
+|---|---|
+| **Icon + title** | The `<h1 class="hg-page-title">` is a flex row: leading Font Awesome icon + title text. Icon classes include **`hg-page-title-icon text-primary`** and **`aria-hidden="true"`** (decorative). Title words stay in a `<span>` when the `<h1>` is also `d-flex`. |
+| **Nav alignment** | Prefer the **same icon** as the primary navbar entry for that surface (e.g. Plot → `fa-sharp fa-solid fa-wave-pulse`, SA → `fa-map-location-dot`, FRAGOs → `fa-puzzle`, Playbooks → `fa-book`, Projects → `fa-folder-open`, Data Sources → `fa-plug`). |
+| **No count pill on the title row** | Do **not** place **`badge rounded-pill`** (or similar) beside the `<h1>` for row counts. Counts belong in the **subtitle** line below (`<p class="text-muted small">`), optionally wrapped in a `<span data-testid="…-count-badge">` for tests. |
+| **Subtitle** | One muted line under the title: sync/meta text, count + short description, or both (e.g. `3 projects · Imported from…`). |
+
+**References:** `ui/templates/ui/dashboard/projects.html` (Tactical Plot), `ui/templates/ui/projects/list.html` (LIST+FIND with toolbar).
+
 ---
 
 ## 4. Navigation
 
 ### 4.1 Primary Nav Items
 
-Grouped by journey phase (not shown as sections in the navbar — just ordered):
+**Production navbar order** (`templates/base.html`): Plot → SA → FRAGOs → Playbooks → Projects → Data Sources → Status.
 
 | Nav item | Route | Phase | Icon |
 |---|---|---|---|
-| Dashboard | `/` | Calibration landing | `fa-grip-vertical` |
-| Projects | `/projects/` | Inception / management | `fa-folder-open` |
+| Plot (Tactical Plot) | `/` (post-login) | Calibration landing | `fa-sharp fa-solid fa-wave-pulse` (Font Awesome Kit) |
+| SA (Situational Awareness) | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-map-location-dot` |
+| FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-puzzle` |
 | Playbooks | `/playbooks/` | Inception | `fa-book` |
+| Projects | `/projects/` | Inception / management | `fa-folder-open` |
 | Data Sources | `/datasources/` | Inception | `fa-plug` |
-| FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-flag` |
-| Situational Awareness | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-map-location-dot` |
-| Decisions | `/decisions/` | Action | `fa-gavel` |
-| Contributors | `/contributors/` | Action | `fa-users` |
-| Action Stations | `/action-stations/` | Action | `fa-list-check` |
-| Chat | `/chat/` | Calibration | `fa-comments` |
+| Status | `/welcome/` (health / welcome) | Calibration | `fa-heart-pulse` |
+
+**Other journey routes** (not in the production navbar today; mockups / future): Decisions (`fa-gavel`), Contributors (`fa-users`), Action Stations (`fa-list-check`), Chat (`fa-comments`).
 
 Right-side: authenticated user name + `fa-circle-user`.
 

@@ -1,12 +1,16 @@
 {# Page header row for mockups — no Django blocks inside includes #}
-{% comment %} Expected: title, subtitle (optional), badge (optional) {% endcomment %}
+{% comment %} Expected: title, title_icon (optional FA classes, e.g. fa-solid fa-book), subtitle (optional), list_meta (optional muted line: counts + description; may include spans with data-testid) {% endcomment %}
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    {% if badge %}
-      <span class="badge bg-secondary rounded-pill me-2" data-testid="page-badge">{{ badge }}</span>
-    {% endif %}
-    <h1 class="hg-page-title d-inline" data-testid="page-title">{{ title }}</h1>
-    {% if subtitle %}
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      {% if title_icon %}
+        <i class="{{ title_icon }} hg-page-title-icon text-primary" aria-hidden="true"></i>
+      {% endif %}
+      <span>{{ title }}</span>
+    </h1>
+    {% if list_meta %}
+      <p class="text-muted small mb-0">{{ list_meta }}</p>
+    {% elif subtitle %}
       <p class="text-muted mb-0 mt-1 small">{{ subtitle }}</p>
     {% endif %}
   </div>

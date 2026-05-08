@@ -16,10 +16,10 @@
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="fragos-page-title">
-      <span class="badge bg-secondary rounded-pill">{{ row_count }}</span>
+      <i class="fa-solid fa-puzzle hg-page-title-icon text-primary" aria-hidden="true"></i>
       <span>{% if project_slug %}FRAGOs — {{ project_slug }}{% else %}FRAGOs — All projects{% endif %}</span>
     </h1>
-    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn when generating SitReps.</p>
+    <p class="small text-muted mb-0"><span data-testid="fragos-count-badge">{{ row_count }}</span> · Overrides consumed by Gjallarhorn when generating SitReps.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
     <a class="btn btn-primary btn-sm" href="{% url 'fragos-create' %}{% if project_slug %}?project={{ project_slug }}{% endif %}" data-testid="fragos-new-btn">

@@ -1,10 +1,17 @@
 """Regression tests for promoted canonical base layout (design system shell)."""
 
+from datetime import date
+
 import pytest
 from django.test import Client
 from django.urls import reverse
 
-from tests.factories import ProjectFactory
+from tests.factories import (
+    FragoFactory,
+    ProjectFactory,
+    SituationalAwarenessFactory,
+    SituationalAwarenessVersionFactory,
+)
 
 
 @pytest.mark.django_db
@@ -61,3 +68,37 @@ def test_plot_nav_is_active_on_root(commander_client):
     idx = body.find('data-testid="nav-plot"')
     assert idx != -1
     assert "nav-link active" in body[max(0, idx - 120) : idx]
+
+
+@pytest.mark.django_db
+def test_tactical_plot_rails_use_workspace_sa_and_fragos(commander_client):
+    sa = SituationalAwarenessFactory()
+    SituationalAwarenessVersionFactory(
+        awareness=sa,
+        version_number=1,
+        standing_md="Mimir integration paused for the sprint.",
+        active_md="**Outage** ongoing until next sprint.",
+        change_summary="seed",
+    )
+    p = ProjectFactory(display_name="Acme API", name="acme-api", slug="acme-api")
+    fr = FragoFactory(
+        project=p,
+        title="No deploys on Fridays",
+        body_md="**Holiday** freeze — no merges.",
+        effective_from=date(2026, 5, 1),
+        effective_to=date(2026, 5, 31),
+        enabled=True,
+    )
+    r = commander_client.get("/")
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert 'data-testid="dashboard-rail-sitaware-disposition-list"' in body
+    assert "Mimir integration paused for the sprint." in body
+    assert 'data-testid="dashboard-rail-sitaware-list"' in body
+    assert "Outage" in body
+    assert "ongoing until next sprint." in body
+    assert f'data-testid="dashboard-rail-frago-body-{fr.pk}"' in body
+    assert "Holiday" in body
+    assert "May 01, 2026" in body or "May 1, 2026" in body
+    assert "No deploys on Fridays" in body
+    assert "project: Acme API" in body
