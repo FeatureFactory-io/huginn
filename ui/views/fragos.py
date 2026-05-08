@@ -264,10 +264,7 @@ class FragoForm(forms.ModelForm):
             "title": forms.TextInput(
                 attrs={
                     "class": "form-control form-control-sm",
-                    "placeholder": (
-                        "Brief imperative label—identifies this FRAGO in lists "
-                        "and when Gjallarhorn applies it to SitReps"
-                    ),
+                    "placeholder": "Short label for this change",
                     "data-testid": "frago-title-input",
                 },
             ),
@@ -275,7 +272,7 @@ class FragoForm(forms.ModelForm):
                 attrs={
                     "rows": 10,
                     "class": "form-control font-monospace small",
-                    "placeholder": "Free-form natural language for Gjallarhorn…",
+                    "placeholder": "Detailed instructions—markdown supported (optional)",
                     "data-testid": "frago-body-input",
                 },
             ),
@@ -309,6 +306,13 @@ class FragoForm(forms.ModelForm):
         elif affects == "" and av is None:
             cleaned["affected_variable"] = None
         return cleaned
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields["title"].help_text = (
+            "Use one line that names this change—that is the label shown in your FRAGO list. "
+            "Write the full wording in Body."
+        )
 
 
 def _apply_frago_edit_widgets(form: FragoForm) -> None:

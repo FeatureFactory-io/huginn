@@ -35,6 +35,7 @@
       <div>
         <label class="form-label" for="{{ form.title.id_for_label }}">Title <span class="text-danger">*</span></label>
         {{ form.title }}
+        {% if form.title.help_text %}<p class="form-text small mb-0">{{ form.title.help_text }}</p>{% endif %}
         {% if form.title.errors %}<div class="invalid-feedback d-block">{{ form.title.errors }}</div>{% endif %}
       </div>
       <div>

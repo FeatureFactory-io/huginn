@@ -35,7 +35,14 @@
           </div>
           <div>
             <label class="form-label" for="frago-title">Title <span class="text-danger">*</span></label>
-            <input id="frago-title" class="form-control" placeholder="Brief imperative label—identifies this FRAGO in lists and when Gjallarhorn applies it to SitReps" data-testid="frago-title-input">
+            <input id="frago-title"
+                   class="form-control"
+                   placeholder="Short label for this change"
+                   data-testid="frago-title-input"
+                   aria-describedby="frago-title-hint">
+            <p id="frago-title-hint" class="form-text small mb-0">
+              Use one line that names this change—that is the label shown in your FRAGO list. Write the full wording in Body.
+            </p>
           </div>
           <div>
             <label class="form-label" for="frago-body">Markdown body</label>
