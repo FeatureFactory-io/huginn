@@ -7,13 +7,12 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from ingestion.models import Project
 from sitrep.models import SituationalAwarenessVersion
 from ui.services import situational_awareness_service as sa_svc
 
@@ -36,23 +35,13 @@ def _want_compare(request: HttpRequest) -> bool:
 
 @method_decorator(login_required, name="dispatch")
 class SituationalAwarenessView(View):
-    """SITAWARENESS-VIEW-1 — workspace hub or Document | Versions tabs."""
+    """SITAWARENESS-VIEW-1 — workspace-global Document | Versions tabs."""
 
     template_name = "ui/situational_awareness/view.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        slug = (request.GET.get("project") or "").strip()
-        if not slug:
-            projects = list(Project.objects.filter(status=Project.Status.ACTIVE).order_by("name"))
-            return render(
-                request,
-                "ui/situational_awareness/workspace.html",
-                {"active_nav": "sitawareness", "projects": projects},
-            )
-
-        project = get_object_or_404(Project.objects.all(), slug=slug)
         tab = _active_tab(request)
-        sa = sa_svc.get_or_create_awareness(project)
+        sa = sa_svc.get_or_create_awareness()
         head = sa_svc.head_version(sa)
         snap_n = _parse_version_param(request.GET.get("v"))
         snapshot_ver: SituationalAwarenessVersion | None = None
@@ -72,8 +61,6 @@ class SituationalAwarenessView(View):
 
         ctx = {
             "active_nav": "sitawareness",
-            "project_slug": slug,
-            "project_archived": project.status == Project.Status.ARCHIVED,
             "active_tab": tab,
             "standing_entries": standing_entries,
             "active_entries": active_entries,
@@ -89,20 +76,9 @@ class SituationalAwarenessView(View):
 class SituationalAwarenessEditView(View):
     template_name = "ui/situational_awareness/edit.html"
 
-    def _archived_redirect(self, request: HttpRequest, slug: str) -> HttpResponse:
-        messages.warning(request, "Archived projects cannot edit Situational Awareness.")
-        return redirect(f"{reverse('sitawareness-view')}?project={slug}&tab=document")
-
     def get(self, request: HttpRequest) -> HttpResponse:
-        slug = (request.GET.get("project") or "").strip()
-        if not slug:
-            raise Http404("project query parameter is required")
-        project = get_object_or_404(Project.objects.all(), slug=slug)
-        if project.status == Project.Status.ARCHIVED:
-            return self._archived_redirect(request, slug)
-
         tab = _active_tab(request)
-        sa = sa_svc.get_or_create_awareness(project)
+        sa = sa_svc.get_or_create_awareness()
         head = sa_svc.head_version(sa)
         standing_text = head.standing_md if head else ""
         active_text = head.active_md if head else ""
@@ -112,7 +88,6 @@ class SituationalAwarenessEditView(View):
 
         ctx = {
             "active_nav": "sitawareness",
-            "project_slug": slug,
             "active_tab": tab,
             "standing_text": standing_text,
             "active_text": active_text,
@@ -122,21 +97,14 @@ class SituationalAwarenessEditView(View):
         return render(request, self.template_name, ctx)
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        slug = (request.GET.get("project") or "").strip()
-        if not slug:
-            raise Http404("project query parameter is required")
-        project = get_object_or_404(Project.objects.all(), slug=slug)
-        if project.status == Project.Status.ARCHIVED:
-            return self._archived_redirect(request, slug)
-
         tab = _active_tab(request)
         if tab != "document":
-            return redirect(f"{reverse('sitawareness-edit')}?project={slug}&tab=document")
+            return redirect(f"{reverse('sitawareness-edit')}?tab=document")
 
         standing_md = request.POST.get("standing_md", "")
         active_md = request.POST.get("active_md", "")
         change_summary = (request.POST.get("change_summary") or "").strip()
-        sa = sa_svc.get_or_create_awareness(project)
+        sa = sa_svc.get_or_create_awareness()
         head = sa_svc.head_version(sa)
         versions_qs = list(sa.versions.select_related("created_by").order_by("-version_number"))
         versions = sa_svc.format_versions_rows(versions_qs)
@@ -150,7 +118,6 @@ class SituationalAwarenessEditView(View):
                 self.template_name,
                 {
                     "active_nav": "sitawareness",
-                    "project_slug": slug,
                     "active_tab": "document",
                     "standing_text": standing_md,
                     "active_text": active_md,
@@ -173,7 +140,6 @@ class SituationalAwarenessEditView(View):
                 self.template_name,
                 {
                     "active_nav": "sitawareness",
-                    "project_slug": slug,
                     "active_tab": "document",
                     "standing_text": standing_md,
                     "active_text": active_md,
@@ -183,4 +149,4 @@ class SituationalAwarenessEditView(View):
             )
 
         messages.success(request, "Situational Awareness saved.")
-        return redirect(f"{reverse('sitawareness-view')}?project={slug}&tab=document")
+        return redirect(f"{reverse('sitawareness-view')}?tab=document")

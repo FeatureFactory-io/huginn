@@ -113,9 +113,9 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
 | **SitRep** | Huginn | Generated per Project after a successful sync (subject to SitRep cadence, which may be coarser than sync cadence). **Generation contract**: Gjallarhorn receives `(SituationalAwareness, active Playbook workflow + variables, enabled in-window FRAGOs, data: {...} for the period under assessment)` and returns a situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is stored as the embedded `variables_snapshot` JSON (canonical, immutable record of what Gjallarhorn saw at time T against PlaybookVersion V with active FRAGOs applied) and denormalized to `VariableDatapoint` rows for trend queries. Read-only once finalized. |
-| **Decision** | Huginn | DA-loop primitive. Proposed by Gjallarhorn in each SitRep, accepted/rejected by Commander with rationale. **Accepting branches into exactly one of three mutually-exclusive outcomes**: (a) create a new FRAGO, (b) append an entry to the Project's Situational Awareness, or (c) create a `HUGINN`-tagged Jira issue via the Jira API. Full history is the DA-loop log. |
+| **Decision** | Huginn | DA-loop primitive. Proposed by Gjallarhorn in each SitRep, accepted/rejected by Commander with rationale. **Accepting branches into exactly one of three mutually-exclusive outcomes**: (a) create a new FRAGO, (b) append an entry to the **workspace** Situational Awareness capsule, or (c) create a `HUGINN`-tagged Jira issue via the Jira API. Full history is the DA-loop log. |
 | **FRAGO** | Huginn | Per-Project, in-flight override of Playbook expectations. Free-form markdown body with optional scope (day-of-week, date range, Sprint/Milestone) and an optional `PlaybookVariable` tag. **May retune the `interpreting` of an existing PlaybookVariable for its effective window; cannot introduce new variables.** Has an `enabled` flag the Commander toggles from the list/detail view — disabled FRAGOs are excluded by Gjallarhorn at SitRep generation regardless of their effective window, useful for short-term suspension. Gjallarhorn reads enabled, in-window FRAGOs alongside the Playbook when generating a SitRep. Soft-delete (revoke) preserves history; revoked FRAGOs cannot be re-enabled. Not a watcher — does not trigger; modifies how SitReps are produced. |
-| **SituationalAwareness** | Huginn | Per-Project durable narrative memory. Versioned. Extended via Decision Branch B; read by Gjallarhorn alongside the Playbook when generating SitReps. |
+| **SituationalAwareness** | Huginn | **Workspace-global** durable narrative memory (one versioned capsule per tenant/workspace, not keyed by Project). Extended via Decision Branch B; read by Gjallarhorn **for every** SitRep alongside that Project's Playbook and FRAGOs. |
 | **Playbook** | Huginn | What good looks like for a project. Composed of (a) **metadata** — name, description; (b) a **Workflow** — free-form markdown describing the OO/DA narrative for this Project, who is who, what to look for; (c) an ordered list of **PlaybookVariables** (structured). Workflow can be typed inline, uploaded as MD, or pulled from Mimir Server (post-MVP). Shared: one Playbook can be assigned to many Projects. Distinct from the OO/DA *procedures* run internally by Gjallarhorn. |
 | **PlaybookVersion** | Huginn | Immutable snapshot of a Playbook. Created on every Playbook edit. Has version number, change summary, author, `workflow_markdown`, and a snapshot of the PlaybookVariables defined at that version. A Project pins a (Playbook, version) — auto-tracks latest by default; can be pinned explicitly to keep an older version. |
 | **PlaybookVariable** | Huginn | Per-PlaybookVersion definition of one measurement. Fields: `name` (e.g. "Cycle Time"), `abbreviation` ("CT"), `calculating` (free text — may be a JQL query, a count/ratio expression, or a natural-language prompt; the Agent decides how to apply), `interpreting` (rules mapping value → color, e.g. "<5d & not climbing → green; climbing → orange; >5d → red"), `hover` (tooltip text shown on the project card and in the SitRep snapshot). FRAGOs may retune `interpreting` for a window. |
@@ -198,9 +198,12 @@ erDiagram
 
 ```mermaid
 erDiagram
+    SituationalAwareness {
+        bigint id PK
+    }
     Project ||--o{ SitRep : produces
     Project ||--o{ FRAGO : "scoped to"
-    Project ||--|| SituationalAwareness : "has one"
+    %% One SA row per workspace — not FK-linked to Project (Act 12)
     Project }o--|| Playbook : assigned
     Project }o--o| PlaybookVersion : "pinned (else auto-tracks latest)"
     Playbook ||--o{ PlaybookVersion : versions

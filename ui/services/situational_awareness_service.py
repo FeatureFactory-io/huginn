@@ -7,7 +7,6 @@ from typing import Any
 
 from django.utils import timezone
 
-from ingestion.models import Project
 from playbooks.markdown_utils import workflow_md_to_html
 from sitrep.models import (
     SituationalAwareness,
@@ -16,9 +15,12 @@ from sitrep.models import (
 )
 
 
-def get_or_create_awareness(project: Project) -> SituationalAwareness:
-    sa, _ = SituationalAwareness.objects.get_or_create(project=project)
-    return sa
+def get_or_create_awareness() -> SituationalAwareness:
+    """Return the workspace singleton capsule (first row by pk, or create one)."""
+    sa = SituationalAwareness.objects.order_by("pk").first()
+    if sa is not None:
+        return sa
+    return SituationalAwareness.objects.create()
 
 
 def head_version(sa: SituationalAwareness) -> SituationalAwarenessVersion | None:
@@ -185,28 +187,19 @@ def unified_diff_versions(old: SituationalAwarenessVersion | None, new: Situatio
     )
 
 
-def format_versions_rows(
-    qs: list[SituationalAwarenessVersion],
-    *,
-    include_project_slug: bool = False,
-) -> list[dict[str, Any]]:
+def format_versions_rows(qs: list[SituationalAwarenessVersion]) -> list[dict[str, Any]]:
     rows = []
     for v in qs:
         actor = "—"
         if v.created_by_id:
             u = v.created_by
             actor = u.get_full_name() or u.email or str(u)
-        slug_for_row: str | None = None
-        if include_project_slug and getattr(v, "awareness_id", None):
-            proj = getattr(v.awareness, "project", None)
-            slug_for_row = proj.slug if proj else None
         rows.append(
             {
                 "n": v.version_number,
                 "on": timezone.localtime(v.created_at).strftime("%Y-%m-%d %H:%M"),
                 "author": actor,
                 "summary": v.change_summary or "—",
-                "project_slug": slug_for_row,
             },
         )
     return rows

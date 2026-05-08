@@ -25,7 +25,7 @@ class FragoAdmin(admin.ModelAdmin):
 
 @admin.register(SituationalAwareness)
 class SituationalAwarenessAdmin(admin.ModelAdmin):
-    list_display = ("project",)
+    list_display = ("__str__",)
 
 
 @admin.register(SituationalAwarenessVersion)

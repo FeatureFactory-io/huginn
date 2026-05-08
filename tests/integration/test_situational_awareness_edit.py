@@ -4,20 +4,19 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
-from tests.factories import ProjectFactory, SituationalAwarenessFactory, SituationalAwarenessVersionFactory
+from tests.factories import SituationalAwarenessFactory, SituationalAwarenessVersionFactory
 
 
 @pytest.mark.django_db
 def test_situational_awareness_save_creates_version(commander_client: Client) -> None:
-    project = ProjectFactory(slug="sa-edit-proj")
-    sa = SituationalAwarenessFactory(project=project)
+    sa = SituationalAwarenessFactory()
     SituationalAwarenessVersionFactory(
         awareness=sa,
         version_number=1,
         standing_md="first",
         change_summary="init",
     )
-    url = reverse("sitawareness-edit") + f"?project={project.slug}&tab=document"
+    url = reverse("sitawareness-edit") + "?tab=document"
     resp = commander_client.post(
         url,
         {

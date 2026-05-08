@@ -1,23 +1,17 @@
-"""Situational Awareness document — one per Project, versioned snapshots."""
+"""Situational Awareness document — one capsule per workspace, versioned snapshots."""
 
 from django.conf import settings
 from django.db import models
 
 
 class SituationalAwareness(models.Model):
-    """Single SA capsule bound to a project."""
-
-    project = models.OneToOneField(
-        "ingestion.Project",
-        on_delete=models.CASCADE,
-        related_name="situational_awareness",
-    )
+    """Single SA capsule for the whole workspace (singleton row)."""
 
     class Meta:
         verbose_name_plural = "Situational awareness records"
 
     def __str__(self) -> str:
-        return f"SA(project={self.project_id})"
+        return "SA (workspace)"
 
 
 class SituationalAwarenessVersion(models.Model):

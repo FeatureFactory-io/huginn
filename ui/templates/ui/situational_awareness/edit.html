@@ -8,9 +8,8 @@
 
 <nav aria-label="breadcrumb" class="mb-2">
   <ol class="breadcrumb small mb-0">
-    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
-    <li class="breadcrumb-item"><a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document">{{ project_slug }}</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Edit Sit Awareness</li>
+    <li class="breadcrumb-item"><a href="{% url 'sitawareness-view' %}?tab=document">Sit Awareness</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Edit</li>
   </ol>
 </nav>
 
@@ -18,7 +17,7 @@
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 mb-1 flex-wrap">
       <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
-      <span>Edit Situational Awareness · {{ project_slug }}</span>
+      <span>Edit Situational Awareness</span>
     </h1>
     <p class="small text-muted mb-0">Every save creates a new version with your change summary visible on the Versions tab.</p>
   </div>
@@ -29,7 +28,7 @@
       <ul class="nav nav-tabs card-header-tabs" role="tablist" id="sitawareness-edit-tabs" data-testid="sitawareness-edit-tablist">
         <li class="nav-item" role="presentation">
           <a class="nav-link {% if active_tab == 'document' %}active{% endif %}"
-             href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+             href="{% url 'sitawareness-edit' %}?tab=document"
              role="tab"
              aria-selected="{% if active_tab == 'document' %}true{% else %}false{% endif %}"
              id="sitawareness-edit-tab-document"
@@ -39,7 +38,7 @@
         </li>
         <li class="nav-item" role="presentation">
           <a class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
-             href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=versions"
+             href="{% url 'sitawareness-edit' %}?tab=versions"
              role="tab"
              aria-selected="{% if active_tab == 'versions' %}true{% else %}false{% endif %}"
              id="sitawareness-edit-tab-versions"
@@ -54,7 +53,7 @@
       {% if active_tab == 'document' %}
       <div id="sitawareness-edit-pane-document" role="tabpanel" aria-labelledby="sitawareness-edit-tab-document" tabindex="0" data-testid="sitawareness-edit-document-pane">
         <form method="post"
-              action="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+              action="{% url 'sitawareness-edit' %}?tab=document"
               class="vstack gap-4">
           {% csrf_token %}
           <section class="card border-0 shadow-sm rounded-3">
@@ -99,7 +98,7 @@
 
           <div class="d-flex flex-wrap justify-content-end gap-2 pb-2">
             <a class="btn btn-outline-secondary btn-sm"
-               href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
+               href="{% url 'sitawareness-view' %}?tab=document"
                data-testid="sitawareness-edit-cancel">
               <i class="fa-solid fa-xmark me-1" aria-hidden="true"></i> Cancel
             </a>
@@ -127,7 +126,7 @@
           {% endfor %}
         </div>
         <p class="small text-muted mt-3 mb-0">
-          <a href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document">Switch to Document</a> to edit content.
+          <a href="{% url 'sitawareness-edit' %}?tab=document">Switch to Document</a> to edit content.
         </p>
       </div>
       {% endif %}

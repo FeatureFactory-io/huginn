@@ -5,28 +5,28 @@ Feature: SITAWARENESS-EDIT-1 Append or revise narrative sections under version c
 
   Background:
     Given I am authenticated as "donland@example.com"
-    And Project "atlas-backend" exists with Situational Awareness at version v1
+    And the workspace Situational Awareness capsule exists at version v1
 
   # ---------------------------------------------------------------------------
   # Edit chrome & parity with VIEW layout
   # ---------------------------------------------------------------------------
 
   Scenario: SITAWARENESS-EDIT-01 Edit screen mirrors VIEW tabs with editable Document tab
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     Then I am on the screen "SITAWARENESS-EDIT-1"
     And I see Document and Versions tabs consistent with "SITAWARENESS-VIEW-1"
     And the Document tab exposes Standing context and Active situations as editable rich text
     And the Versions tab shows current head version and prior rows
 
   Scenario: SITAWARENESS-EDIT-02 Change summary field is required before Save Version
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     And I modify Standing context body without touching Change summary
     And I click "Save Version"
     Then I remain on "SITAWARENESS-EDIT-1"
     And I see validation pointing at Change summary as required
 
   Scenario: SITAWARENESS-EDIT-03 Save Version persists new content and increments version log
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     And I add text "Rotate on-call weekly." under Standing context
     And I set Change summary to "Document rotation policy"
     And I click "Save Version"
@@ -35,7 +35,7 @@ Feature: SITAWARENESS-EDIT-1 Append or revise narrative sections under version c
     And viewing "SITAWARENESS-VIEW-1" shows the new Standing context text
 
   Scenario: SITAWARENESS-EDIT-04 Cancel drops unsaved edits and returns to VIEW without version bump
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     And I modify Active situations with text that must not persist
     And I click "Cancel"
     Then I am on "SITAWARENESS-VIEW-1"
@@ -48,25 +48,20 @@ Feature: SITAWARENESS-EDIT-1 Append or revise narrative sections under version c
   Scenario: SITAWARENESS-EDIT-05 Decision Branch B preview copy references dated appended entry
     Given Decision Branch B is pending with preview text referencing today's date and attributing Commander "donland@example.com"
     When I review Branch B preview embedded in Decision accept flow
-    Then I see preview stating an append to Project Situational Awareness dated today attributed to me
+    Then I see preview stating an append to workspace Situational Awareness dated today attributed to me
 
   # ---------------------------------------------------------------------------
   # Product constraints from journey (no CREATE/DELETE of instance)
   # ---------------------------------------------------------------------------
 
   Scenario: SITAWARENESS-EDIT-06 Cannot delete Situational Awareness instance from edit screen
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     Then I do not see a destructive "Delete Situational Awareness" primary action
-
-  Scenario: SITAWARENESS-EDIT-07 Archived Project prevents edits (read-only enforcement)
-    Given Project "atlas-backend" is archived
-    When I attempt to open "SITAWARENESS-EDIT-1"
-    Then I am redirected or blocked with messaging that archived Projects disallow edits
 
   # ---------------------------------------------------------------------------
   # Accessibility
   # ---------------------------------------------------------------------------
 
   Scenario: SITAWARENESS-EDIT-08 Change summary input has an associated label and description
-    When I open Situational Awareness edit for Project "atlas-backend"
+    When I open Situational Awareness edit from the workspace
     Then Change summary field exposes an accessible name and helper text referencing version history visibility

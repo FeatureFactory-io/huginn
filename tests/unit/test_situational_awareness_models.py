@@ -3,19 +3,16 @@
 import pytest
 from django.db import IntegrityError
 
-from tests.factories import (
-    ProjectFactory,
-    SituationalAwarenessFactory,
-    SituationalAwarenessVersionFactory,
-)
+from tests.factories import SituationalAwarenessFactory, SituationalAwarenessVersionFactory
 
 
 @pytest.mark.django_db
-def test_one_sa_row_per_project() -> None:
-    project = ProjectFactory()
-    SituationalAwarenessFactory(project=project)
-    with pytest.raises(IntegrityError):
-        SituationalAwarenessFactory(project=project)
+def test_get_or_create_awareness_stable_singleton() -> None:
+    from ui.services.situational_awareness_service import get_or_create_awareness
+
+    a = get_or_create_awareness()
+    b = get_or_create_awareness()
+    assert a.pk == b.pk
 
 
 @pytest.mark.django_db

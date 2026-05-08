@@ -83,8 +83,6 @@ class SituationalAwarenessFactory(DjangoModelFactory):
     class Meta:
         model = SituationalAwareness
 
-    project = factory.SubFactory(ProjectFactory)
-
 
 class SituationalAwarenessVersionFactory(DjangoModelFactory):
     class Meta:

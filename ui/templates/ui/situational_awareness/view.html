@@ -1,36 +1,25 @@
 {% extends "base.html" %}
 {# Operational SA view: parity source ui/templates/ui/mockups/sitawareness/view.html #}
 
-{% block title %}Situational Awareness · {{ project_slug }}{% endblock %}
+{% block title %}Situational Awareness{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
-
-<nav aria-label="breadcrumb" class="mb-2">
-  <ol class="breadcrumb small mb-0">
-    <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
-    <li class="breadcrumb-item text-muted" aria-current="page">{{ project_slug }}</li>
-  </ol>
-</nav>
 
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 mb-1 flex-wrap" data-testid="sitawareness-view-heading">
       <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
-      <span>Situational Awareness · {{ project_slug }}</span>
+      <span>Situational Awareness</span>
     </h1>
-    <p class="small text-muted mb-0">Durable narrative memory merged with the Playbook when Gjallarhorn generates SitReps.</p>
+    <p class="small text-muted mb-0">Workspace-wide narrative — applies across every project.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Situational Awareness actions">
-    {% if not project_archived %}
     <a class="btn btn-primary btn-sm"
-       href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
+       href="{% url 'sitawareness-edit' %}?tab=document"
        data-testid="sitawareness-view-edit-btn">
       <i class="fa-solid fa-pen me-1" aria-hidden="true"></i> Edit
     </a>
-    {% else %}
-    <span class="small text-muted" data-testid="sitawareness-archived-readonly">Archived project — editing disabled.</span>
-    {% endif %}
   </div>
 </section>
 
@@ -39,7 +28,7 @@
     <ul class="nav nav-tabs card-header-tabs" role="tablist" id="sitawareness-view-tabs" data-testid="sitawareness-view-tablist">
       <li class="nav-item" role="presentation">
         <a class="nav-link {% if active_tab == 'document' %}active{% endif %}"
-           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
+           href="{% url 'sitawareness-view' %}?tab=document"
            role="tab"
            aria-selected="{% if active_tab == 'document' %}true{% else %}false{% endif %}"
            id="sitawareness-tab-document"
@@ -49,7 +38,7 @@
       </li>
       <li class="nav-item" role="presentation">
         <a class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
-           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=versions"
+           href="{% url 'sitawareness-view' %}?tab=versions"
            role="tab"
            aria-selected="{% if active_tab == 'versions' %}true{% else %}false{% endif %}"
            id="sitawareness-tab-versions"
@@ -66,10 +55,10 @@
       {% if snapshot_version_n %}
       <div class="alert alert-info small py-2 mb-3" data-testid="sitawareness-snapshot-banner">
         Viewing snapshot <strong>v{{ snapshot_version_n }}</strong>.
-        <a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document">Return to current</a>
+        <a href="{% url 'sitawareness-view' %}?tab=document">Return to current</a>
         {% if head_version_n and snapshot_version_n != head_version_n %}
         ·
-        <a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document&v={{ snapshot_version_n }}&compare=1" data-testid="sitawareness-compare-link">Compare to current</a>
+        <a href="{% url 'sitawareness-view' %}?tab=document&v={{ snapshot_version_n }}&compare=1" data-testid="sitawareness-compare-link">Compare to current</a>
         {% endif %}
       </div>
       {% endif %}
@@ -128,7 +117,7 @@
       <div class="list-group list-group-flush">
         {% for v in versions %}
         <a class="list-group-item list-group-item-action text-start py-3"
-           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document&v={{ v.n }}"
+           href="{% url 'sitawareness-view' %}?tab=document&v={{ v.n }}"
            data-testid="sitawareness-version-row-{{ v.n }}">
           <span class="fw-semibold">v{{ v.n }}</span>
           <span class="text-muted"> · {{ v.on }} · {{ v.author }}</span>
