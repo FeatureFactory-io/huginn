@@ -14,6 +14,63 @@
                 "DJANGO_SETTINGS_MODULE": "huginn.settings.local",
                 "POSTGRES_HOST": "localhost",
                 "REDIS_URL": "redis://localhost:6379/0"
+            },
+            "presentation": {
+                "group": "Huginn",
+                "order": 10
+            }
+        },
+        {
+            "name": "Celery: Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A",
+                "huginn",
+                "worker",
+                "--loglevel=info",
+                "--pool=solo"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "huginn.settings.local",
+                "POSTGRES_HOST": "localhost",
+                "REDIS_URL": "redis://localhost:6379/0"
+            },
+            "presentation": {
+                "group": "Huginn",
+                "order": 11
+            }
+        },
+        {
+            "name": "Celery: Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A",
+                "huginn",
+                "beat",
+                "--loglevel=info",
+                "--scheduler",
+                "django_celery_beat.schedulers:DatabaseScheduler"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "DJANGO_SETTINGS_MODULE": "huginn.settings.local",
+                "POSTGRES_HOST": "localhost",
+                "REDIS_URL": "redis://localhost:6379/0"
+            },
+            "presentation": {
+                "group": "Huginn",
+                "order": 12
             }
         },
         {
@@ -31,6 +88,26 @@
             "module": "pytest",
             "args": ["-v", "--tb=short"],
             "justMyCode": false
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Huginn: Django + Celery (worker + beat)",
+            "configurations": ["Django: Run Server", "Celery: Worker", "Celery: Beat"],
+            "stopAll": true,
+            "presentation": {
+                "group": "Huginn",
+                "order": 1
+            }
+        },
+        {
+            "name": "Huginn: Django + Celery worker only",
+            "configurations": ["Django: Run Server", "Celery: Worker"],
+            "stopAll": true,
+            "presentation": {
+                "group": "Huginn",
+                "order": 2
+            }
         }
     ]
 }
