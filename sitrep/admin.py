@@ -25,7 +25,11 @@ class FragoAdmin(admin.ModelAdmin):
 
 @admin.register(SituationalAwareness)
 class SituationalAwarenessAdmin(admin.ModelAdmin):
-    list_display = ("__str__",)
+    list_display = ("workspace_capsule",)
+
+    @admin.display(description="Workspace capsule")
+    def workspace_capsule(self, obj: SituationalAwareness) -> str:
+        return str(obj)
 
 
 @admin.register(SituationalAwarenessVersion)
