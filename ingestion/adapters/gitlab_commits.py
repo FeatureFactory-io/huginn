@@ -29,15 +29,32 @@ def _committed_at(commit: dict[str, Any]) -> datetime:
     return dt
 
 
-def _commit_to_dto(commit: dict[str, Any], branches: list[str]) -> CommitIncrementDTO:
-    author_name = ""
-    email = ""
+def _commit_author(commit: dict[str, Any]) -> tuple[str, str]:
+    """Resolve contributor name/email from GitLab ``repository/commits`` API payloads.
+
+    GitLab's ``GET .../repository/commits`` list puts ``author_name`` / ``author_email``
+    on the commit root; nested ``author`` (linked account) is often absent or omits email,
+    which previously forced ``unknown@gitlab.local``.
+    """
+    email = str(commit.get("author_email") or "").strip()
+    name = str(commit.get("author_name") or "").strip()
     if isinstance(commit.get("author"), dict):
         a = commit["author"]
-        author_name = str(a.get("name") or "")
-        email = str(a.get("email") or "")
+        if not email:
+            email = str(a.get("email") or "").strip()
+        if not name:
+            name = str(a.get("name") or "").strip()
+    if not email:
+        email = str(commit.get("committer_email") or "").strip()
+    if not name:
+        name = str(commit.get("committer_name") or "").strip()
     if not email:
         email = "unknown@gitlab.local"
+    return name, email
+
+
+def _commit_to_dto(commit: dict[str, Any], branches: list[str]) -> CommitIncrementDTO:
+    author_name, email = _commit_author(commit)
     title = str(commit.get("title") or commit.get("message") or "").split("\n", 1)[0][:512]
     return CommitIncrementDTO(
         external_id=str(commit["id"]),
