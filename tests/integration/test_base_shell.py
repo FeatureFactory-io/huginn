@@ -27,22 +27,43 @@ def test_authenticated_projects_list_includes_navbar_and_brand(commander_client)
 
 
 @pytest.mark.django_db
-def test_anonymous_root_shows_login_shell():
+def test_anonymous_root_shows_marketing_landing():
     client = Client()
     r = client.get("/")
     assert r.status_code == 200
     body = r.content.decode()
-    assert 'data-testid="auth-login-loaded"' in body
+    assert 'data-testid="landing-loaded"' in body
+    assert 'data-testid="landing-hero"' in body
+    assert 'data-testid="landing-features"' in body
+    assert 'data-testid="navbar-login"' in body
 
 
 @pytest.mark.django_db
-def test_authenticated_root_shows_tactical_plot_with_real_project_card(commander_client):
+def test_anonymous_root_hides_app_nav_items():
+    """Anonymous landing shows only brand + Login button — no app nav items."""
+    client = Client()
+    r = client.get("/")
+    body = r.content.decode()
+    assert 'data-testid="nav-brand"' in body
+    for testid in ("nav-plot", "nav-sitawareness", "nav-fragos", "nav-projects", "nav-datasources"):
+        assert f'data-testid="{testid}"' not in body, f"app nav {testid!r} leaked to anonymous landing"
+
+
+@pytest.mark.django_db
+def test_authenticated_root_redirects_to_tactical_plot(commander_client):
+    r = commander_client.get("/", follow=False)
+    assert r.status_code == 302
+    assert r.headers["Location"] == reverse("tactical-plot")
+
+
+@pytest.mark.django_db
+def test_tactical_plot_shows_real_project_card(commander_client):
     p = ProjectFactory(
         name="alpha-repo",
         display_name="Alpha Display",
         source_path="group/alpha",
     )
-    r = commander_client.get("/")
+    r = commander_client.get(reverse("tactical-plot"))
     assert r.status_code == 200
     body = r.content.decode()
     assert 'data-testid="tactical-plot-loaded"' in body
@@ -55,14 +76,14 @@ def test_authenticated_root_shows_tactical_plot_with_real_project_card(commander
 
 
 @pytest.mark.django_db
-def test_authenticated_root_post_returns_405(commander_client):
-    r = commander_client.post(reverse("auth-login"), {})
+def test_root_post_returns_405(commander_client):
+    r = commander_client.post(reverse("home"), {})
     assert r.status_code == 405
 
 
 @pytest.mark.django_db
-def test_plot_nav_is_active_on_root(commander_client):
-    r = commander_client.get("/")
+def test_plot_nav_is_active_on_tactical_plot(commander_client):
+    r = commander_client.get(reverse("tactical-plot"))
     assert r.status_code == 200
     body = r.content.decode()
     idx = body.find('data-testid="nav-plot"')
@@ -89,7 +110,7 @@ def test_tactical_plot_rails_use_workspace_sa_and_fragos(commander_client):
         effective_to=date(2026, 5, 31),
         enabled=True,
     )
-    r = commander_client.get("/")
+    r = commander_client.get(reverse("tactical-plot"))
     assert r.status_code == 200
     body = r.content.decode()
     assert 'data-testid="dashboard-rail-sitaware-disposition-list"' in body

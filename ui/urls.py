@@ -1,9 +1,10 @@
 """URL patterns for the ui app."""
 
 from django.urls import include, path
-from django.views.generic import RedirectView
 
+from .views.auth.login_view import LoginScreenView
 from .views.auth.logout_view import LogoutScreenView
+from .views.dashboard import DashboardProjectsView
 from .views.datasources import (
     DataSourcesCreateView,
     DataSourcesDeleteView,
@@ -40,12 +41,9 @@ from .views.situational_awareness import SituationalAwarenessEditView, Situation
 from .views.ux_preview import palette_preview
 
 urlpatterns = [
-    path("", HomeView.as_view(), name="auth-login"),
-    path(
-        "accounts/login/",
-        RedirectView.as_view(pattern_name="auth-login"),
-        name="auth-login-legacy-root",
-    ),
+    path("", HomeView.as_view(), name="home"),
+    path("plot/", DashboardProjectsView.as_view(), name="tactical-plot"),
+    path("accounts/login/", LoginScreenView.as_view(), name="auth-login"),
     path("accounts/logout/", LogoutScreenView.as_view(), name="auth-logout"),
     path("welcome/", welcome, name="welcome"),
     path("mockups/", include("ui.urls_mockups")),

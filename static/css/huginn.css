@@ -657,3 +657,48 @@ input.form-control-sm.hg-filter-control {
   background-color: var(--bs-secondary-bg);
   border: 0;
 }
+
+/* Marketing landing — hero + features section for anonymous users at `/`. */
+.hg-landing-hero {
+  background: linear-gradient(180deg, #ffffff 0%, var(--hg-primary-100) 100%);
+  border: 1px solid var(--hg-border);
+  padding: 2rem 1.75rem;
+}
+
+.hg-landing-title {
+  color: var(--hg-primary);
+  font-size: clamp(1.75rem, 2.4vw + 1rem, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.hg-landing-tagline {
+  font-size: clamp(0.95rem, 0.4vw + 0.85rem, 1.15rem);
+}
+
+.hg-landing-pitch {
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  max-width: 64rem;
+}
+
+.hg-landing-feature {
+  background: var(--hg-bg-surface);
+  border: 1px solid var(--hg-border);
+  border-radius: 0.5rem;
+  padding: 1rem 1.1rem;
+}
+
+.hg-landing-feature-icon {
+  align-items: center;
+  background: var(--hg-primary-100);
+  border-radius: 0.5rem;
+  color: var(--hg-primary);
+  display: inline-flex;
+  font-size: 1.1rem;
+  height: 2.25rem;
+  justify-content: center;
+  margin-bottom: 0.6rem;
+  width: 2.25rem;
+}

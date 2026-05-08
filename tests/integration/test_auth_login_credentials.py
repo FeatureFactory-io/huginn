@@ -16,7 +16,7 @@ def test_auth_login_01_successful_login_redirects_to_tactical_plot(commander_use
         follow=False,
     )
     assert r.status_code == 302
-    assert r.headers["Location"] == "/"
+    assert r.headers["Location"] == reverse("tactical-plot")
 
 
 @pytest.mark.django_db
@@ -62,17 +62,17 @@ def test_auth_login_04_database_unreachable_shows_connectivity_message(mock_auth
 
 
 @pytest.mark.django_db
-def test_auth_login_10_logged_in_user_get_root_shows_tactical_plot(commander_client):
+def test_auth_login_10_logged_in_user_get_login_redirects_to_tactical_plot(commander_client):
     r = commander_client.get(reverse("auth-login"), follow=False)
-    assert r.status_code == 200
-    assert 'data-testid="tactical-plot-loaded"' in r.content.decode()
+    assert r.status_code == 302
+    assert r.headers["Location"] == reverse("tactical-plot")
 
 
 @pytest.mark.django_db
-def test_auth_login_11_logout_post_clears_session_and_redirects_to_login(commander_client):
+def test_auth_login_11_logout_post_clears_session_and_redirects_to_home(commander_client):
     r = commander_client.post(reverse("auth-logout"), follow=False)
     assert r.status_code in (302, 303)
-    assert r.headers.get("Location") == "/"
+    assert r.headers.get("Location") == reverse("home")
     r2 = commander_client.get(reverse("projects-list"), follow=False)
     assert r2.status_code == 302
     assert reverse("auth-login") in (r2.headers.get("Location") or "")

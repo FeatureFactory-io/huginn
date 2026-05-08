@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render
+from django.utils.decorators import method_decorator
 from django.views import View
 
 from ingestion.models import DataSource, Project
@@ -164,6 +166,7 @@ def _rail_fragos_in_effect(*, max_items: int = 16) -> list[dict]:
     return rows
 
 
+@method_decorator(login_required, name="dispatch")
 class DashboardProjectsView(View):
     """GET: Tactical Plot — project list in same widget chrome as other rails."""
 

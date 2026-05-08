@@ -112,8 +112,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
 
-LOGIN_URL = "/"
-LOGIN_REDIRECT_URL = "/"
+LOGIN_URL = "/accounts/login/"
+LOGIN_REDIRECT_URL = "/plot/"
 
 # Structured JSON logging to stdout — collected by CloudWatch on EB
 LOGGING = {
