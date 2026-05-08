@@ -31,10 +31,10 @@
   </div>
 </section>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3" role="search" aria-label="Playbooks filters">
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-author">Author</label>
-    <select class="form-select form-select-sm" id="pb-filter-author" data-testid="playbooks-filter-author">
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-author" data-testid="playbooks-filter-author">
       <option>All</option>
       <option>donland@example.com</option>
       <option>stark@example.com</option>
@@ -43,7 +43,7 @@
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-used">Used by Project</label>
-    <select class="form-select form-select-sm" id="pb-filter-used" data-testid="playbooks-filter-used-by-project">
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-used" data-testid="playbooks-filter-used-by-project">
       <option>All</option>
       <option>Yes</option>
       <option>No</option>
@@ -51,7 +51,7 @@
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-updated">Updated within</label>
-    <select class="form-select form-select-sm" id="pb-filter-updated" data-testid="playbooks-filter-updated-within">
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-updated" data-testid="playbooks-filter-updated-within">
       <option>Any time</option>
       <option>Last 7 days</option>
       <option>Last 30 days</option>

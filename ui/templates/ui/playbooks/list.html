@@ -30,16 +30,31 @@
   </div>
 </section>
 
-<form method="get" class="row g-3 mb-3" data-testid="playbooks-filter-form">
+<form method="get"
+      id="playbooks-filter-form"
+      class="row g-3 mb-3"
+      role="search"
+      aria-label="Playbooks filters"
+      data-testid="playbooks-filter-form"
+      data-hg-list-find-auto
+      data-hg-list-find-debounce="300">
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-author">Author</label>
-    <input type="text" class="form-control form-control-sm" id="pb-filter-author" name="author"
-           value="{{ filter_author }}" placeholder="Email contains"
+    <input type="text"
+           class="form-control form-control-sm hg-filter-control rounded-2 hg-filter-on-input-submit"
+           id="pb-filter-author"
+           name="author"
+           value="{{ filter_author }}"
+           placeholder="Email contains"
+           autocomplete="off"
            data-testid="playbooks-filter-author">
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-used">Used by Project</label>
-    <select class="form-select form-select-sm" id="pb-filter-used" name="used_by" data-testid="playbooks-filter-used-by-project">
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="pb-filter-used"
+            name="used_by"
+            data-testid="playbooks-filter-used-by-project">
       <option value="" {% if not filter_used_by %}selected{% endif %}>All</option>
       <option value="yes" {% if filter_used_by == "yes" %}selected{% endif %}>Yes</option>
       <option value="no" {% if filter_used_by == "no" %}selected{% endif %}>No</option>
@@ -47,14 +62,14 @@
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pb-filter-updated">Updated within</label>
-    <select class="form-select form-select-sm" id="pb-filter-updated" name="updated_within" data-testid="playbooks-filter-updated-within">
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="pb-filter-updated"
+            name="updated_within"
+            data-testid="playbooks-filter-updated-within">
       <option value="" {% if not filter_updated_within %}selected{% endif %}>Any time</option>
       <option value="7" {% if filter_updated_within == "7" %}selected{% endif %}>Last 7 days</option>
       <option value="30" {% if filter_updated_within == "30" %}selected{% endif %}>Last 30 days</option>
     </select>
-  </div>
-  <div class="col-12">
-    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply filters</button>
   </div>
 </form>
 

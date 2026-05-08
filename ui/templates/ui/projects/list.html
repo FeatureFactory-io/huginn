@@ -21,32 +21,47 @@
   </div>
 {% endif %}
 
-<form method="get" class="row g-2 align-items-end mb-3" data-testid="projects-list-filters">
-  <div class="col-md-3">
-    <label class="form-label small mb-0" for="flt_ds">Data source</label>
-    <select name="datasource" id="flt_ds" class="form-select form-select-sm" data-testid="projects-filter-datasource">
+<form method="get"
+      class="row g-3 mb-3"
+      role="search"
+      aria-label="Projects filters"
+      data-testid="projects-list-filters"
+      data-hg-list-find-auto
+      data-hg-list-find-debounce="300">
+  <div class="col-12 col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="flt_ds">Data source</label>
+    <select name="datasource"
+            id="flt_ds"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="projects-filter-datasource">
       <option value="">All</option>
       {% for ds in filter_datasources %}
         <option value="{{ ds.pk }}" {% if filter_datasource == ds.pk|stringformat:"s" %}selected{% endif %}>{{ ds.name }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-3">
-    <label class="form-label small mb-0" for="flt_st">Row status</label>
-    <select name="status" id="flt_st" class="form-select form-select-sm" data-testid="projects-filter-status">
+  <div class="col-12 col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="flt_st">Row status</label>
+    <select name="status"
+            id="flt_st"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="projects-filter-status">
       <option value="" {% if not filter_status %}selected{% endif %}>All</option>
       <option value="active" {% if filter_status == "active" %}selected{% endif %}>Active</option>
       <option value="archived" {% if filter_status == "archived" %}selected{% endif %}>Archived</option>
       <option value="orphaned" {% if filter_status == "orphaned" %}selected{% endif %}>Orphaned</option>
     </select>
   </div>
-  <div class="col-md-3">
-    <label class="form-label small mb-0" for="flt_pb">Playbook</label>
-    <input type="search" name="playbook" id="flt_pb" value="{{ filter_playbook }}" class="form-control form-control-sm" placeholder="Name or slug" data-testid="projects-filter-playbook">
-  </div>
-  <div class="col-md-3 d-flex gap-2">
-    <button type="submit" class="btn btn-sm btn-primary" data-testid="projects-filter-apply">Apply</button>
-    <a href="{% url 'projects-list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+  <div class="col-12 col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="flt_pb">Playbook</label>
+    <input type="search"
+           name="playbook"
+           id="flt_pb"
+           value="{{ filter_playbook }}"
+           class="form-control form-control-sm hg-filter-control rounded-2 hg-filter-on-input-submit"
+           placeholder="Name or slug"
+           autocomplete="off"
+           data-testid="projects-filter-playbook">
   </div>
 </form>
 
@@ -61,7 +76,7 @@
 {% else %}
   <div class="card border-0 shadow-sm rounded-3 mt-3">
     <div class="card-body p-0">
-      <div class="table-responsive">
+      <div class="table-responsive" data-testid="projects-table-wrap">
         <table class="table table-hover align-middle mb-0" data-testid="projects-list-table">
           <thead class="table-light">
             <tr>

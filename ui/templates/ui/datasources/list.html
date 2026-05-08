@@ -17,30 +17,38 @@
   </div>
 </section>
 
-<form class="row g-3 mb-3" method="get" data-testid="datasources-filter-form">
-  <div class="col-md-4">
+<form class="row g-3 mb-3"
+      method="get"
+      role="search"
+      aria-label="Data Sources filters"
+      data-testid="datasources-filter-form"
+      data-hg-list-find-auto>
+  <div class="col-md-6">
     <label class="form-label hg-label-caps mb-1" for="filter-type">Type</label>
-    <select class="form-select form-select-sm" id="filter-type" name="type" data-testid="filter-type">
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="filter-type"
+            name="type"
+            data-testid="filter-type">
       {% for val, label in type_choices %}
         <option value="{{ val }}" {% if val == active_type %}selected{% endif %} {% if val == "jira" %}disabled{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-6">
     <label class="form-label hg-label-caps mb-1" for="filter-status">Status</label>
-    <select class="form-select form-select-sm" id="filter-status" name="status" data-testid="filter-status">
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="filter-status"
+            name="status"
+            data-testid="filter-status">
       {% for val, label in status_choices %}
         <option value="{{ val }}" {% if val == active_status %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-4 d-flex align-items-end">
-    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply</button>
-  </div>
 </form>
 
 <div class="card border-0 shadow-sm rounded-3">
-  <div class="card-body">
+  <div class="card-body p-0">
     {% if datasources %}
       <div class="table-responsive" data-testid="datasources-table-wrap">
         <table class="table table-hover align-middle mb-0" data-testid="datasources-table">

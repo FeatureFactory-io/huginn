@@ -28,11 +28,20 @@
   </div>
 </section>
 
-<form method="get" action="{% url 'fragos-list' %}" class="row g-3 mb-3 align-items-end">
+<form method="get"
+      action="{% url 'fragos-list' %}"
+      class="row g-3 mb-3 align-items-end"
+      role="search"
+      aria-label="FRAGO list filters"
+      data-testid="fragos-list-filters"
+      data-hg-list-find-auto>
   <input type="hidden" name="project" value="{{ project_slug }}">
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="flt-frago-status">Status</label>
-    <select id="flt-frago-status" name="status" class="form-select form-select-sm" data-testid="fragos-filter-status">
+    <select id="flt-frago-status"
+            name="status"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-status">
       <option value="All" {% if filter_status == "All" %}selected{% endif %}>All</option>
       <option value="Active" {% if filter_status == "Active" %}selected{% endif %}>Active</option>
       <option value="Inactive" {% if filter_status == "Inactive" %}selected{% endif %}>Inactive</option>
@@ -43,20 +52,26 @@
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="flt-frago-var">Affected Variable</label>
-    <select id="flt-frago-var" name="variable" class="form-select form-select-sm" data-testid="fragos-filter-variable-tag">
+    <select id="flt-frago-var"
+            name="variable"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-variable-tag">
       {% for abbrev, label in variable_choices %}
       <option value="{{ abbrev }}" {% if abbrev == filter_variable %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-4 d-flex flex-wrap align-items-center gap-3">
-    <div class="form-check mb-0">
-      <input class="form-check-input" type="checkbox" id="flt-in-effect" name="in_effect" value="1"
+  <div class="col-md-4">
+    <div class="form-check mb-0 pt-md-4">
+      <input class="form-check-input hg-filter-on-change-submit"
+             type="checkbox"
+             id="flt-in-effect"
+             name="in_effect"
+             value="1"
              {% if filter_in_effect %}checked{% endif %}
              data-testid="fragos-filter-in-effect-now">
       <label class="form-check-label small" for="flt-in-effect">In effect now</label>
     </div>
-    <button type="submit" class="btn btn-outline-secondary btn-sm">Apply</button>
   </div>
 </form>
 

@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — LIST+FIND row pattern (name + kebab); LIST+FIND filters (immediate, no Apply); Playbook VIEW tabs; detail header toolbar (§3.4).
+> Last updated: May 2026 — LIST+FIND data table shell (Playbooks-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (§3.4).
 
 ---
 
@@ -208,7 +208,7 @@ Every page follows this structure:
 | **Detail tabs card** | Playbook VIEW, SitAwareness VIEW | `hg-detail-tabs-card` + `nav-tabs` |
 | **2-pane chat** (conversation + context) | Gjallarhorn Chat | custom flex, fixed height |
 | **Single-column form** | Create / Edit screens | `col-md-8 col-lg-6`, centred |
-| **Full-width table** | LIST+FIND screens | `table-responsive` |
+| **Full-width table** | LIST+FIND screens | Card shell + `table-responsive` + `table-hover` (§5.2 LIST+FIND data table) |
 | **Filter row → table** | LIST+FIND screens | Filter controls in a `row` directly above the table card (§5.2) |
 
 ### 3.3 Navbar CSS
@@ -293,7 +293,9 @@ Set `aria-current="page"` on the active nav link and add `.active` class.
 
 #### Buttons
 
-All buttons carry a Font Awesome icon and a Bootstrap tooltip.
+**Icon requirement:** Every **action control** styled as a Bootstrap button (`<button class="btn …">` or `<a class="btn …">`) includes a **leading Font Awesome icon** (`fa-solid` / `fa-regular` / `fa-brands` as appropriate) with `me-1` spacing before the label, **`aria-hidden="true"`** on decorative icons. **Icon-only** buttons use a single icon plus mandatory `aria-label` / `title` (they do not duplicate label text). Plain text links (`<a>` without `.btn`) do not require icons.
+
+All such buttons should also carry a Bootstrap **`tooltip`** (`data-bs-toggle="tooltip"`) where it adds clarity (required actions, destructive confirmations, toolbar overflow).
 
 ```html
 <!-- Primary action -->
@@ -388,6 +390,7 @@ Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a *
 | **Immediate application** | Changing a filter **reloads or narrows results right away**. Do **not** use an **Apply**, **Filter**, or **Submit** button for standard dropdown / preset filters. |
 | **Implementation** | Full-page `GET` with query params, HTMX (`change` on `<select>`, debounced `input` on search fields), or client-side filtering for static mocks — the **UX contract** is the same: no separate apply step. |
 | **Combined search** | When a text search sits beside dropdowns, it should also take effect as the user types (debounce ~300ms) or on Enter, **without** a dedicated Search button unless the journey explicitly calls for a heavy query. |
+| **No Clear / Reset row actions** | Do **not** place **Clear**, **Clear filters**, **Clear project**, or **Reset** buttons in the filter row. Users return to the default view by choosing **All** / the first empty option / clearing typed search — same interaction model everywhere so the row never grows mystery chrome. |
 
 **Look and feel**
 
@@ -397,7 +400,7 @@ Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a *
 | **Layout** | `row g-3` with one **`col-md-*`** per filter (equal-width columns when counts match; responsive wrap on small screens). |
 | **Labels** | **`label.form-label.hg-label-caps.mb-1`** above each control — small uppercase labels with letter-spacing (§2.4). |
 | **Dropdowns** | **`select.form-select.form-select-sm`** — Bootstrap chevron, compact height. On the global page background, give controls a **soft filled look** with **`bg-body-secondary`**, **`border-0`**, and **`rounded-2`** so they match the Playbooks LIST+FIND reference screenshot. |
-| **No trailing actions** | The filter row ends with the last control — **no** primary button in that row for “applying” filters. |
+| **No trailing actions** | The filter row ends with the last filter control — **no** Apply, **no** Clear/Reset, **no** extra navigation disguised as filters (those belong in the page toolbar or breadcrumbs if truly needed). |
 
 **Markup sketch**
 
@@ -416,6 +419,51 @@ Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a *
 ```
 
 **Canonical reference (mockup):** `ui/templates/ui/mockups/playbooks/list.html`.
+
+#### LIST+FIND data table (card + table)
+
+Primary entity lists use one **visual system** so scanning columns and row actions feels the same app-wide. **Canonical mock:** Playbooks list (`ui/templates/ui/mockups/playbooks/list.html`). **Canonical production:** Playbooks list (`ui/templates/ui/playbooks/list.html`).
+
+**Structure**
+
+| Layer | Classes / markup |
+|---|---|
+| **Shell** | `<div class="card border-0 shadow-sm rounded-3">` |
+| **Body** | `<div class="card-body p-0">` — **always `p-0`** so the table is flush with the card edges; empty states use their own vertical padding (`py-5`) inside this same body. |
+| **Scroll** | `<div class="table-responsive" data-testid="{entity}-table-wrap">` — wrapper **inside** `card-body`, never merged into one element with `table-responsive`. |
+| **Table** | `<table class="table table-hover align-middle mb-0" data-testid="{entity}-table">` |
+| **Header row** | `<thead class="table-light">` with `<th scope="col">` per column. |
+
+**Rules**
+
+| Rule | Detail |
+|---|---|
+| **Hover rows** | Use **`table-hover`**. Do **not** use **`table-striped`** on LIST+FIND entity lists — it fights the hover affordance and differs from the Playbooks reference. |
+| **Density** | Default lists use **full** `.table` (not `table-sm`) unless the screen is explicitly a dense matrix (e.g. contributors grid) where product asks for compact rows; still keep the same card / `p-0` / `table-responsive` shell. |
+| **Actions column** | Narrow `<th class="text-end ps-3" scope="col" style="width:3.25rem;">` with `<span class="visually-hidden">Row actions</span>` when the column holds kebab menus (§5.2 LIST+FIND Table — primary drill-down + kebab). |
+| **Secondary tables** | Detail screens, sync logs, editor grids (`table-sm`, bordered variants) are **out of scope** for this pattern unless they are the main list for an entity. |
+
+**Markup sketch**
+
+```html
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body p-0">
+    <div class="table-responsive" data-testid="{entity}-table-wrap">
+      <table class="table table-hover align-middle mb-0" data-testid="{entity}-table">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">…</th>
+            <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+              <span class="visually-hidden">Row actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>…</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+```
 
 #### Project Card (Dashboard)
 
@@ -792,7 +840,7 @@ Every list and data section must handle all three:
 
 ### 7.2 Icon Usage Rules
 
-- Always pair an icon with text on non-icon-only buttons (accessibility).
+- **Buttons:** Normative rule — §5.1 Buttons (leading FA icon on every `.btn`, except icon-only controls).
 - Icon-only buttons (table row actions) **must** have a `title` tooltip and `aria-label`.
 - Use `me-1` margin between icon and label text.
 - Never use icons for purely decorative purposes without `aria-hidden="true"`.

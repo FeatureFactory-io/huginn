@@ -557,3 +557,10 @@ main.hg-main {
 .btn.hg-btn-disabled-visible:disabled {
   opacity: 1;
 }
+
+/* LIST+FIND filter controls — IA guidelines §5.2 (soft fields on page background) */
+select.form-select-sm.hg-filter-control,
+input.form-control-sm.hg-filter-control {
+  background-color: var(--bs-secondary-bg);
+  border: 0;
+}

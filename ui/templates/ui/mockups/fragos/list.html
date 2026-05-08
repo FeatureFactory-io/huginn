@@ -11,62 +11,82 @@
       <i class="fa-solid fa-puzzle text-primary" aria-hidden="true"></i>
       <span>{% if project_slug %}FRAGOs · {{ project_slug }}{% else %}FRAGOs — All projects{% endif %}</span>
     </h1>
-    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time. {% if not project_slug %}Use <strong>New FRAGO</strong> to pick a project, or scope the table with the filter below.{% endif %}</p>
+    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time. {% if not project_slug %}Scope the table with the project filter below, or open <strong>New FRAGO</strong> and choose a project on the form.{% endif %}</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
-    {% if project_slug %}
-    <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}?project={{ project_slug|urlencode }}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
-    {% else %}
-    <div class="dropdown">
-      <button type="button"
-              class="btn btn-primary btn-sm dropdown-toggle"
-              id="fragos-new-dropdown"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-              data-testid="fragos-new-btn">
-        <i class="fa-solid fa-plus me-1"></i> New FRAGO
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="fragos-new-dropdown">
-        <li><h6 class="dropdown-header">Choose project</h6></li>
-        {% for slug, label in project_filter_choices %}
-        <li>
-          <a class="dropdown-item" href="{% url 'mockup-fragos-create' %}?project={{ slug|urlencode }}" data-testid="fragos-new-for-{{ slug }}">New for {{ label }}</a>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'mockup-fragos-create' %}{% if project_slug %}?project={{ project_slug|urlencode }}{% endif %}"
+       data-testid="fragos-new-btn">
+      <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> New FRAGO
+    </a>
   </div>
 </section>
 
-<div class="card border-0 shadow-sm rounded-3 mb-3">
-  <div class="card-body py-3">
-    <form method="get" action="{% url 'mockup-fragos-list' %}" class="row g-2 align-items-end">
-      <div class="col-auto">
-        <label class="form-label small mb-1" for="frago-filter-project">Project</label>
-        <select name="project" id="frago-filter-project" class="form-select form-select-sm" data-testid="fragos-filter-project" onchange="this.form.submit()" aria-describedby="frago-filter-help">
-          <option value="">— All projects (pick to scope list) —</option>
-          {% for slug, label in project_filter_choices %}
-          <option value="{{ slug }}" {% if project_slug == slug %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-auto">
-        <button type="submit" class="btn btn-sm btn-outline-primary" data-testid="fragos-filter-apply">Apply</button>
-      </div>
-      <p id="frago-filter-help" class="col-12 small text-muted mb-0">Changing Project reloads this page; Apply is optional.</p>
-      {% if project_slug %}
-      <div class="col-auto">
-        <a class="btn btn-sm btn-outline-secondary" href="{% url 'mockup-fragos-list' %}" data-testid="fragos-clear-project-filter">Clear project</a>
-      </div>
-      {% endif %}
-    </form>
+<form method="get"
+      action="{% url 'mockup-fragos-list' %}"
+      class="row g-3 mb-3"
+      role="search"
+      aria-label="FRAGO list filters"
+      data-testid="fragos-scope-form"
+      data-hg-list-find-auto>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-project">Project</label>
+    <select name="project"
+            id="frago-filter-project"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-project"
+            aria-describedby="frago-filter-help">
+      <option value="">— All projects —</option>
+      {% for slug, label in project_filter_choices %}
+      <option value="{{ slug }}" {% if project_slug == slug %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
   </div>
-</div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-timing">Timing</label>
+    <select name="timing"
+            id="frago-filter-timing"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-timing">
+      <option value="">All</option>
+      <option value="in_effect" {% if filter_timing == "in_effect" %}selected{% endif %}>In Effect</option>
+      <option value="scheduled" {% if filter_timing == "scheduled" %}selected{% endif %}>Scheduled</option>
+      <option value="past" {% if filter_timing == "past" %}selected{% endif %}>Past</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-status">Status</label>
+    <select name="status"
+            id="frago-filter-status"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-status">
+      <option value="">All</option>
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>Active</option>
+      <option value="disabled" {% if filter_status == "disabled" %}selected{% endif %}>Disabled</option>
+      <option value="revoked" {% if filter_status == "revoked" %}selected{% endif %}>Revoked</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-affects">Affects</label>
+    <select name="affects"
+            id="frago-filter-affects"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-affects">
+      <option value="">All</option>
+      <option value="narrative" {% if filter_affects == "narrative" %}selected{% endif %}>Narrative</option>
+      <option value="variables" {% if filter_affects == "variables" %}selected{% endif %}>List of Variables</option>
+    </select>
+  </div>
+  <p id="frago-filter-help" class="col-12 small text-muted mb-0">
+    Changing any filter reloads immediately. Pick a <strong>project</strong> to load mock rows; <strong>— All projects —</strong> clears project scope.
+    Timing / Status / Affects are UI placeholders until wired to the FRAGO query API.
+  </p>
+</form>
 
 <div class="card border-0 shadow-sm rounded-3">
-  <div class="card-body table-responsive">
-    <table class="table align-middle mb-0" data-testid="fragos-table">
+  <div class="card-body p-0">
+    <div class="table-responsive" data-testid="fragos-table-wrap">
+    <table class="table table-hover align-middle mb-0" data-testid="fragos-table">
       <thead class="table-light">
         <tr>
           <th scope="col" class="text-center">On</th>
@@ -135,6 +155,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
 </div>
 {% endblock %}

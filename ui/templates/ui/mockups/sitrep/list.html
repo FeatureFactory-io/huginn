@@ -33,29 +33,37 @@
 </div>
 
 <div class="card border-0 shadow-sm rounded-3">
-  <div class="card-body table-responsive">
-    <table class="table table-hover mb-0 align-middle" data-testid="sitrep-history-table">
-      <thead class="table-light">
-        <tr>
-          <th>Generated</th><th>Status</th><th>Headline</th><th class="text-center">Proposed</th><th class="text-center">Accepted</th><th>Playbook</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for r in rows %}
-          <tr data-testid="sitrep-row-{{ r.id }}">
-            <td>{{ r.generated_at }}</td>
-            <td><span class="badge text-uppercase {% if r.status == 'red' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.status }}</span></td>
-            <td>
-              <a href="{% url 'mockup-sitrep-view' r.id %}"
-                 class="hg-list-name-link fw-medium d-inline-block"
-                 data-testid="sitrep-row-headline-{{ r.id }}">{{ r.headline }}</a>
-            </td>
-            <td class="text-center">{{ r.decisions_proposed }}</td><td class="text-center">{{ r.decisions_accepted }}</td>
-            <td>v{{ r.pb_version }}</td>
+  <div class="card-body p-0">
+    <div class="table-responsive" data-testid="sitrep-history-table-wrap">
+      <table class="table table-hover align-middle mb-0" data-testid="sitrep-history-table">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">Generated</th>
+            <th scope="col">Status</th>
+            <th scope="col">Headline</th>
+            <th scope="col" class="text-center">Proposed</th>
+            <th scope="col" class="text-center">Accepted</th>
+            <th scope="col">Playbook</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr data-testid="sitrep-row-{{ r.id }}">
+              <td>{{ r.generated_at }}</td>
+              <td><span class="badge text-uppercase {% if r.status == 'red' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ r.status }}</span></td>
+              <td>
+                <a href="{% url 'mockup-sitrep-view' r.id %}"
+                   class="hg-list-name-link fw-medium d-inline-block"
+                   data-testid="sitrep-row-headline-{{ r.id }}">{{ r.headline }}</a>
+              </td>
+              <td class="text-center">{{ r.decisions_proposed }}</td>
+              <td class="text-center">{{ r.decisions_accepted }}</td>
+              <td>v{{ r.pb_version }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 

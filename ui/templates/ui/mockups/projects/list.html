@@ -18,20 +18,20 @@
   </div>
 </section>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3" role="search" aria-label="Projects filters">
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pf-ds">DataSource</label>
-    <select class="form-select form-select-sm" id="pf-ds" data-testid="projects-filter-datasource"><option>All</option>{% for r in rows %}<option>{{ r.datasource }}</option>{% endfor %}</select>
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pf-ds" data-testid="projects-filter-datasource"><option>All</option>{% for r in rows %}<option>{{ r.datasource }}</option>{% endfor %}</select>
   </div>
   <div class="col-md-4">
     <label class="form-label hg-label-caps mb-1" for="pf-st">Status</label>
-    <select class="form-select form-select-sm" id="pf-st" data-testid="projects-filter-status"><option>Active</option><option>Archived</option><option>Orphaned</option></select>
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pf-st" data-testid="projects-filter-status"><option>Active</option><option>Archived</option><option>Orphaned</option></select>
   </div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-3">
-  <div class="card-body">
-    <div class="table-responsive">
+  <div class="card-body p-0">
+    <div class="table-responsive" data-testid="projects-table-wrap">
       <table class="table table-hover align-middle mb-0" data-testid="projects-table">
         <thead class="table-light">
           <tr>

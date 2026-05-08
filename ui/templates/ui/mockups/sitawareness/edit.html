@@ -20,11 +20,20 @@
     <textarea class="form-control mb-4" rows="6">Standing...</textarea>
     <label class="form-label">Active situations</label>
     <textarea class="form-control mb-4" rows="5">Situations...</textarea>
-    <label class="form-label">Change summary <span class="text-danger">*</span></label>
-    <input class="form-control" placeholder="Captured outage context …">
+    <label class="form-label" for="mock-sitawareness-change-summary">Change summary <span class="text-danger">*</span></label>
+    <input id="mock-sitawareness-change-summary"
+           class="form-control"
+           type="text"
+           placeholder="what changed in this version?"
+           autocomplete="off"
+           data-testid="sitawareness-edit-change-summary">
     <div class="d-flex justify-content-end mt-4 gap-2">
-      <a class="btn btn-outline-secondary" href="{% url 'mockup-sitawareness-view' %}">Cancel</a>
-      <button class="btn btn-primary disabled">Save Version</button>
+      <a class="btn btn-outline-secondary" href="{% url 'mockup-sitawareness-view' %}" data-testid="sitawareness-edit-cancel">
+        <i class="fa-solid fa-xmark me-1" aria-hidden="true"></i> Cancel
+      </a>
+      <button type="button" class="btn btn-primary disabled" data-testid="sitawareness-edit-save">
+        <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save Version
+      </button>
     </div>
   </div>
 </form>

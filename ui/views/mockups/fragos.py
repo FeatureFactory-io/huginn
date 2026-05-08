@@ -1,5 +1,4 @@
-from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.shortcuts import render
 
 FRAG_ROWS = [
     {
@@ -38,6 +37,15 @@ FRAG_ROWS = [
 def fragos_list(request):
     """No implicit project: absent ``?project=`` means all-projects mode until user picks one."""
     proj = (request.GET.get("project") or "").strip()
+    timing = (request.GET.get("timing") or "").strip().lower()
+    if timing not in ("", "in_effect", "scheduled", "past"):
+        timing = ""
+    status_f = (request.GET.get("status") or "").strip().lower()
+    if status_f not in ("", "active", "disabled", "revoked"):
+        status_f = ""
+    affects = (request.GET.get("affects") or "").strip().lower()
+    if affects not in ("", "narrative", "variables"):
+        affects = ""
     rows = FRAG_ROWS if proj else []
     ctx = {
         "active_nav": "fragos",
@@ -47,20 +55,24 @@ def fragos_list(request):
             ("atlas-backend", "atlas-backend"),
             ("mobile-shell", "mobile-shell"),
         ],
+        "filter_timing": timing,
+        "filter_status": status_f,
+        "filter_affects": affects,
     }
     return render(request, "ui/mockups/fragos/list.html", ctx)
 
 
 def fragos_create(request):
     proj = (request.GET.get("project") or "").strip()
-    if not proj:
-        # Project is chosen on Project view or on FRAGO list (filter + New FRAGO)—never on this form.
-        return redirect(reverse("mockup-fragos-list"))
-    return render(
-        request,
-        "ui/mockups/fragos/create.html",
-        {"active_nav": "fragos", "project_slug": proj},
-    )
+    ctx = {
+        "active_nav": "fragos",
+        "project_slug": proj,
+        "project_choices": [
+            ("atlas-backend", "atlas-backend"),
+            ("mobile-shell", "mobile-shell"),
+        ],
+    }
+    return render(request, "ui/mockups/fragos/create.html", ctx)
 
 
 def fragos_view(request, pk: int):  # noqa: ARG001

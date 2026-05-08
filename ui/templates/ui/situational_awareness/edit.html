@@ -90,7 +90,7 @@
                      name="change_summary"
                      type="text"
                      class="form-control form-control-sm"
-                     placeholder="Describe what changed for version history…"
+                     placeholder="what changed in this version?"
                      autocomplete="off"
                      data-testid="sitawareness-edit-change-summary">
               <p class="form-text mb-0">Listed on the Versions tab next to author and date.</p>
@@ -100,7 +100,9 @@
           <div class="d-flex flex-wrap justify-content-end gap-2 pb-2">
             <a class="btn btn-outline-secondary btn-sm"
                href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document"
-               data-testid="sitawareness-edit-cancel">Cancel</a>
+               data-testid="sitawareness-edit-cancel">
+              <i class="fa-solid fa-xmark me-1" aria-hidden="true"></i> Cancel
+            </a>
             <button type="submit"
                     class="btn btn-primary btn-sm"
                     data-testid="sitawareness-edit-save">

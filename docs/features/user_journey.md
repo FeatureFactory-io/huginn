@@ -509,18 +509,18 @@ A FRAGO is **a short markdown body** scoped to one Project, with an optional tim
 **Project scope (mandatory in the UI)**
 Every FRAGO belongs to exactly one **Project**. Operational screens **must not** infer project from session cookies, navbar memory, or implicit defaults.
 
-- **Explicit context**: Any template that renders FRAGO links receives `project_slug` / `?project=` from **that screen's view** (Project view, SitRep, Variables, filtered list, etc.).
-- **Create FRAGO** URL always includes `?project=…`. Sources: **Project view → Add FRAGO**, **FRAGO list → New FRAGO** (when unscoped, a **split menu** picks the target Project first; when the list is already scoped, one click), SitRep / Decision deep-links, etc. There is **no Project dropdown on the create form** — visiting `/fragos/create/` without `?project=` redirects to the list.
-- **Main nav → FRAGOs** lands on the list in **all-projects** mode (optional) or with an explicit **Project** filter; deep links from elsewhere always carry `?project=<slug>`.
+- **Explicit context**: Any template that renders FRAGO links receives `project_slug` / `?project=` from **that screen's view** when linking from a scoped surface (Project view, SitRep, filtered list, etc.).
+- **Create FRAGO**: **New FRAGO** opens the create screen. Deep links may append `?project=…` to **pre-select** Project; the create form always exposes a **required Project** control so the Commander can confirm or change the target before save. Visiting create **without** `?project=` still shows the form (no redirect solely for a missing query param).
+- **Main nav → FRAGOs** lands on the list in **all-projects** mode until a Project filter narrows the table; deep links from elsewhere carry `?project=<slug>` where applicable.
 
 #### Screen: FRAGOS-LIST+FIND-1
 
 Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation] from a SitRep breach card — SitRep supplies `project`; or **Add FRAGO** from `PROJECTS-VIEW_PROJECT-1`).
 
 **Layout**:
-- **Header**: "FRAGOs — &lt;project name&gt;" when filtered by one Project; **"FRAGOs — All projects"** when unscoped, with a **Project** filter control required before create
-- **Top Actions**: [+ New FRAGO] — direct link to create with `?project=…` when the list filter is scoped to one Project; when **All projects**, a **dropdown** on the same control lists “New for &lt;project&gt;…” so Project is chosen explicitly before navigation (still no picker on the create form itself)
-- **Filter**: Project (when in all-projects mode) | Status (Active / Inactive / Scheduled / Expired / Revoked) | PlaybookVariable tag (dropdown from the **selected** Project's active Playbook; disabled until Project chosen) | In effect now
+- **Header**: "FRAGOs — &lt;project name&gt;" when filtered by one Project; **"FRAGOs — All projects"** when unscoped
+- **Top Actions**: **[+ New FRAGO]** → create screen; when the list is scoped with `?project=…`, the same parameter is appended for convenience so Project is pre-selected on the form
+- **Filter**: Project | Timing | Status | Affects (mock); operational list may add query-backed filters separately
 - **Table**:
   - Toggle | Title | PlaybookVariable tag | Effective window | Status | Actions
 - **Toggle column** (leftmost): per-row enable/disable switch (`data-testid="frago-toggle-{id}"`). Click flips the `enabled` flag — no confirmation modal (action is reversible). On flip:
@@ -544,12 +544,12 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 
 #### Screen: FRAGOS-CREATE_FRAGO-1
 
-Donland reaches **New FRAGO** with `?project=…` already set (Project view, scoped list, **New FRAGO → choose project** menu when unscoped, SitRep, or Decision). When launched from a SitRep breach card or Decision Branch A, **Project** is fixed from that SitRep's scope; PlaybookVariable tag may be pre-selected.
+Donland opens **New FRAGO** from the list or another surface. Links often include `?project=…` to **pre-select** Project (scoped FRAGO list, Project **Add FRAGO**, SitRep, Decision). The Commander **always picks or confirms Project on this form**; SitRep / Decision flows may still pre-fill other fields (e.g. PlaybookVariable tag).
 
 **Layout**:
 - **Header**: "New FRAGO"
 - **Form**:
-  - **Project** (required, read-only on screen) — always from `?project=`; create without it is not allowed (redirect to list)
+  - **Project** (required, **dropdown**) — choose target Project; pre-filled when `?project=` is present
   - Title (required) — e.g., "Belay Active Bug Count = 0 on Fridays"
   - **Body** (markdown) — the FRAGO content. Free-form natural language. Gjallarhorn reads this alongside the Playbook when generating SitReps.
   - **PlaybookVariable tag** (optional, single-select) — pick from the active Playbook's Variables. When set, the FRAGO retunes that Variable's `interpreting` rule for the effective window. When unset, the FRAGO applies as a global narrative override (Gjallarhorn reads it alongside the Workflow). Cannot introduce new Variables.
