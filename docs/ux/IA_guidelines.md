@@ -260,7 +260,7 @@ Grouped by journey phase (not shown as sections in the navbar — just ordered):
 | Playbooks | `/playbooks/` | Inception | `fa-book` |
 | Data Sources | `/datasources/` | Inception | `fa-plug` |
 | FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-flag` |
-| Situational Awareness | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-brain` |
+| Situational Awareness | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-map-location-dot` |
 | Decisions | `/decisions/` | Action | `fa-gavel` |
 | Contributors | `/contributors/` | Action | `fa-users` |
 | Action Stations | `/action-stations/` | Action | `fa-list-check` |
@@ -825,7 +825,7 @@ Every list and data section must handle all three:
 | Contributors | `fa-users` | |
 | Action Stations | `fa-list-check` | |
 | Chat / Gjallarhorn | `fa-comments` | |
-| Situational Awareness | `fa-brain` | |
+| Situational Awareness | `fa-map-location-dot` | |
 | Status: OK / Connected | `fa-circle-check` | green |
 | Status: Warning | `fa-triangle-exclamation` | orange |
 | Status: Error | `fa-circle-exclamation` | red |
