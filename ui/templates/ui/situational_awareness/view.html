@@ -22,11 +22,15 @@
     <p class="small text-muted mb-0">Durable narrative memory merged with the Playbook when Gjallarhorn generates SitReps.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Situational Awareness actions">
+    {% if not project_archived %}
     <a class="btn btn-primary btn-sm"
        href="{% url 'sitawareness-edit' %}?project={{ project_slug }}&tab=document"
        data-testid="sitawareness-view-edit-btn">
       <i class="fa-solid fa-pen me-1" aria-hidden="true"></i> Edit
     </a>
+    {% else %}
+    <span class="small text-muted" data-testid="sitawareness-archived-readonly">Archived project — editing disabled.</span>
+    {% endif %}
   </div>
 </section>
 
@@ -59,6 +63,19 @@
   <div class="card-body">
     {% if active_tab == 'document' %}
     <div id="sitawareness-pane-document" role="tabpanel" aria-labelledby="sitawareness-tab-document" tabindex="0" data-testid="sitawareness-document-pane">
+      {% if snapshot_version_n %}
+      <div class="alert alert-info small py-2 mb-3" data-testid="sitawareness-snapshot-banner">
+        Viewing snapshot <strong>v{{ snapshot_version_n }}</strong>.
+        <a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document">Return to current</a>
+        {% if head_version_n and snapshot_version_n != head_version_n %}
+        ·
+        <a href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document&v={{ snapshot_version_n }}&compare=1" data-testid="sitawareness-compare-link">Compare to current</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if compare_diff %}
+      <pre class="small bg-light border rounded p-2 mb-3 overflow-auto" data-testid="sitawareness-compare-diff">{{ compare_diff }}</pre>
+      {% endif %}
       <div class="vstack gap-4">
         <section class="card border-0 shadow-sm rounded-3" aria-labelledby="sitawareness-standing-heading">
           <div class="card-header bg-white border-bottom py-2 px-3">
@@ -70,10 +87,9 @@
               <h3 class="h6 mb-1">{{ e.title }}</h3>
               <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
               <div class="small hg-markdown-workflow" data-testid="sitawareness-standing-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
-              {% if e.decision_pk %}
-              {# parity: mock used mockup-decisions-view #}
-              <a href="#" class="small d-inline-block mt-2 text-muted" data-testid="sitawareness-standing-decision-link-{{ e.decision_pk }}" title="Decision VIEW TBD">
-                Source Decision {{ e.decision_id }}
+              {% if e.decision_label %}
+              <a href="{{ e.decision_href|default:'#' }}" class="small d-inline-block mt-2" data-testid="sitawareness-standing-decision-link-{{ forloop.counter }}">
+                Source {{ e.decision_label }}
               </a>
               {% endif %}
             </article>
@@ -96,10 +112,9 @@
               </div>
               <p class="small text-muted mb-2">{{ e.author }} · {{ e.date }}</p>
               <div class="small hg-markdown-workflow" data-testid="sitawareness-active-body-{{ forloop.counter }}">{{ e.body_html|safe }}</div>
-              {% if e.decision_pk %}
-              {# parity: mock used mockup-decisions-view #}
-              <a href="#" class="small d-inline-block mt-2 text-muted" data-testid="sitawareness-active-decision-link-{{ e.decision_pk }}" title="Decision VIEW TBD">
-                Source Decision {{ e.decision_id }}
+              {% if e.decision_label %}
+              <a href="{{ e.decision_href|default:'#' }}" class="small d-inline-block mt-2" data-testid="sitawareness-active-decision-link-{{ forloop.counter }}">
+                Source {{ e.decision_label }}
               </a>
               {% endif %}
             </article>
@@ -112,16 +127,16 @@
     <div id="sitawareness-pane-versions" role="tabpanel" aria-labelledby="sitawareness-tab-versions" tabindex="0" data-testid="sitawareness-versions-panel">
       <div class="list-group list-group-flush">
         {% for v in versions %}
-        <button type="button"
-                class="list-group-item list-group-item-action text-start py-3"
-                data-testid="sitawareness-version-row-{{ v.n }}">
+        <a class="list-group-item list-group-item-action text-start py-3"
+           href="{% url 'sitawareness-view' %}?project={{ project_slug }}&tab=document&v={{ v.n }}"
+           data-testid="sitawareness-version-row-{{ v.n }}">
           <span class="fw-semibold">v{{ v.n }}</span>
           <span class="text-muted"> · {{ v.on }} · {{ v.author }}</span>
           <span class="d-block mt-1 text-body">{{ v.summary }}</span>
-        </button>
+        </a>
         {% endfor %}
       </div>
-      <p class="small text-muted mt-3 mb-0">Selecting a version would load a read-only snapshot on the Document tab (prototype).</p>
+      <p class="small text-muted mt-3 mb-0">Selecting a version opens its read-only snapshot on the Document tab.</p>
     </div>
     {% endif %}
   </div>

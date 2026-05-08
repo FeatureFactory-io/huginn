@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Situational Awareness · Workspace{% endblock %}
+
+{% block content %}
+<section class="hg-page-header rounded-2 mb-3">
+  <h1 class="hg-page-title mb-2" data-testid="sitawareness-workspace-heading">
+    <i class="fa-solid fa-map-location-dot text-primary me-2" aria-hidden="true"></i>
+    Situational Awareness
+  </h1>
+  <p class="small text-muted mb-0">
+    Workspace narrative memory is stored per imported project. Choose a project to view or edit its capsule.
+    FRAGOs remain scoped per project separately.
+  </p>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold small">Projects</div>
+  <ul class="list-group list-group-flush" data-testid="sitawareness-workspace-project-list">
+    {% for p in projects %}
+    <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+      <span>{{ p.display_name|default:p.name }}</span>
+      <a class="btn btn-sm btn-outline-primary"
+         href="{% url 'sitawareness-view' %}?project={{ p.slug }}&tab=document"
+         data-testid="sitawareness-workspace-open-{{ p.slug }}">
+        Open
+      </a>
+    </li>
+    {% empty %}
+    <li class="list-group-item text-muted small">No active projects imported yet.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
