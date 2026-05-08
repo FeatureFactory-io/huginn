@@ -309,10 +309,7 @@ class FragoForm(forms.ModelForm):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.fields["title"].help_text = (
-            "Use one line that names this change—that is the label shown in your FRAGO list. "
-            "Write the full wording in Body."
-        )
+        self.fields["title"].help_text = "What shall we temporarily override in the playbook and why?"
 
 
 def _apply_frago_edit_widgets(form: FragoForm) -> None:
