@@ -43,7 +43,12 @@
         {% if form.body_md.errors %}<div class="invalid-feedback d-block">{{ form.body_md.errors }}</div>{% endif %}
       </div>
       <div>
-        <label class="form-label" for="{{ form.affected_variable.id_for_label }}">Affected Variable</label>
+        <label class="form-label" for="{{ form.affects.id_for_label }}">Affects</label>
+        {{ form.affects }}
+        {% if form.affects.errors %}<div class="invalid-feedback d-block">{{ form.affects.errors }}</div>{% endif %}
+      </div>
+      <div>
+        <label class="form-label" for="{{ form.affected_variable.id_for_label }}">Playbook Variable</label>
         {{ form.affected_variable }}
         {% if form.affected_variable.errors %}<div class="invalid-feedback d-block">{{ form.affected_variable.errors }}</div>{% endif %}
       </div>

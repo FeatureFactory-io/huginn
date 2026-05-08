@@ -15,8 +15,10 @@ def test_fragos_create_redirects_and_persists(commander_client: Client) -> None:
     resp = commander_client.post(
         url,
         {
+            "project": project.slug,
             "title": "New Order",
             "body_md": "## Standing change",
+            "affects": "",
             "affected_variable": "",
             "effective_from": "",
             "effective_to": "",
@@ -36,6 +38,7 @@ def test_fragos_edit_updates(commander_client: Client) -> None:
         {
             "title": "Renamed",
             "body_md": fr.body_md,
+            "affects": "narrative",
             "affected_variable": "",
             "effective_from": "",
             "effective_to": "",

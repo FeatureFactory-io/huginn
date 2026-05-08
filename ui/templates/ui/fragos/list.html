@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {# Operational FRAGO list: parity source ui/templates/ui/mockups/fragos/list.html — keep markup & data-testids aligned. #}
 
-{% block title %}FRAGOs · {{ project_slug }}{% endblock %}
+{% block title %}FRAGOs{% if project_slug %} · {{ project_slug }}{% else %} — All projects{% endif %}{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-LIST+FIND-1" screen_testid="fragos-list-find-loaded" %}
@@ -9,7 +9,7 @@
 <nav aria-label="breadcrumb" class="mb-2">
   <ol class="breadcrumb small mb-0">
     <li class="breadcrumb-item"><a href="{% url 'projects-list' %}">Projects</a></li>
-    <li class="breadcrumb-item active text-muted" aria-current="page">{{ project_slug }}</li>
+    <li class="breadcrumb-item active text-muted" aria-current="page">{% if project_slug %}{{ project_slug }}{% else %}All projects{% endif %}</li>
   </ol>
 </nav>
 
@@ -17,12 +17,12 @@
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="fragos-page-title">
       <span class="badge bg-secondary rounded-pill">{{ row_count }}</span>
-      <span>FRAGOs — {{ project_slug }}</span>
+      <span>{% if project_slug %}FRAGOs — {{ project_slug }}{% else %}FRAGOs — All projects{% endif %}</span>
     </h1>
     <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn when generating SitReps.</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
-    <a class="btn btn-primary btn-sm" href="{% url 'fragos-create' %}?project={{ project_slug }}" data-testid="fragos-new-btn">
+    <a class="btn btn-primary btn-sm" href="{% url 'fragos-create' %}{% if project_slug %}?project={{ project_slug }}{% endif %}" data-testid="fragos-new-btn">
       <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> New FRAGO
     </a>
   </div>
@@ -35,43 +35,52 @@
       aria-label="FRAGO list filters"
       data-testid="fragos-list-filters"
       data-hg-list-find-auto>
-  <input type="hidden" name="project" value="{{ project_slug }}">
-  <div class="col-md-4">
-    <label class="form-label hg-label-caps mb-1" for="flt-frago-status">Status</label>
-    <select id="flt-frago-status"
-            name="status"
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-project">Project</label>
+    <select name="project"
+            id="frago-filter-project"
             class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
-            data-testid="fragos-filter-status">
-      <option value="All" {% if filter_status == "All" %}selected{% endif %}>All</option>
-      <option value="Active" {% if filter_status == "Active" %}selected{% endif %}>Active</option>
-      <option value="Inactive" {% if filter_status == "Inactive" %}selected{% endif %}>Inactive</option>
-      <option value="Scheduled" {% if filter_status == "Scheduled" %}selected{% endif %}>Scheduled</option>
-      <option value="Expired" {% if filter_status == "Expired" %}selected{% endif %}>Expired</option>
-      <option value="Revoked" {% if filter_status == "Revoked" %}selected{% endif %}>Revoked</option>
-    </select>
-  </div>
-  <div class="col-md-4">
-    <label class="form-label hg-label-caps mb-1" for="flt-frago-var">Affected Variable</label>
-    <select id="flt-frago-var"
-            name="variable"
-            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
-            data-testid="fragos-filter-variable-tag">
-      {% for abbrev, label in variable_choices %}
-      <option value="{{ abbrev }}" {% if abbrev == filter_variable %}selected{% endif %}>{{ label }}</option>
+            data-testid="fragos-filter-project">
+      <option value="">— All projects —</option>
+      {% for slug, label in project_filter_choices %}
+      <option value="{{ slug }}" {% if project_slug == slug %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-4">
-    <div class="form-check mb-0 pt-md-4">
-      <input class="form-check-input hg-filter-on-change-submit"
-             type="checkbox"
-             id="flt-in-effect"
-             name="in_effect"
-             value="1"
-             {% if filter_in_effect %}checked{% endif %}
-             data-testid="fragos-filter-in-effect-now">
-      <label class="form-check-label small" for="flt-in-effect">In effect now</label>
-    </div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-timing">Timing</label>
+    <select name="timing"
+            id="frago-filter-timing"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-timing">
+      <option value="">All</option>
+      <option value="in_effect" {% if filter_timing == "in_effect" %}selected{% endif %}>In Effect</option>
+      <option value="scheduled" {% if filter_timing == "scheduled" %}selected{% endif %}>Scheduled</option>
+      <option value="past" {% if filter_timing == "past" %}selected{% endif %}>Past</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-status">Status</label>
+    <select name="status"
+            id="frago-filter-status"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-status">
+      <option value="">All</option>
+      <option value="active" {% if filter_status == "active" %}selected{% endif %}>Active</option>
+      <option value="disabled" {% if filter_status == "disabled" %}selected{% endif %}>Disabled</option>
+      <option value="revoked" {% if filter_status == "revoked" %}selected{% endif %}>Revoked</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-6 col-xl-3">
+    <label class="form-label hg-label-caps mb-1" for="frago-filter-affects">Affects</label>
+    <select name="affects"
+            id="frago-filter-affects"
+            class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            data-testid="fragos-filter-affects">
+      <option value="">All</option>
+      <option value="narrative" {% if filter_affects == "narrative" %}selected{% endif %}>Narrative</option>
+      <option value="variables" {% if filter_affects == "variables" %}selected{% endif %}>Variable(s)</option>
+    </select>
   </div>
 </form>
 
@@ -83,6 +92,7 @@
         <thead class="table-light">
           <tr>
             <th scope="col" class="text-center" style="width:4rem;">Toggle</th>
+            {% if show_project_column %}<th scope="col">Project</th>{% endif %}
             <th scope="col">Title</th>
             <th scope="col">Affected Variable</th>
             <th scope="col">Effective window</th>
@@ -113,6 +123,9 @@
                        data-testid="frago-toggle-{{ r.id }}">
               </div>
             </td>
+            {% if show_project_column %}
+            <td class="small"><a href="{% url 'fragos-list' %}?project={{ r.project_slug }}" class="text-reset">{{ r.project_label }}</a></td>
+            {% endif %}
             <td>
               <a href="{% url 'fragos-detail' r.id %}"
                  class="hg-list-name-link fw-semibold d-inline-block {% if r.revoked %}text-decoration-line-through{% endif %}"
@@ -147,9 +160,9 @@
                   </li>
                   <li>
                     {% if r.enabled %}
-                    <span class="dropdown-item disabled small text-muted">Deactivate</span>
+                    <span class="dropdown-item disabled small text-muted">Deactivate via toggle</span>
                     {% else %}
-                    <span class="dropdown-item disabled small text-muted">Activate</span>
+                    <span class="dropdown-item disabled small text-muted">Activate via toggle</span>
                     {% endif %}
                   </li>
                   <li><hr class="dropdown-divider"></li>
@@ -174,7 +187,7 @@
     <div class="border-top px-3 py-4 text-center text-muted" data-testid="fragos-empty-state">
       <p class="mb-1 fw-medium">No FRAGOs.</p>
       <p class="small mb-3">Create one to override Playbook expectations for known temporary conditions.</p>
-      <a href="{% url 'fragos-create' %}?project={{ project_slug }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+      <a href="{% url 'fragos-create' %}{% if project_slug %}?project={{ project_slug }}{% endif %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
     </div>
     {% endif %}
   </div>

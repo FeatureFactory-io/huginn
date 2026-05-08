@@ -11,7 +11,8 @@ from typing import Any
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpRequest, HttpResponse
+from django.core.exceptions import ValidationError
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -22,6 +23,7 @@ from ingestion.models import Project
 from playbooks.markdown_utils import workflow_md_to_html
 from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
 from sitrep.models import Frago
+from ui.services.fragos_service import apply_frago_list_filters, frago_list_queryset
 
 
 def _playbook_version_for_project(project: Project) -> PlaybookVersion | None:
@@ -88,30 +90,22 @@ def _frago_row(fr: Frago) -> dict[str, Any]:
         "status_class": cls,
         "revoked": revoked,
         "in_effect_now": in_window and fr.enabled and not revoked,
+        "project_slug": fr.project.slug,
+        "project_label": fr.project.display_name or fr.project.name,
     }
 
 
-def _project_from_request(request: HttpRequest) -> tuple[Project, str]:
+def _project_for_list_optional(request: HttpRequest) -> tuple[Project | None, str]:
     slug = (request.GET.get("project") or "").strip()
     if not slug:
-        raise Http404("project query parameter is required")
+        return None, ""
     project = get_object_or_404(Project.objects.all(), slug=slug)
     return project, slug
 
 
-def _apply_list_filters(rows: list[dict[str, Any]], request: HttpRequest) -> list[dict[str, Any]]:
-    status = (request.GET.get("status") or "").strip()
-    variable = (request.GET.get("variable") or "").strip()
-    in_effect = request.GET.get("in_effect") == "1"
-
-    out = rows
-    if status and status != "All":
-        out = [r for r in out if r["status"] == status]
-    if variable:
-        out = [r for r in out if r["variable_abbrev"] == variable]
-    if in_effect:
-        out = [r for r in out if r["in_effect_now"]]
-    return out
+def _active_projects_choices() -> list[tuple[str, str]]:
+    rows = Project.objects.filter(status=Project.Status.ACTIVE).order_by("name")
+    return [(p.slug, p.display_name or p.name) for p in rows]
 
 
 @method_decorator(login_required, name="dispatch")
@@ -119,48 +113,75 @@ class FragosListView(View):
     template_name = "ui/fragos/list.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        project, slug = _project_from_request(request)
-        qs = Frago.objects.filter(project=project).select_related("affected_variable").order_by("-updated_at", "-pk")
+        project, slug = _project_for_list_optional(request)
+        qs = frago_list_queryset(project)
+        qs = apply_frago_list_filters(qs, request)
         rows = [_frago_row(fr) for fr in qs]
-        rows = _apply_list_filters(rows, request)
-        variable_choices = _variable_choices(project)
+        status_raw = (request.GET.get("status") or "").strip()
+        filter_status_key = status_raw.lower() if status_raw and status_raw != "All" else ""
         ctx = {
             "active_nav": "fragos",
             "project_slug": slug,
+            "show_project_column": project is None,
             "row_count": len(rows),
             "rows": rows,
-            "variable_choices": variable_choices,
-            "filter_status": (request.GET.get("status") or "All").strip(),
+            "project_filter_choices": _active_projects_choices(),
+            "filter_timing": (request.GET.get("timing") or "").strip().lower(),
+            "filter_status": filter_status_key,
+            "filter_status_raw": status_raw,
+            "filter_affects": (request.GET.get("affects") or "").strip().lower(),
             "filter_variable": (request.GET.get("variable") or "").strip(),
             "filter_in_effect": request.GET.get("in_effect") == "1",
         }
         return render(request, self.template_name, ctx)
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        """Toggle enabled for a FRAGO (same listing URL + project query)."""
-        project, slug = _project_from_request(request)
+        """Toggle enabled for a FRAGO (same listing URL + query)."""
+        slug = (request.GET.get("project") or "").strip()
         if request.POST.get("toggle_frago") != "1":
             return redirect(f"{reverse('fragos-list')}?{request.GET.urlencode()}")
         try:
             frago_id = int(request.POST.get("frago_id") or "0")
         except ValueError:
             messages.error(request, "Invalid FRAGO.")
-            return redirect(f"{reverse('fragos-list')}?project={slug}")
-        frago = get_object_or_404(Frago.objects.filter(project=project), pk=frago_id)
+            q = request.GET.urlencode()
+            return redirect(f"{reverse('fragos-list')}?{q}" if q else reverse("fragos-list"))
+        if slug:
+            proj = get_object_or_404(Project.objects.all(), slug=slug)
+            frago = get_object_or_404(Frago.objects.filter(project=proj), pk=frago_id)
+        else:
+            frago = get_object_or_404(Frago.objects.all(), pk=frago_id)
         if frago.revoked_at is not None:
             messages.warning(request, "Revoked FRAGOs cannot be toggled.")
         else:
             frago.enabled = not frago.enabled
             frago.save(update_fields=["enabled", "updated_at"])
             messages.success(request, "FRAGO updated.")
-        return redirect(f"{reverse('fragos-list')}?{request.GET.urlencode()}")
+        q = request.GET.urlencode()
+        return redirect(f"{reverse('fragos-list')}?{q}" if q else reverse("fragos-list"))
 
 
 class FragoForm(forms.ModelForm):
+    affects = forms.ChoiceField(
+        label="Affects",
+        choices=[
+            ("", "---------"),
+            ("narrative", "Narrative"),
+            ("variables", "Variable(s)"),
+        ],
+        required=False,
+        widget=forms.Select(
+            attrs={
+                "class": "form-select form-select-sm",
+                "data-testid": "frago-affects-select",
+            },
+        ),
+    )
+
     affected_variable = forms.ModelChoiceField(
         queryset=PlaybookVariable.objects.none(),
         required=False,
-        empty_label="— Global narrative override —",
+        empty_label="— Choose variable —",
         widget=forms.Select(
             attrs={
                 "class": "form-select form-select-sm",
@@ -204,6 +225,21 @@ class FragoForm(forms.ModelForm):
             ),
         }
 
+    def clean(self) -> dict[str, Any]:
+        cleaned = super().clean()
+        affects = (cleaned.get("affects") or "").strip()
+        av = cleaned.get("affected_variable")
+        if affects == "narrative":
+            cleaned["affected_variable"] = None
+        elif affects == "variables":
+            if av is None:
+                raise ValidationError(
+                    {"affected_variable": "Select a Playbook Variable when Affects is Variable(s)."},
+                )
+        elif affects == "" and av is None:
+            cleaned["affected_variable"] = None
+        return cleaned
+
 
 def _apply_frago_edit_widgets(form: FragoForm) -> None:
     """Match operational edit template data-testids."""
@@ -226,6 +262,12 @@ def _apply_frago_edit_widgets(form: FragoForm) -> None:
             "data-testid": "frago-edit-variable-tag",
         },
     )
+    form.fields["affects"].widget.attrs.update(
+        {
+            "id": "edit-frago-affects",
+            "data-testid": "frago-edit-affects-select",
+        },
+    )
     form.fields["effective_from"].widget.attrs.update(
         {
             "id": "edit-frago-effective-from",
@@ -245,11 +287,11 @@ class FragosCreateView(View):
     template_name = "ui/fragos/create.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        _, slug = _project_from_request(request)
-        project = get_object_or_404(Project.objects.all(), slug=slug)
+        slug = (request.GET.get("project") or "").strip()
+        project = get_object_or_404(Project.objects.all(), slug=slug) if slug else None
         form = FragoForm()
         variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(project)
+        ver = _playbook_version_for_project(project) if project else None
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs
@@ -257,19 +299,37 @@ class FragosCreateView(View):
         return render(
             request,
             self.template_name,
-            {"active_nav": "fragos", "project_slug": slug, "form": form},
+            {
+                "active_nav": "fragos",
+                "project_slug": slug,
+                "project_choices": _active_projects_choices(),
+                "form": form,
+            },
         )
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        _, slug = _project_from_request(request)
-        project = get_object_or_404(Project.objects.all(), slug=slug)
+        slug = (request.POST.get("project") or "").strip()
+        project_choices = _active_projects_choices()
         form = FragoForm(request.POST)
+        project = get_object_or_404(Project.objects.all(), slug=slug) if slug else None
         variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(project)
+        ver = _playbook_version_for_project(project) if project else None
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs
         form.fields["affected_variable"].required = False
+        if not project:
+            messages.error(request, "Choose a project.")
+            return render(
+                request,
+                self.template_name,
+                {
+                    "active_nav": "fragos",
+                    "project_slug": "",
+                    "project_choices": project_choices,
+                    "form": form,
+                },
+            )
         if form.is_valid():
             frago = form.save(commit=False)
             frago.project = project
@@ -282,7 +342,12 @@ class FragosCreateView(View):
         return render(
             request,
             self.template_name,
-            {"active_nav": "fragos", "project_slug": slug, "form": form},
+            {
+                "active_nav": "fragos",
+                "project_slug": slug,
+                "project_choices": project_choices,
+                "form": form,
+            },
         )
 
 
@@ -299,7 +364,8 @@ class FragosEditView(View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         del pk
-        form = FragoForm(instance=self.frago)
+        initial_affects = "variables" if self.frago.affected_variable_id else "narrative"
+        form = FragoForm(instance=self.frago, initial={"affects": initial_affects})
         variable_qs = PlaybookVariable.objects.none()
         ver = _playbook_version_for_project(self.frago.project)
         if ver:
