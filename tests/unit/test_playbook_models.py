@@ -3,10 +3,9 @@
 import pytest
 from django.db import IntegrityError
 
-from playbooks.models import PlaybookTable
+from playbooks.models import PlaybookVariable
 from tests.factories import (
     PlaybookFactory,
-    PlaybookTableFactory,
     PlaybookVariableFactory,
     PlaybookVersionFactory,
 )
@@ -29,14 +28,11 @@ def test_variables_respect_sort_order() -> None:
     assert [v.name for v in ver.variables.all()] == ["First", "Second"]
 
 
-@pytest.mark.django_db
-def test_tables_use_entity_choices() -> None:
-    ver = PlaybookVersionFactory()
-    row = PlaybookTableFactory(
-        playbook_version=ver,
-        sort_order=0,
-        entity=PlaybookTable.Entity.INCREMENT,
-        slicer="open",
-    )
-    row.refresh_from_db()
-    assert row.entity == PlaybookTable.Entity.INCREMENT
+def test_playbook_variable_has_no_dimensions_field() -> None:
+    assert not hasattr(PlaybookVariable, "dimensions")
+
+
+def test_playbook_table_does_not_exist() -> None:
+    import playbooks.models as pm
+
+    assert not hasattr(pm, "PlaybookTable")

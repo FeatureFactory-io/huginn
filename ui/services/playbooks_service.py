@@ -10,8 +10,7 @@ from django.db.models import Count, Exists, Max, OuterRef, Subquery
 from django.utils import timezone
 from django.utils.text import slugify
 
-from playbooks.catalog import scan_version_for_drift, validate_table_row
-from playbooks.models import Playbook, PlaybookTable, PlaybookVariable, PlaybookVersion
+from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
 
 
 def playbook_queryset_for_list():
@@ -68,11 +67,6 @@ def unique_playbook_slug(name: str) -> str:
     return slug
 
 
-def _split_dimensions(raw: str) -> list[str]:
-    parts = [p.strip() for p in (raw or "").split(",")]
-    return [p for p in parts if p]
-
-
 def parse_variables_from_post(post: Any) -> tuple[list[dict[str, Any]], list[str]]:
     errors: list[str] = []
     rows: list[dict[str, Any]] = []
@@ -94,36 +88,6 @@ def parse_variables_from_post(post: Any) -> tuple[list[dict[str, Any]], list[str
                 "calculating": (post.get(prefix + "calculating") or "").strip(),
                 "interpreting": (post.get(prefix + "interpreting") or "").strip(),
                 "hover": (post.get(prefix + "hover") or "").strip(),
-                "dimensions": _split_dimensions(post.get(prefix + "dimensions") or ""),
-            },
-        )
-        i += 1
-    return rows, errors
-
-
-def parse_tables_from_post(post: Any) -> tuple[list[dict[str, Any]], list[str]]:
-    errors: list[str] = []
-    rows: list[dict[str, Any]] = []
-    i = 0
-    while i < 64:
-        prefix = f"tbl_{i}_"
-        entity = (post.get(prefix + "entity") or "").strip()
-        if not entity:
-            i += 1
-            continue
-        slicer = (post.get(prefix + "slicer") or "").strip()
-        row_display = len(rows) + 1
-        if not slicer:
-            errors.append(f"Tables row {row_display}: Slicer is required.")
-        msg = validate_table_row(entity=entity, slicer=slicer)
-        if msg:
-            errors.append(f"Tables row {row_display}: {msg}")
-        rows.append(
-            {
-                "sort_order": len(rows),
-                "entity": entity,
-                "slicer": slicer,
-                "dimensions": _split_dimensions(post.get(prefix + "dimensions") or ""),
             },
         )
         i += 1
@@ -139,15 +103,6 @@ def _persist_variable_rows(version: PlaybookVersion, rows: list[dict[str, Any]])
     )
 
 
-def _persist_table_rows(version: PlaybookVersion, rows: list[dict[str, Any]]) -> None:
-    PlaybookTable.objects.filter(playbook_version=version).delete()
-    if not rows:
-        return
-    PlaybookTable.objects.bulk_create(
-        [PlaybookTable(playbook_version=version, **row) for row in rows],
-    )
-
-
 def editor_snapshot_from_version(version: PlaybookVersion | None) -> dict[str, Any]:
     if version is None:
         return {
@@ -155,40 +110,22 @@ def editor_snapshot_from_version(version: PlaybookVersion | None) -> dict[str, A
             "description": "",
             "workflow_md": "",
             "variables": [],
-            "tables": [],
         }
     pb = version.playbook
-    vars_ = list(
+    var_rows = list(
         version.variables.order_by("sort_order").values(
             "name",
             "abbrev",
             "calculating",
             "interpreting",
             "hover",
-            "dimensions",
         ),
     )
-    tbls = list(
-        version.tables.order_by("sort_order").values(
-            "entity",
-            "slicer",
-            "dimensions",
-        ),
-    )
-    var_rows = []
-    for r in vars_:
-        dims = r["dimensions"] if isinstance(r["dimensions"], list) else []
-        var_rows.append({**r, "dimensions_display": ", ".join(dims)})
-    tbl_rows = []
-    for r in tbls:
-        dims = r["dimensions"] if isinstance(r["dimensions"], list) else []
-        tbl_rows.append({**r, "dimensions_display": ", ".join(dims)})
     return {
         "name": pb.name,
         "description": pb.description,
         "workflow_md": version.workflow_md,
         "variables": var_rows,
-        "tables": tbl_rows,
     }
 
 
@@ -200,7 +137,6 @@ def create_playbook_with_version(
     description: str,
     workflow_md: str,
     variables: list[dict[str, Any]],
-    tables: list[dict[str, Any]],
 ) -> Playbook:
     slug = unique_playbook_slug(name)
     pb = Playbook.objects.create(
@@ -217,7 +153,6 @@ def create_playbook_with_version(
         created_by=user if getattr(user, "is_authenticated", False) else None,
     )
     _persist_variable_rows(ver, variables)
-    _persist_table_rows(ver, tables)
     return pb
 
 
@@ -231,7 +166,6 @@ def append_playbook_version(
     description: str,
     workflow_md: str,
     variables: list[dict[str, Any]],
-    tables: list[dict[str, Any]],
 ) -> PlaybookVersion:
     next_n = (playbook.versions.aggregate(m=Max("version_number"))["m"] or 0) + 1
     playbook.name = name.strip()
@@ -245,7 +179,6 @@ def append_playbook_version(
         created_by=user if getattr(user, "is_authenticated", False) else None,
     )
     _persist_variable_rows(ver, variables)
-    _persist_table_rows(ver, tables)
     return ver
 
 
@@ -263,11 +196,3 @@ def delete_playbook_if_allowed(playbook_id: int) -> tuple[bool, str]:
         return False, "Playbook is assigned to one or more projects."
     pb.delete()
     return True, ""
-
-
-def catalog_drift_messages_all_versions(playbook: Playbook) -> list[str]:
-    out: list[str] = []
-    for ver in playbook.versions.order_by("version_number"):
-        for line in scan_version_for_drift(ver):
-            out.append(f"v{ver.version_number}: {line}")
-    return out

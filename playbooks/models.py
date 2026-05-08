@@ -1,4 +1,4 @@
-"""Versioned Playbooks — metadata, workflow markdown, variables, and tables."""
+"""Versioned Playbooks — metadata, workflow markdown, and variables."""
 
 from django.conf import settings
 from django.db import models
@@ -71,37 +71,9 @@ class PlaybookVariable(models.Model):
     calculating = models.TextField(blank=True, default="")
     interpreting = models.TextField(blank=True, default="")
     hover = models.TextField(blank=True, default="")
-    dimensions = models.JSONField(default=list)
 
     class Meta:
         ordering = ["sort_order"]
 
     def __str__(self) -> str:
         return self.name
-
-
-class PlaybookTable(models.Model):
-    """Pinned entity table row attached to a PlaybookVersion."""
-
-    class Entity(models.TextChoices):
-        UNIT_OF_WORK = "unit_of_work", "UnitOfWork"
-        INCREMENT = "increment", "Increment"
-        MILESTONE = "milestone", "Milestone"
-        SPRINT = "sprint", "Sprint"
-        CONTRIBUTOR = "contributor", "Contributor"
-
-    playbook_version = models.ForeignKey(
-        PlaybookVersion,
-        on_delete=models.CASCADE,
-        related_name="tables",
-    )
-    sort_order = models.PositiveSmallIntegerField()
-    entity = models.CharField(max_length=32, choices=Entity.choices)
-    slicer = models.CharField(max_length=128)
-    dimensions = models.JSONField(default=list)
-
-    class Meta:
-        ordering = ["sort_order"]
-
-    def __str__(self) -> str:
-        return f"{self.entity}:{self.slicer}"

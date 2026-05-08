@@ -2,16 +2,11 @@
 
 from django.contrib import admin
 
-from playbooks.models import Playbook, PlaybookTable, PlaybookVariable, PlaybookVersion
+from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
 
 
 class PlaybookVariableInline(admin.TabularInline):
     model = PlaybookVariable
-    extra = 0
-
-
-class PlaybookTableInline(admin.TabularInline):
-    model = PlaybookTable
     extra = 0
 
 
@@ -33,4 +28,4 @@ class PlaybookAdmin(admin.ModelAdmin):
 class PlaybookVersionAdmin(admin.ModelAdmin):
     list_display = ("playbook", "version_number", "created_at")
     list_filter = ("playbook",)
-    inlines = [PlaybookVariableInline, PlaybookTableInline]
+    inlines = [PlaybookVariableInline]

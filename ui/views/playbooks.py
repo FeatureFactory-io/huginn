@@ -14,18 +14,15 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from ingestion.models import Project
-from playbooks.catalog import scan_version_for_drift, validate_table_row
 from playbooks.markdown_utils import workflow_md_to_html
-from playbooks.models import Playbook, PlaybookTable, PlaybookVersion
+from playbooks.models import Playbook, PlaybookVersion
 from playbooks.seed_constants import FEATUREFACTORY_PLAYBOOK_SLUG
 from ui.services.playbooks_service import (
     append_playbook_version,
     apply_playbook_list_filters,
-    catalog_drift_messages_all_versions,
     create_playbook_with_version,
     delete_playbook_if_allowed,
     editor_snapshot_from_version,
-    parse_tables_from_post,
     parse_variables_from_post,
     playbook_queryset_for_list,
 )
@@ -56,21 +53,14 @@ def _padded_variable_slots(variables: list[dict]) -> list[tuple[int, dict]]:
 
 
 def _padded_table_slots(tables: list[dict]) -> list[tuple[int, dict]]:
-    augmented = []
-    for row in tables:
-        msg = validate_table_row(entity=row.get("entity", ""), slicer=row.get("slicer", ""))
-        augmented.append({**row, "drift_warning": msg or ""})
+    augmented = [{**row, "drift_warning": ""} for row in tables]
     base = augmented + [{}] * max(0, PAD_TBL_ROWS - len(augmented))
     return [(i, base[i]) for i in range(min(len(base), PAD_TBL_ROWS))]
 
 
 def _annotate_table_display(snapshot: dict) -> None:
     for t in snapshot.get("tables", []):
-        val = t.get("entity", "")
-        try:
-            t["entity_label"] = PlaybookTable.Entity(val).label
-        except ValueError:
-            t["entity_label"] = val
+        t.setdefault("entity_label", t.get("entity", ""))
 
 
 @method_decorator(login_required, name="dispatch")
@@ -139,8 +129,8 @@ class PlaybooksCreateView(View):
             "cancel_url": reverse("playbooks-list"),
             "banner": banner,
             "variable_slots": _padded_variable_slots(snapshot["variables"]),
-            "table_slots": _padded_table_slots(snapshot["tables"]),
-            "entity_choices": PlaybookTable.Entity.choices,
+            "table_slots": _padded_table_slots(snapshot.get("tables", [])),
+            "entity_choices": [],
         }
         return render(request, self.template_name, ctx)
 
@@ -149,8 +139,7 @@ class PlaybooksCreateView(View):
         description = (request.POST.get("description") or "").strip()
         workflow_md = request.POST.get("workflow_md") or ""
         vars_, verr = parse_variables_from_post(request.POST)
-        tbls, terr = parse_tables_from_post(request.POST)
-        errors = [*verr, *terr]
+        errors = [*verr]
         if not name:
             errors.insert(0, "Name is required.")
 
@@ -159,7 +148,7 @@ class PlaybooksCreateView(View):
             "description": description,
             "workflow_md": workflow_md,
             "variables": vars_,
-            "tables": tbls,
+            "tables": [],
         }
         _attach_snapshot_preview(snapshot)
         _annotate_table_display(snapshot)
@@ -175,8 +164,8 @@ class PlaybooksCreateView(View):
                 "cancel_url": reverse("playbooks-list"),
                 "banner": "",
                 "variable_slots": _padded_variable_slots(vars_),
-                "table_slots": _padded_table_slots(tbls),
-                "entity_choices": PlaybookTable.Entity.choices,
+                "table_slots": _padded_table_slots([]),
+                "entity_choices": [],
             }
             return render(request, self.template_name, ctx, status=400)
 
@@ -186,7 +175,6 @@ class PlaybooksCreateView(View):
             description=description,
             workflow_md=workflow_md,
             variables=vars_,
-            tables=tbls,
         )
         messages.success(request, f"Playbook “{pb.name}” created as v1.")
         return redirect(reverse("playbooks-detail", args=[pb.pk]))
@@ -200,7 +188,6 @@ class PlaybooksDetailView(View):
         playbook = get_object_or_404(
             Playbook.objects.select_related("created_by").prefetch_related(
                 "versions__variables",
-                "versions__tables",
                 "versions__created_by",
             ),
             pk=pk,
@@ -228,7 +215,7 @@ class PlaybooksDetailView(View):
 
         validate_results: list[str] | None = None
         if request.GET.get("validate") == "1":
-            validate_results = catalog_drift_messages_all_versions(playbook)
+            validate_results = []
 
         ctx = {
             "active_nav": "playbooks",
@@ -261,10 +248,6 @@ class PlaybooksEditView(View):
         latest = _latest_version(playbook)
         snapshot = editor_snapshot_from_version(latest)
         _attach_snapshot_preview(snapshot)
-        drift_lines = scan_version_for_drift(latest) if latest else []
-        banner_txt = ""
-        if drift_lines:
-            banner_txt = "This Playbook references entities/slicers no longer in the catalog: " + "; ".join(drift_lines)
         _annotate_table_display(snapshot)
         next_n = (latest.version_number + 1) if latest else 1
         ctx = {
@@ -274,12 +257,12 @@ class PlaybooksEditView(View):
             "pb_author": _pb_author(playbook),
             "form": snapshot,
             "form_errors": [],
-            "catalog_drift_banner": banner_txt,
+            "catalog_drift_banner": "",
             "save_button_label": f"Save as v{next_n}",
             "cancel_url": reverse("playbooks-detail", args=[pk]),
             "variable_slots": _padded_variable_slots(snapshot["variables"]),
-            "table_slots": _padded_table_slots(snapshot["tables"]),
-            "entity_choices": PlaybookTable.Entity.choices,
+            "table_slots": _padded_table_slots(snapshot.get("tables", [])),
+            "entity_choices": [],
             "latest_version": latest,
         }
         return render(request, self.template_name, ctx)
@@ -292,8 +275,7 @@ class PlaybooksEditView(View):
         description = (request.POST.get("description") or "").strip()
         workflow_md = request.POST.get("workflow_md") or ""
         vars_, verr = parse_variables_from_post(request.POST)
-        tbls, terr = parse_tables_from_post(request.POST)
-        errors = [*verr, *terr]
+        errors = [*verr]
         if not name:
             errors.insert(0, "Name is required.")
         if not change_summary:
@@ -304,13 +286,9 @@ class PlaybooksEditView(View):
             "description": description,
             "workflow_md": workflow_md,
             "variables": vars_,
-            "tables": tbls,
+            "tables": [],
         }
         _attach_snapshot_preview(snapshot)
-        drift_lines = scan_version_for_drift(latest) if latest else []
-        banner_txt = ""
-        if drift_lines:
-            banner_txt = "This Playbook references entities/slicers no longer in the catalog: " + "; ".join(drift_lines)
         _annotate_table_display(snapshot)
 
         if errors:
@@ -322,12 +300,12 @@ class PlaybooksEditView(View):
                 "pb_author": _pb_author(playbook),
                 "form": snapshot,
                 "form_errors": errors,
-                "catalog_drift_banner": banner_txt,
+                "catalog_drift_banner": "",
                 "save_button_label": f"Save as v{next_n}",
                 "cancel_url": reverse("playbooks-detail", args=[pk]),
                 "variable_slots": _padded_variable_slots(vars_),
-                "table_slots": _padded_table_slots(tbls),
-                "entity_choices": PlaybookTable.Entity.choices,
+                "table_slots": _padded_table_slots([]),
+                "entity_choices": [],
                 "latest_version": latest,
             }
             return render(request, self.template_name, ctx, status=400)
@@ -340,7 +318,6 @@ class PlaybooksEditView(View):
             description=description,
             workflow_md=workflow_md,
             variables=vars_,
-            tables=tbls,
         )
         messages.success(request, f"Saved new version for “{playbook.name}”.")
         return redirect(reverse("playbooks-detail", args=[pk]))

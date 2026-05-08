@@ -7,7 +7,7 @@ from factory.django import DjangoModelFactory
 from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
-from playbooks.models import Playbook, PlaybookTable, PlaybookVariable, PlaybookVersion
+from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
 from sitrep.models import Frago, SituationalAwareness, SituationalAwarenessVersion
 
 
@@ -46,18 +46,6 @@ class PlaybookVariableFactory(DjangoModelFactory):
     sort_order = factory.Sequence(lambda n: n)
     name = factory.Sequence(lambda n: f"Variable {n}")
     abbrev = factory.Sequence(lambda n: f"V{n}")
-    dimensions = factory.LazyFunction(lambda: ["Vitals"])
-
-
-class PlaybookTableFactory(DjangoModelFactory):
-    class Meta:
-        model = PlaybookTable
-
-    playbook_version = factory.SubFactory(PlaybookVersionFactory)
-    sort_order = factory.Sequence(lambda n: n)
-    entity = PlaybookTable.Entity.INCREMENT
-    slicer = "last_14d"
-    dimensions = factory.LazyFunction(lambda: ["Increments"])
 
 
 class DataSourceFactory(DjangoModelFactory):
