@@ -59,6 +59,38 @@ def test_fragos_filter_affects_narrative(commander_client: Client) -> None:
 
 
 @pytest.mark.django_db
+def test_fragos_bulk_deactivate(commander_client: Client) -> None:
+    project = ProjectFactory(slug="bulk-fr")
+    fr = FragoFactory(project=project, enabled=True)
+    base = reverse("fragos-list") + f"?project={project.slug}"
+    resp = commander_client.post(
+        base,
+        {"bulk_action": "deactivate", "frago_ids": [str(fr.pk)]},
+        follow=True,
+    )
+    assert resp.status_code == 200
+    fr.refresh_from_db()
+    assert fr.enabled is False
+
+
+@pytest.mark.django_db
+def test_fragos_detail_shows_audit_changelog(commander_client: Client) -> None:
+    from sitrep.models import FragoAuditEvent
+
+    project = ProjectFactory(slug="audit-view")
+    fr = FragoFactory(project=project, title="Audited")
+    FragoAuditEvent.objects.create(
+        frago=fr,
+        kind=FragoAuditEvent.Kind.CREATED.value,
+        message="FRAGO created.",
+    )
+    url = reverse("fragos-detail", args=[fr.pk])
+    body = commander_client.get(url).content.decode()
+    assert "frago-state-change-log" in body
+    assert "FRAGO created." in body
+
+
+@pytest.mark.django_db
 def test_fragos_toggle_posts(commander_client: Client) -> None:
     project = ProjectFactory(slug="toggle-fr")
     fr = FragoFactory(project=project, enabled=True)

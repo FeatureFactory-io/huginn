@@ -35,3 +35,12 @@ def test_frago_revoked_cannot_remain_enabled() -> None:
     frago = FragoFactory.build(revoked_at=timezone.now(), enabled=True)
     with pytest.raises(ValidationError):
         frago.full_clean()
+
+
+@pytest.mark.django_db
+def test_frago_audit_event_linked() -> None:
+    fr = FragoFactory()
+    from sitrep.models import FragoAuditEvent
+
+    FragoAuditEvent.objects.create(frago=fr, kind=FragoAuditEvent.Kind.CREATED.value, message="test")
+    assert fr.audit_events.count() == 1

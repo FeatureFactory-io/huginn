@@ -12,6 +12,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,7 +23,8 @@ from django.views import View
 from ingestion.models import Project
 from playbooks.markdown_utils import workflow_md_to_html
 from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
-from sitrep.models import Frago
+from sitrep.models import Frago, FragoAuditEvent
+from ui.services.frago_audit_service import record_frago_audit
 from ui.services.fragos_service import apply_frago_list_filters, frago_list_queryset
 
 
@@ -136,16 +138,75 @@ class FragosListView(View):
         return render(request, self.template_name, ctx)
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        """Toggle enabled for a FRAGO (same listing URL + query)."""
         slug = (request.GET.get("project") or "").strip()
+        q_redirect = request.GET.urlencode()
+        dest = f"{reverse('fragos-list')}?{q_redirect}" if q_redirect else reverse("fragos-list")
+
+        bulk = (request.POST.get("bulk_action") or "").strip().lower()
+        if bulk in {"activate", "deactivate", "revoke"}:
+            raw_ids = request.POST.getlist("frago_ids")
+            id_list = [int(x) for x in raw_ids if x.isdigit()]
+            if not id_list:
+                messages.warning(request, "Select at least one FRAGO.")
+                return redirect(dest)
+            qs = Frago.objects.filter(pk__in=id_list)
+            if slug:
+                qs = qs.filter(project__slug=slug)
+            count = 0
+            with transaction.atomic():
+                for frago in qs:
+                    if bulk == "revoke":
+                        if frago.revoked_at is not None:
+                            continue
+                        frago.revoked_at = timezone.now()
+                        frago.enabled = False
+                        frago.save(update_fields=["revoked_at", "enabled", "updated_at"])
+                        record_frago_audit(
+                            frago,
+                            request,
+                            kind=FragoAuditEvent.Kind.BULK_REVOKED.value,
+                            message=f"Bulk revoked: {frago.title[:200]}",
+                        )
+                        count += 1
+                    elif frago.revoked_at is not None:
+                        continue
+                    elif bulk == "activate":
+                        if frago.enabled:
+                            continue
+                        frago.enabled = True
+                        frago.save(update_fields=["enabled", "updated_at"])
+                        record_frago_audit(
+                            frago,
+                            request,
+                            kind=FragoAuditEvent.Kind.BULK_ACTIVATED.value,
+                            message=f"Bulk activated: {frago.title[:200]}",
+                        )
+                        count += 1
+                    elif bulk == "deactivate":
+                        if not frago.enabled:
+                            continue
+                        frago.enabled = False
+                        frago.save(update_fields=["enabled", "updated_at"])
+                        record_frago_audit(
+                            frago,
+                            request,
+                            kind=FragoAuditEvent.Kind.BULK_DEACTIVATED.value,
+                            message=f"Bulk deactivated: {frago.title[:200]}",
+                        )
+                        count += 1
+            if count:
+                messages.success(request, f"Updated {count} FRAGO(s).")
+            else:
+                messages.info(request, "No eligible FRAGOs were updated.")
+            return redirect(dest)
+
         if request.POST.get("toggle_frago") != "1":
-            return redirect(f"{reverse('fragos-list')}?{request.GET.urlencode()}")
+            return redirect(dest)
         try:
             frago_id = int(request.POST.get("frago_id") or "0")
         except ValueError:
             messages.error(request, "Invalid FRAGO.")
-            q = request.GET.urlencode()
-            return redirect(f"{reverse('fragos-list')}?{q}" if q else reverse("fragos-list"))
+            return redirect(dest)
         if slug:
             proj = get_object_or_404(Project.objects.all(), slug=slug)
             frago = get_object_or_404(Frago.objects.filter(project=proj), pk=frago_id)
@@ -154,11 +215,17 @@ class FragosListView(View):
         if frago.revoked_at is not None:
             messages.warning(request, "Revoked FRAGOs cannot be toggled.")
         else:
-            frago.enabled = not frago.enabled
+            new_enabled = not frago.enabled
+            frago.enabled = new_enabled
             frago.save(update_fields=["enabled", "updated_at"])
+            record_frago_audit(
+                frago,
+                request,
+                kind=FragoAuditEvent.Kind.ENABLED_TOGGLED.value,
+                message=f"Set to {'enabled' if new_enabled else 'disabled'}.",
+            )
             messages.success(request, "FRAGO updated.")
-        q = request.GET.urlencode()
-        return redirect(f"{reverse('fragos-list')}?{q}" if q else reverse("fragos-list"))
+        return redirect(dest)
 
 
 class FragoForm(forms.ModelForm):
@@ -337,6 +404,12 @@ class FragosCreateView(View):
             frago.updated_by = frago.created_by
             frago.full_clean()
             frago.save()
+            record_frago_audit(
+                frago,
+                request,
+                kind=FragoAuditEvent.Kind.CREATED.value,
+                message="FRAGO created.",
+            )
             messages.success(request, "FRAGO created.")
             return redirect(f"{reverse('fragos-list')}?project={slug}")
         return render(
@@ -397,6 +470,12 @@ class FragosEditView(View):
             frago.updated_by = request.user if request.user.is_authenticated else None
             frago.full_clean()
             frago.save()
+            record_frago_audit(
+                frago,
+                request,
+                kind=FragoAuditEvent.Kind.UPDATED.value,
+                message="FRAGO saved.",
+            )
             messages.success(request, "FRAGO saved.")
             return redirect(reverse("fragos-detail", args=[frago.pk]))
         fg = {"id": self.frago.pk, "title": self.frago.title}
@@ -438,6 +517,19 @@ class FragosDetailView(View):
         else:
             st, sc = "Active", "success"
 
+        changelog: list[dict[str, Any]] = []
+        for ev in frago.audit_events.select_related("actor").order_by("-created_at")[:100]:
+            actor_label = "—"
+            if ev.actor_id:
+                actor_label = ev.actor.get_full_name() or ev.actor.email or "—"
+            changelog.append(
+                {
+                    "action": ev.message,
+                    "actor": actor_label,
+                    "at": ev.created_at,
+                },
+            )
+
         ctx = {
             "active_nav": "fragos",
             "project_slug": frago.project.slug,
@@ -452,7 +544,7 @@ class FragosDetailView(View):
                 "effective": effective,
                 "markdown_body_html": workflow_md_to_html(frago.body_md or ""),
                 "applications": [],
-                "changelog": [],
+                "changelog": changelog,
             },
         }
         return render(request, self.template_name, ctx)
@@ -476,6 +568,12 @@ class FragosRevokeView(View):
             frago.revoked_at = timezone.now()
             frago.enabled = False
             frago.save(update_fields=["revoked_at", "enabled", "updated_at"])
+            record_frago_audit(
+                frago,
+                request,
+                kind=FragoAuditEvent.Kind.REVOKED.value,
+                message="FRAGO revoked.",
+            )
             messages.success(request, "FRAGO revoked.")
         slug = frago.project.slug
         return redirect(f"{reverse('fragos-list')}?project={slug}")

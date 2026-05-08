@@ -76,9 +76,12 @@
             <td>#{{ a.sitrep_id }}</td>
             <td class="text-muted small">{{ a.generated_at }}</td>
             <td class="text-end">
-              {# parity: mock linked mockup-sitrep-view — bind when SitRep VIEW ships #}
               <a href="#" class="small text-muted" data-testid="frago-app-sitrep-{{ a.sitrep_id }}" title="SitRep deep-link TBD">Open SitRep</a>
             </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="3" class="text-muted small px-3 py-3">No SitRep applications recorded yet.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -92,12 +95,14 @@
 
 <div class="card border-0 shadow-sm rounded-3">
   <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold">State change log</div>
-  <ul class="list-group list-group-flush small">
+  <ul class="list-group list-group-flush small" data-testid="frago-state-change-log">
     {% for c in fg.changelog %}
     <li class="list-group-item d-flex justify-content-between gap-2">
       <span><strong>{{ c.action }}</strong></span>
-      <span class="text-muted text-end">{{ c.actor }} · {{ c.at }}</span>
+      <span class="text-muted text-end">{{ c.actor }} · {{ c.at|date:"Y-m-d H:i" }}</span>
     </li>
+    {% empty %}
+    <li class="list-group-item text-muted small">No state changes recorded yet.</li>
     {% endfor %}
   </ul>
 </div>
