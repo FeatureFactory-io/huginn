@@ -258,6 +258,18 @@ Apply the same pattern to mockups and new surfaces (e.g. Playbook VIEW, Playbook
 
 **References:** `ui/templates/ui/dashboard/projects.html` (Tactical Plot), `ui/templates/ui/projects/list.html` (LIST+FIND with toolbar).
 
+### 3.6 Bulk actions bar (LIST with row selection)
+
+Screens that combine **filters → table** with **checkbox-driven bulk operations** (e.g. FRAGO list: Activate / Deactivate / Revoke selected):
+
+| Rule | Detail |
+|---|---|
+| **Placement** | Render the bulk bar **between** the filter row and the **table card** — same horizontal rhythm as the table (full content width). |
+| **Alignment** | The bulk row is a flex container with **`justify-content-end`**: the label **Bulk actions:** and its buttons form a single cluster aligned to the **`inline-end`** (right in LTR). Use `flex-wrap` + `gap-2` so controls wrap cleanly on narrow viewports without overlapping the table. |
+| **Semantics** | Keep **`data-testid="…-bulk-bar"`** on the wrapper for integration tests; buttons remain outline variants (success / secondary / danger) per action severity. |
+
+**Canonical reference:** `ui/templates/ui/fragos/list.html` (`fragos-bulk-bar`).
+
 ---
 
 ## 4. Navigation
