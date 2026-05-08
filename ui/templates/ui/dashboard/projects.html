@@ -118,7 +118,7 @@
       <div class="flex-grow-1 d-flex flex-column min-vh-0">
       <div class="list-group list-group-flush small">
         {% for card in dashboard_projects %}
-        <a class="list-group-item list-group-item-action px-3 py-2 border-start border-3 hg-plot-project-sync-row {{ card.sync_border_class }} text-decoration-none text-reset"
+        <a class="list-group-item list-group-item-action px-3 py-2 hg-plot-project-sync-row {{ card.sync_accent_class }} text-decoration-none text-reset"
            href="{% url 'projects-detail' pk=card.pk %}"
            aria-label="Open project {{ card.name }}"
            data-testid="dashboard-project-card-{{ card.pk }}">

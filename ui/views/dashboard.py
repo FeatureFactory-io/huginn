@@ -28,14 +28,14 @@ _DS_SOURCE_META = {
 
 
 def _sync_visuals(sync_state: str) -> tuple[str, str]:
-    """Return (Bootstrap 5 badge class, border-* class for list-row left accent)."""
+    """Return (Bootstrap 5 badge class, hg-plot-sync-* class for left-edge tab color)."""
     m = {
-        Project.SyncState.ACTIVE.value: ("text-bg-success", "border-success"),
-        Project.SyncState.ERROR.value: ("text-bg-danger", "border-danger"),
-        Project.SyncState.SYNCING.value: ("text-bg-warning text-dark", "border-warning"),
-        Project.SyncState.INITIAL_SYNC_QUEUED.value: ("text-bg-secondary", "border-secondary"),
+        Project.SyncState.ACTIVE.value: ("text-bg-success", "hg-plot-sync-active"),
+        Project.SyncState.ERROR.value: ("text-bg-danger", "hg-plot-sync-error"),
+        Project.SyncState.SYNCING.value: ("text-bg-warning text-dark", "hg-plot-sync-syncing"),
+        Project.SyncState.INITIAL_SYNC_QUEUED.value: ("text-bg-secondary", "hg-plot-sync-queued"),
     }
-    return m.get(sync_state, ("text-bg-secondary", "border-secondary"))
+    return m.get(sync_state, ("text-bg-secondary", "hg-plot-sync-unknown"))
 
 
 def _sources_for_project(project: Project) -> list[dict]:
@@ -56,7 +56,7 @@ def _project_cards(projects: list[Project]) -> list[dict]:
         name = (p.display_name or "").strip() or p.name
         desc = (p.description or "").strip()
         path = (p.source_path or "").strip()
-        badge_cls, border_cls = _sync_visuals(str(p.sync_state))
+        badge_cls, accent_cls = _sync_visuals(str(p.sync_state))
         out.append(
             {
                 "pk": p.pk,
@@ -67,7 +67,7 @@ def _project_cards(projects: list[Project]) -> list[dict]:
                 "sync_state": str(p.sync_state),
                 "sync_state_display": p.get_sync_state_display(),
                 "sync_badge_class": badge_cls,
-                "sync_border_class": border_cls,
+                "sync_accent_class": accent_cls,
             }
         )
     return out

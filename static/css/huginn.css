@@ -174,18 +174,39 @@ main.hg-main {
 }
 
 /*
- * Tactical Plot — project cards: sync status as a leading tab only.
- * Bootstrap `.border-success` (etc.) sets border-color on every edge; list-group items
- * still draw top/end/bottom separators — without this reset the whole card reads as a
- * solid colored rectangle.
+ * Tactical Plot — project rows: sync status as a left tab (::before), not a Bootstrap
+ * border-* accent (those tint every edge with list-group borders).
  */
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-success,
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-danger,
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-warning,
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.border-secondary {
-  border-top-color: var(--bs-list-group-border-color);
-  border-inline-end-color: var(--bs-list-group-border-color);
-  border-bottom-color: var(--bs-list-group-border-color);
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row {
+  position: relative;
+}
+
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row::before {
+  background: var(--hg-sync-tab, var(--bs-secondary));
+  content: "";
+  inset-block-end: 0;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 3px;
+}
+
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-active {
+  --hg-sync-tab: var(--bs-success);
+}
+
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-error {
+  --hg-sync-tab: var(--bs-danger);
+}
+
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-syncing {
+  --hg-sync-tab: var(--bs-warning);
+}
+
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-queued,
+.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-unknown {
+  --hg-sync-tab: var(--bs-secondary);
 }
 
 @media (min-width: 1200px) {
