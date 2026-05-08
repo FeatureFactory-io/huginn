@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlencode
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
@@ -28,7 +26,6 @@ from ui.services.playbooks_service import (
 )
 
 PAD_VAR_ROWS = 24
-PAD_TBL_ROWS = 12
 
 
 def _pb_author(pb: Playbook) -> str:
@@ -50,17 +47,6 @@ def _attach_snapshot_preview(snapshot: dict) -> None:
 def _padded_variable_slots(variables: list[dict]) -> list[tuple[int, dict]]:
     base = variables[:] + [{}] * max(0, PAD_VAR_ROWS - len(variables))
     return [(i, base[i]) for i in range(min(len(base), PAD_VAR_ROWS))]
-
-
-def _padded_table_slots(tables: list[dict]) -> list[tuple[int, dict]]:
-    augmented = [{**row, "drift_warning": ""} for row in tables]
-    base = augmented + [{}] * max(0, PAD_TBL_ROWS - len(augmented))
-    return [(i, base[i]) for i in range(min(len(base), PAD_TBL_ROWS))]
-
-
-def _annotate_table_display(snapshot: dict) -> None:
-    for t in snapshot.get("tables", []):
-        t.setdefault("entity_label", t.get("entity", ""))
 
 
 @method_decorator(login_required, name="dispatch")
@@ -118,7 +104,6 @@ class PlaybooksCreateView(View):
                     banner = f"Cloning {src.name} — pick a new name."
 
         _attach_snapshot_preview(snapshot)
-        _annotate_table_display(snapshot)
         ctx = {
             "active_nav": "playbooks",
             "mode": "create",
@@ -129,8 +114,6 @@ class PlaybooksCreateView(View):
             "cancel_url": reverse("playbooks-list"),
             "banner": banner,
             "variable_slots": _padded_variable_slots(snapshot["variables"]),
-            "table_slots": _padded_table_slots(snapshot.get("tables", [])),
-            "entity_choices": [],
         }
         return render(request, self.template_name, ctx)
 
@@ -148,10 +131,8 @@ class PlaybooksCreateView(View):
             "description": description,
             "workflow_md": workflow_md,
             "variables": vars_,
-            "tables": [],
         }
         _attach_snapshot_preview(snapshot)
-        _annotate_table_display(snapshot)
 
         if errors:
             ctx = {
@@ -164,8 +145,6 @@ class PlaybooksCreateView(View):
                 "cancel_url": reverse("playbooks-list"),
                 "banner": "",
                 "variable_slots": _padded_variable_slots(vars_),
-                "table_slots": _padded_table_slots([]),
-                "entity_choices": [],
             }
             return render(request, self.template_name, ctx, status=400)
 
@@ -204,7 +183,6 @@ class PlaybooksDetailView(View):
 
         snapshot = editor_snapshot_from_version(focused)
         _attach_snapshot_preview(snapshot)
-        _annotate_table_display(snapshot)
 
         versions = list(playbook.versions.order_by("-version_number"))
         assigned = list(
@@ -212,10 +190,6 @@ class PlaybooksDetailView(View):
             .select_related("datasource", "pinned_playbook_version")
             .order_by("name"),
         )
-
-        validate_results: list[str] | None = None
-        if request.GET.get("validate") == "1":
-            validate_results = []
 
         ctx = {
             "active_nav": "playbooks",
@@ -226,17 +200,12 @@ class PlaybooksDetailView(View):
             "snapshot": snapshot,
             "versions": versions,
             "used_projects": assigned,
-            "validate_results": validate_results,
             "latest_version": latest,
-            "version_total": playbook.versions.count(),
         }
         return render(request, self.template_name, ctx)
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
-        if (request.POST.get("action") or "").strip() != "validate":
-            return redirect(reverse("playbooks-detail", args=[pk]))
-        q = urlencode({"validate": "1"})
-        return redirect(f"{reverse('playbooks-detail', args=[pk])}?{q}")
+        return redirect(reverse("playbooks-detail", args=[pk]))
 
 
 @method_decorator(login_required, name="dispatch")
@@ -248,7 +217,6 @@ class PlaybooksEditView(View):
         latest = _latest_version(playbook)
         snapshot = editor_snapshot_from_version(latest)
         _attach_snapshot_preview(snapshot)
-        _annotate_table_display(snapshot)
         next_n = (latest.version_number + 1) if latest else 1
         ctx = {
             "active_nav": "playbooks",
@@ -257,12 +225,9 @@ class PlaybooksEditView(View):
             "pb_author": _pb_author(playbook),
             "form": snapshot,
             "form_errors": [],
-            "catalog_drift_banner": "",
             "save_button_label": f"Save as v{next_n}",
             "cancel_url": reverse("playbooks-detail", args=[pk]),
             "variable_slots": _padded_variable_slots(snapshot["variables"]),
-            "table_slots": _padded_table_slots(snapshot.get("tables", [])),
-            "entity_choices": [],
             "latest_version": latest,
         }
         return render(request, self.template_name, ctx)
@@ -286,10 +251,8 @@ class PlaybooksEditView(View):
             "description": description,
             "workflow_md": workflow_md,
             "variables": vars_,
-            "tables": [],
         }
         _attach_snapshot_preview(snapshot)
-        _annotate_table_display(snapshot)
 
         if errors:
             next_n = (latest.version_number + 1) if latest else 1
@@ -300,12 +263,9 @@ class PlaybooksEditView(View):
                 "pb_author": _pb_author(playbook),
                 "form": snapshot,
                 "form_errors": errors,
-                "catalog_drift_banner": "",
                 "save_button_label": f"Save as v{next_n}",
                 "cancel_url": reverse("playbooks-detail", args=[pk]),
                 "variable_slots": _padded_variable_slots(vars_),
-                "table_slots": _padded_table_slots([]),
-                "entity_choices": [],
                 "latest_version": latest,
             }
             return render(request, self.template_name, ctx, status=400)

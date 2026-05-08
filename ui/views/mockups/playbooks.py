@@ -69,7 +69,7 @@ MOCK_PLAYBOOK_DETAIL = {
     1: {
         "id": 1,
         "name": "FeatureFactory Playbook",
-        "description": "Default seed doctrine — starter Variables + Increment table pin for Increments tab.",
+        "description": "Default seed doctrine — starter Variables for SitRep and dashboards.",
         "author": "system@huginn",
         "latest_version": 1,
         "workflow_md": (
@@ -86,7 +86,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "Freshness of ingested Increments vs sync SLA",
                 "interpreting": "Green if last increment < 24h; orange 24–48h; red stale",
                 "hover": "Whether we can trust the picture on the dashboard.",
-                "dimensions": "Vitals, Engineering",
             },
             {
                 "name": "Throughput",
@@ -94,7 +93,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "count(Increment where occurred_at in last_7d)",
                 "interpreting": "WoW trend flat or up → green; sharp drop → orange",
                 "hover": "Useful change landing per week (commits as proxy in MVP).",
-                "dimensions": "Vitals, Engineering",
             },
             {
                 "name": "Commits today",
@@ -102,15 +100,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "count(Increment where kind='commit' and occurred_at = today)",
                 "interpreting": "0 → red; 1–4 → orange; ≥5 → green",
                 "hover": "Commits pushed today across all branches.",
-                "dimensions": "Vitals, Engineering",
-            },
-        ],
-        "tables": [
-            {
-                "entity": "Increment",
-                "slicer": "last_14d",
-                "dimensions": "Increments",
-                "drift_warning": "",
             },
         ],
         "versions": [
@@ -118,7 +107,7 @@ MOCK_PLAYBOOK_DETAIL = {
                 "n": 1,
                 "on": "2026-05-01",
                 "author": "system@huginn",
-                "summary": "Seed playbook — starter Variables + Increment pin",
+                "summary": "Seed playbook — starter Variables",
             },
         ],
         "used_by_projects": [
@@ -126,7 +115,6 @@ MOCK_PLAYBOOK_DETAIL = {
             {"id": 1, "source_path": "company-gitlab/atlas-mobile", "tracks": "auto-track latest"},
             {"id": 2, "source_path": "company-gitlab/atlas-infra", "tracks": "pinned v1"},
         ],
-        "show_catalog_drift": False,
     },
     2: {
         "id": 2,
@@ -147,7 +135,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "count(Increment where kind='commit' and occurred_at = today)",
                 "interpreting": "0–2 → red; 3–5 → orange; ≥6 → green",
                 "hover": "Commits pushed today across atlas-backend.",
-                "dimensions": "Vitals, Engineering",
             },
             {
                 "name": "Commits this week",
@@ -155,7 +142,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "count(Increment where kind='commit' and slicer=this_week)",
                 "interpreting": "Below team baseline → orange",
                 "hover": "Weekly commit volume.",
-                "dimensions": "Engineering",
             },
             {
                 "name": "Distinct authors 14d",
@@ -163,17 +149,6 @@ MOCK_PLAYBOOK_DETAIL = {
                 "calculating": "distinct(Increment.author) in last_14d",
                 "interpreting": "Breadth vs single-thread risk",
                 "hover": "How many contributors touched the repo.",
-                "dimensions": "Team Fitness",
-            },
-        ],
-        "tables": [
-            {"entity": "Increment", "slicer": "last_14d", "dimensions": "Increments", "drift_warning": ""},
-            {"entity": "Increment", "slicer": "this_week", "dimensions": "Engineering", "drift_warning": ""},
-            {
-                "entity": "Increment",
-                "slicer": "last_30d",
-                "dimensions": "Engineering",
-                "drift_warning": "Slicer no longer in catalog — fix in Edit",
             },
         ],
         "versions": [
@@ -181,7 +156,7 @@ MOCK_PLAYBOOK_DETAIL = {
                 "n": 3,
                 "on": "2026-05-06",
                 "author": "donland@example.com",
-                "summary": "Added second Increment-Table on Engineering (this_week)",
+                "summary": "Added Distinct authors 14d Variable",
             },
             {
                 "n": 2,
@@ -201,11 +176,6 @@ MOCK_PLAYBOOK_DETAIL = {
             {"id": 1, "source_path": "company-gitlab/atlas-mobile", "tracks": "auto-track latest"},
             {"id": 2, "source_path": "company-gitlab/atlas-infra", "tracks": "pinned v2"},
         ],
-        "show_catalog_drift": True,
-        "catalog_drift_banner": (
-            "This Playbook references entities/slicers no longer in the catalog: "
-            "Increment | last_30d (Tables row 3)."
-        ),
     },
     3: {
         "id": 3,
@@ -215,12 +185,10 @@ MOCK_PLAYBOOK_DETAIL = {
         "latest_version": 2,
         "workflow_md": "## Brand Studio\n\nDesign QA and asset throughput.",
         "variables": [],
-        "tables": [{"entity": "Increment", "slicer": "last_14d", "dimensions": "Increments", "drift_warning": ""}],
         "versions": [
             {"n": 2, "on": "2026-02-01", "author": "stark@example.com", "summary": "Initial Variables"},
         ],
         "used_by_projects": [],
-        "show_catalog_drift": False,
     },
     4: {
         "id": 4,
@@ -230,12 +198,10 @@ MOCK_PLAYBOOK_DETAIL = {
         "latest_version": 2,
         "workflow_md": "## Spike\n\nOne-off migration experiment.",
         "variables": [],
-        "tables": [],
         "versions": [
             {"n": 2, "on": "2026-05-05", "author": "donland@example.com", "summary": "Draft"},
         ],
         "used_by_projects": [],
-        "show_catalog_drift": False,
     },
 }
 
@@ -265,7 +231,6 @@ def playbooks_create(request):
             "# Outline\n\nDescribe roles, thresholds, and what good looks like for projects on this Playbook."
         ),
         "variables": [],
-        "tables": [],
         "banner": "",
     }
     form = {**empty_form}
@@ -276,7 +241,6 @@ def playbooks_create(request):
             {
                 "workflow_md": src["workflow_md"],
                 "variables": list(src["variables"]),
-                "tables": list(src["tables"]),
                 "banner": "Cloning FeatureFactory Playbook — set a name before Save as v1.",
             }
         )
@@ -287,7 +251,6 @@ def playbooks_create(request):
                 "description": src["description"],
                 "workflow_md": src["workflow_md"],
                 "variables": list(src["variables"]),
-                "tables": list(src["tables"]),
                 "banner": "Cloning Atlas Engineering Playbook — pick a new name.",
             }
         )
@@ -327,7 +290,6 @@ def playbooks_edit(request, pk: int):
         "description": pb["description"],
         "workflow_md": pb["workflow_md"],
         "variables": list(pb["variables"]),
-        "tables": list(pb["tables"]),
         "banner": "",
     }
     _attach_workflow_html(form)

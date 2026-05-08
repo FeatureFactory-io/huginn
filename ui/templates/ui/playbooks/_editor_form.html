@@ -5,13 +5,6 @@
   </div>
 {% endif %}
 
-{% if catalog_drift_banner %}
-  <div class="alert alert-warning d-flex align-items-start gap-2 mb-4" role="alert" data-testid="playbooks-catalog-drift-banner">
-    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
-    <div><strong>Catalog drift.</strong> {{ catalog_drift_banner }}</div>
-  </div>
-{% endif %}
-
 {% if form_errors %}
   <div class="alert alert-danger" role="alert" data-testid="playbooks-form-errors">
     <ul class="mb-0 small">
@@ -108,7 +101,6 @@
             <th scope="col">Calculating</th>
             <th scope="col">Interpreting</th>
             <th scope="col">Hover</th>
-            <th scope="col">Dimensions</th>
           </tr>
         </thead>
         <tbody>
@@ -120,51 +112,10 @@
               <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_calculating" value="{{ v.calculating|default:'' }}"></td>
               <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_interpreting" value="{{ v.interpreting|default:'' }}"></td>
               <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_hover" value="{{ v.hover|default:'' }}"></td>
-              <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_dimensions" value="{{ v.dimensions_display|default:'' }}" placeholder="Vitals, Engineering"></td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
-  </div>
-</section>
-
-<section class="card border-0 shadow-sm rounded-3 mb-4">
-  <div class="card-header bg-white py-3 border-bottom">
-    <h2 class="h6 fw-semibold mb-0"><span class="badge bg-secondary me-2">4</span> Tables</h2>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle mb-0" data-testid="playbook-tables-table">
-        <thead class="table-light">
-          <tr>
-            <th scope="col">#</th>
-            <th scope="col">Entity</th>
-            <th scope="col">Slicer</th>
-            <th scope="col">Dimensions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for idx, t in table_slots %}
-            <tr data-testid="playbook-table-row-{{ idx|add:1 }}" {% if t.drift_warning %}class="table-warning"{% endif %}>
-              <td class="text-muted small">{{ idx }}</td>
-              <td style="max-width:10rem;">
-                <select class="form-select form-select-sm" name="tbl_{{ idx }}_entity" data-testid="tbl-{{ idx }}-entity">
-                  <option value=""></option>
-                  {% for val, label in entity_choices %}
-                    <option value="{{ val }}" {% if t.entity == val %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </td>
-              <td><input type="text" class="form-control form-control-sm" name="tbl_{{ idx }}_slicer" value="{{ t.slicer|default:'' }}"></td>
-              <td><input type="text" class="form-control form-control-sm" name="tbl_{{ idx }}_dimensions" value="{{ t.dimensions_display|default:'' }}" placeholder="Increments"></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <div class="p-3 border-top bg-light small text-muted">
-      <strong>Authoring rule:</strong> Entity is a closed dropdown; server validates Slicer per entity.
     </div>
   </div>
 </section>

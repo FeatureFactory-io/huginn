@@ -21,13 +21,6 @@
     </p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar">
-    <form method="post" action="{% url 'playbooks-detail' pb.pk %}" class="d-inline">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="validate">
-      <button type="submit" class="btn btn-outline-secondary btn-sm" data-testid="playbooks-validate-btn">
-        <i class="fa-solid fa-stethoscope me-1"></i> Validate Playbook
-      </button>
-    </form>
     <a class="btn btn-outline-primary btn-sm" href="{% url 'playbooks-create' %}?clone={{ pb.pk }}" data-testid="playbooks-clone-btn">
       <i class="fa-solid fa-copy me-1"></i> Clone
     </a>
@@ -36,20 +29,6 @@
     </a>
   </div>
 </section>
-
-{% if validate_results is not None %}
-  <div class="alert {% if validate_results %}alert-warning{% else %}alert-success{% endif %} border-0 shadow-sm mb-3" role="status" data-testid="playbooks-validate-results">
-    {% if validate_results %}
-      <p class="fw-semibold mb-2">Catalog drift findings</p>
-      <ul class="small mb-0">
-        {% for line in validate_results %}<li>{{ line }}</li>{% endfor %}
-      </ul>
-      <p class="small mb-0 mt-2"><a href="{% url 'playbooks-edit' pb.pk %}">Fix in Edit</a></p>
-    {% else %}
-      <span data-testid="playbooks-validate-empty">No catalog drift detected across {{ version_total }} version(s).</span>
-    {% endif %}
-  </div>
-{% endif %}
 
 <div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
   <div class="card-header border-0 pt-3 px-3 pb-0">
@@ -85,7 +64,7 @@
         <h2 class="h6 fw-semibold">Variables</h2>
         <div class="table-responsive">
           <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light"><tr><th>Name</th><th>Abbrev</th><th>Calculating</th><th>Interpreting</th><th>Hover</th><th>Dimensions</th></tr></thead>
+            <thead class="table-light"><tr><th>Name</th><th>Abbrev</th><th>Calculating</th><th>Interpreting</th><th>Hover</th></tr></thead>
             <tbody>
               {% for v in snapshot.variables %}
                 <tr>
@@ -94,29 +73,9 @@
                   <td class="small">{{ v.calculating }}</td>
                   <td class="small">{{ v.interpreting }}</td>
                   <td class="small text-muted">{{ v.hover }}</td>
-                  <td class="small">{{ v.dimensions_display }}</td>
                 </tr>
               {% empty %}
-                <tr><td colspan="6" class="text-muted small">No variables.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section class="mb-4">
-        <h2 class="h6 fw-semibold">Tables</h2>
-        <div class="table-responsive">
-          <table class="table table-sm table-bordered align-middle">
-            <thead class="table-light"><tr><th>Entity</th><th>Slicer</th><th>Dimensions</th></tr></thead>
-            <tbody>
-              {% for t in snapshot.tables %}
-                <tr {% if t.drift_warning %}class="table-warning"{% endif %}>
-                  <td>{{ t.entity_label }}</td>
-                  <td><code>{{ t.slicer }}</code></td>
-                  <td>{{ t.dimensions_display }}</td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="3" class="text-muted small">No tables.</td></tr>
+                <tr><td colspan="5" class="text-muted small">This Playbook has no Variables yet — only Vitals will render on assigned Projects.</td></tr>
               {% endfor %}
             </tbody>
           </table>

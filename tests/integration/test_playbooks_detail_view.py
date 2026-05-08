@@ -1,0 +1,63 @@
+"""Playbook detail UI — strip Tables panel and Validate (#51)."""
+
+import pytest
+from django.urls import reverse
+
+from playbooks.models import Playbook
+from playbooks.seed_constants import FEATUREFACTORY_PLAYBOOK_SLUG
+from tests.factories import PlaybookFactory, PlaybookVersionFactory
+
+
+def _csrf(client):
+    return client.cookies["csrftoken"].value
+
+
+@pytest.mark.django_db
+def test_detail_no_validate_button(commander_client) -> None:
+    pb = Playbook.objects.get(slug=FEATUREFACTORY_PLAYBOOK_SLUG)
+    r = commander_client.get(reverse("playbooks-detail", args=[pb.pk]))
+    assert r.status_code == 200
+    assert 'data-testid="playbooks-validate-btn"' not in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_detail_no_tables_section_heading(commander_client) -> None:
+    pb = Playbook.objects.get(slug=FEATUREFACTORY_PLAYBOOK_SLUG)
+    body = commander_client.get(reverse("playbooks-detail", args=[pb.pk])).content.decode()
+    assert ">Tables</h2>" not in body
+
+
+@pytest.mark.django_db
+def test_detail_variables_no_dimensions_column(commander_client) -> None:
+    pb = Playbook.objects.get(slug=FEATUREFACTORY_PLAYBOOK_SLUG)
+    body = commander_client.get(reverse("playbooks-detail", args=[pb.pk])).content.decode()
+    assert '<th scope="col">Dimensions</th>' not in body
+
+
+@pytest.mark.django_db
+def test_detail_variables_empty_state_copy(commander_client) -> None:
+    pb = PlaybookFactory(name="Empty Vars PB", slug="empty-vars-pb-test")
+    PlaybookVersionFactory(playbook=pb, version_number=1)
+    body = commander_client.get(reverse("playbooks-detail", args=[pb.pk])).content.decode()
+    assert "This Playbook has no Variables yet — only Vitals will render on assigned Projects." in body
+
+
+@pytest.mark.django_db
+def test_detail_clone_and_edit_buttons_present(commander_client) -> None:
+    pb = Playbook.objects.get(slug=FEATUREFACTORY_PLAYBOOK_SLUG)
+    body = commander_client.get(reverse("playbooks-detail", args=[pb.pk])).content.decode()
+    assert 'data-testid="playbooks-clone-btn"' in body
+    assert 'data-testid="playbooks-edit-btn"' in body
+
+
+@pytest.mark.django_db
+def test_detail_post_redirects_to_detail(commander_client) -> None:
+    pb = Playbook.objects.get(slug=FEATUREFACTORY_PLAYBOOK_SLUG)
+    commander_client.get(reverse("playbooks-detail", args=[pb.pk]))
+    r = commander_client.post(
+        reverse("playbooks-detail", args=[pb.pk]),
+        {"csrfmiddlewaretoken": _csrf(commander_client)},
+        follow=False,
+    )
+    assert r.status_code == 302
+    assert r.url == reverse("playbooks-detail", args=[pb.pk])
