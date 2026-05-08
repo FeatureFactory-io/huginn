@@ -1,6 +1,6 @@
 [project]
 name = "huginn"
-version = "2026.05.08"
+version = "2026.05.08.1"
 requires-python = ">=3.12"
 description = "Human-AI OODA composite for engineering PMs"
 
