@@ -18,7 +18,7 @@ Feature: FRAGOS-CREATE_FRAGO-1 Author a new FRAGO for temporary Playbook expecta
     When I navigate to create a new FRAGO for Project "atlas-backend"
     Then I am on the screen "FRAGOS-CREATE_FRAGO-1"
     And I see the heading "New FRAGO"
-    And I see fields: Title, Body, Affected Variable, Effective window
+    And I see fields: Title, Body, Affects, Effective window
 
   Scenario: FRAGOS-CREATE_FRAGO-02 Title is required on save
     When I navigate to create a new FRAGO for Project "atlas-backend"
@@ -43,32 +43,33 @@ Feature: FRAGOS-CREATE_FRAGO-1 Author a new FRAGO for temporary Playbook expecta
     Then no FRAGO titled "Discard me" exists for Project "atlas-backend"
 
   # ---------------------------------------------------------------------------
-  # Affected Variable (optional, single-select)
+  # Affects field (optional, Narrative / Variable(s))
   # ---------------------------------------------------------------------------
 
-  Scenario: FRAGOS-CREATE_FRAGO-05 Affected Variable dropdown lists only Variables from active Playbook
+  Scenario: FRAGOS-CREATE_FRAGO-05 Affects dropdown offers Narrative and Variable(s)
     When I navigate to create a new FRAGO for Project "atlas-backend"
-    Then the Affected Variable control lists "Active Bug Count (ABC)"
-    And the Affected Variable control does not allow entering a Variable name not on the Playbook
+    Then the Affects control contains the option "Narrative"
+    And the Affects control contains the option "Variable(s)"
+    And the Affects control has a blank default (no selection required)
 
-  Scenario: FRAGOS-CREATE_FRAGO-06 Omitting Affected Variable saves as global narrative override
+  Scenario: FRAGOS-CREATE_FRAGO-06 Selecting Narrative saves as global narrative override
     When I navigate to create a new FRAGO for Project "atlas-backend"
     And I set Title to "GitLab outage narrative"
     And I set Body to "Expect sync gaps all week."
-    And I leave Affected Variable unset
+    And I select Affects "Narrative"
     And I click "Save FRAGO"
-    Then the saved FRAGO has no Affected Variable
+    Then the saved FRAGO has Affects = Narrative
     And Gjallarhorn SHALL treat it as a global narrative override (documented contract)
 
-  Scenario: FRAGOS-CREATE_FRAGO-07 Launch from SitRep breach pre-selects Affected Variable
+  Scenario: FRAGOS-CREATE_FRAGO-07 Launch from SitRep breach pre-selects Affects Variable(s)
     Given I opened create FRAGO from a SitRep breach card for Variable "Active Bug Count"
     When the form loads
-    Then Affected Variable is pre-selected to "Active Bug Count (ABC)"
+    Then Affects is pre-selected to "Variable(s)"
 
-  Scenario: FRAGOS-CREATE_FRAGO-08 Launch from Decision Branch A pre-selects Affected Variable
+  Scenario: FRAGOS-CREATE_FRAGO-08 Launch from Decision Branch A pre-selects Affects Variable(s)
     Given Decision Branch A outcome targets Variable "Active Bug Count"
     When I accept Branch A and the embedded FRAGO form opens
-    Then Affected Variable is pre-selected to "Active Bug Count (ABC)"
+    Then Affects is pre-selected to "Variable(s)"
     And remaining fields match "FRAGOS-CREATE_FRAGO-1" specification
 
   # ---------------------------------------------------------------------------

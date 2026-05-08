@@ -16,9 +16,12 @@
 
 **Project lifecycle**: Projects are **import-only**. They are never created from a blank form — only by selecting from the list of projects a connected DataSource's token can see.
 
-**Playbook lifecycle**: Playbooks are versioned. A Playbook is metadata + a Workflow (markdown) + an ordered list of `PlaybookVariable` (structured) + an ordered list of `PlaybookTable` (structured). A Project auto-tracks the latest version of its assigned Playbook unless explicitly pinned to a specific version. Editing a Playbook (Workflow markdown OR any PlaybookVariable OR any PlaybookTable) creates a new version; Projects on auto-track receive the new expectations on their next SitRep. PlaybookTable rows are validated server-side at write time against the in-code catalog (Entity must be canonical; Slicer must be registered for that Entity); a row that fails either check is rejected before the new version is created. (In the future version you can import Playbook/Workflow from Mimir Server.)
+**Playbook lifecycle**: Playbooks are versioned. A Playbook is metadata + a Workflow (markdown) + an ordered list of `PlaybookVariable` (structured). A Project auto-tracks the latest version of its assigned Playbook unless explicitly pinned to a specific version. Editing a Playbook (Workflow markdown OR any PlaybookVariable) creates a new version; Projects on auto-track receive the new expectations on their next SitRep. (In the future version you can import Playbook/Workflow from Mimir Server.)
 
-**Project view tabs**: tabs on the Project view = `{ Vitals (hardcoded) } ∪ distinct dimension across the active PlaybookVersion's PlaybookVariables and PlaybookTables`. Vitals always exists; everything else is Playbook-derived. **FeatureFactory Playbook** (the seed Playbook) pins `Increment-Table` to an `Increments` dimension by default, so freshly-imported Projects on **FeatureFactory Playbook** still see an Increments tab. A Variable or Table with `dimensions = ["Vitals", "Engineering"]` renders on both tabs; the label `"Vitals"` is reserved.
+**Project view tabs**: tabs on the Project view are **system-defined**, not Playbook-derived:
+- **Vitals** — hardcoded, present on every Project. Contains: Identity / Playbook / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `PlaybookVariable` on the active PlaybookVersion (in declared order), showing `name (abbrev)` with value and color on hover.
+- **Variables** — one diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history for the selected period. Fixed period filter: today / yesterday / this week / previous week / 30 days.
+- **Adapter-driven tabs** — one tab per registered ingestion adapter. Today: the **Increments** tab, contributed by `ingestion/adapters/gitlab_commits.py`. New adapters add new tabs as they land.
 
 **DataSource credentials**: PATs (GitLab) are user-set and may have an expiry; Jira API tokens generally don't. Huginn tracks an `expires_at` per DataSource and surfaces a warning before expiry. No automatic refresh — the API doesn't support it for PATs.
 
@@ -231,24 +234,23 @@ Donland clicks [+ Import Projects] (from this screen, Act 1's shortcut, or Act 0
 
 #### Screen: PROJECTS-VIEW_PROJECT-1
 
-**Layout** — tabbed page. Tabs are **derived** from the active Playbook: `{ Vitals (hardcoded) } ∪ distinct dimension across the active PlaybookVersion's PlaybookVariables and PlaybookTables`. Vitals always renders; everything else is Playbook-driven, in the order each `dimensions` value first appears in the Variables/Tables lists. **FeatureFactory Playbook** pins `Increment-Table` on an `Increments` dimension, so Projects using **FeatureFactory Playbook** show Vitals + Increments + any further dimensions defined.
+**Layout** — tabbed page. Tabs are **system-defined** (not Playbook-derived).
 
 - **Header**: Project name + status badge + DataSource
-- **Vitals tab** (hardcoded):
+- **Vitals tab** (hardcoded, present on every Project):
   - **Identity**: source path, source URL, imported on, imported by
   - **Playbook**: name + version (or "Not assigned" — link to assign)
   - **Sync**: last sync time, next scheduled, current status (idle / syncing / error)
-  - **Variables on Vitals**: any PlaybookVariable whose `dimensions` includes `"Vitals"` renders as an additional card on this tab — name (abbrev), current value, color band, hover, [Open in Variables Deep-Dive →] (Act 7).
-  - **Tables on Vitals**: any PlaybookTable whose `dimensions` includes `"Vitals"` renders as an additional tile on this tab — entity table with the named Slicer applied (see Tables-on-tabs rules below).
-- **Derived tabs** (zero or more): one per distinct `dimensions` value across the active Playbook's Variables and Tables. Each derived tab renders, in order:
-  1. **PlaybookVariable cards** whose `dimensions` includes this tab (current value + color + trend sparkline + [Open in Variables Deep-Dive →]).
-  2. **PlaybookTable tiles** whose `dimensions` includes this tab. Each tile shows the canonical entity table with the pinned Slicer applied (columns derived from the entity's hardcoded schema), plus a Slicer-switcher dropdown filtered to slicers valid for that entity. Tile actions: [Open in Chat] (Act 8) with the entity + slicer pre-loaded as context.
-  3. Deep-link: `?tab=<dimension-slug>` and `?tab=<dimension-slug>&slicer=<slicer-name>` for slicer overrides.
-- **Error states** for misconfigured PlaybookTables. Authoring-time typos are impossible (the Playbook editor's Entity field is a closed dropdown; the API validates Slicer against the slicers registered for the picked Entity). These states therefore only surface when a PlaybookVersion saved against an older Huginn catalog references an entity/slicer that has since been removed:
-  - **Unknown entity (catalog drift)**: a PlaybookTable referencing an entity no longer in the canonical work model renders an inline error tile: *"Entity 'X' is no longer part of the canonical work model. Remove or replace this Table reference in the Playbook."* with a link to `PLAYBOOKS-EDIT_PLAYBOOK-1`. Other tiles on the same tab render normally.
-  - **Slicer no longer in catalog (graceful-empty)**: a PlaybookTable whose `slicer` is no longer registered for its (still-valid) `entity` renders the entity table tile with the slicer name, an empty result body, and a soft hint *"Slicer 'Y' is no longer in the catalog — fix in the Playbook editor."* with a link to `PLAYBOOKS-EDIT_PLAYBOOK-1`. The hint is informational; the tile does NOT take over the tab and is visually distinguishable from the inline error case above.
-  - **Empty result** (entity/slicer valid, no records match): *"No `<entity>` records match the `<slicer>` filter."* (informational, not an error).
-- **Example**: if `atlas-backend`'s Playbook defines Variables with dimensions `["Vitals","Engineering"]`, `["Engineering"]`, `["Quality"]`, `["Team Fitness"]`, and pins `Increment-Table` on `["Increments"]` + `UnitOfWork-Table` on `["Engineering"]` + `Milestone-Table` on `["Results"]`, the Project view shows Vitals | Increments | Engineering | Quality | Team Fitness | Results.
+  - **Transparency card**: hardcoded system-wide health signal — how stale are updates? (See `ingestion/adapters/` for the metric definition.)
+  - **Informer bar**: one colored dot per `PlaybookVariable` on the active PlaybookVersion, in declared order. Hover shows `name (abbrev): value`. When no Playbook is assigned, the bar is empty.
+- **Variables tab**:
+  - One diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history.
+  - **Period selector** (top-right, persistent): today / yesterday / this week / previous week / 30 days.
+  - Each diagram: Variable name + abbrev as title; Y-axis = value; X-axis = time. Color of each data point reflects the `interpreting` rule at that time.
+  - Per-card affordances: [View in Chat] (Act 8) with Variable + period pre-loaded | [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with Variable pre-selected | reasoning-trace drilldown (click a data point to open a right-rail panel showing the originating `VariableDatapoint` row + SitRep + `AgentInvocation`, collapsed by default).
+  - Empty states: no Playbook assigned → "No Playbook assigned. Assign one in the Project view." | Playbook has no Variables → "This Playbook defines no Variables." | Variable has no history yet → "No SitReps yet" in place of the chart.
+- **Increments tab** (contributed by `ingestion/adapters/gitlab_commits.py`): system-defined view of ingested commit/increment data. Layout and content defined by the adapter. Further adapter-driven tabs will appear here as new adapters land.
+- Deep-link: `?tab=vitals` | `?tab=variables` | `?tab=increments` (or the adapter slug).
 - Sync engine behavior (beat, idempotency, error states) is specified in `docs/features/act-2-projects/projects-sync-engine.feature`; architecture in `docs/architecture/SAO.md` §1 (Ingestion sync engine), §4, §7.
 - **Top Actions**: [Edit] | [Sync Now] | [Archive] | [Open SitReps] (→ Act 5)
 
@@ -272,13 +274,12 @@ Confirmation modal:
 
 ## Act 3: Playbook — CRUDLF (versioned)
 
-**Context**: While the initial sync is running, Donland writes a Playbook. A Playbook is **metadata** (name, description) + a **Workflow** (free-form markdown describing the OO/DA narrative — roles, who is who, what to look for) + an ordered list of **PlaybookVariables** (structured: `name`, `abbreviation`, `calculating`, `interpreting`, `hover`, `dimensions`) + an ordered list of **PlaybookTables** (structured: `entity`, `slicer`, `dimensions`). **One Playbook can be assigned to many Projects.** Each Project pins a (Playbook, version); auto-tracks the latest version by default. Editing the Workflow OR any Variable OR any Table creates a new version.
+**Context**: While the initial sync is running, Donland writes a Playbook. A Playbook is **metadata** (name, description) + a **Workflow** (free-form markdown describing the OO/DA narrative — roles, who is who, what to look for) + an ordered list of **PlaybookVariables** (structured: `name`, `abbreviation`, `calculating`, `interpreting`, `hover`). **One Playbook can be assigned to many Projects.** Each Project pins a (Playbook, version); auto-tracks the latest version by default. Editing the Workflow OR any Variable creates a new version.
 
 **Seed Playbook** (`FeatureFactory Playbook`): Huginn ships a default seed Playbook named **FeatureFactory Playbook**, pre-populated with:
-- **Seven starter Variables** (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution), each with default `calculating`, `interpreting`, and `dimensions` (Vitals + a natural domain tab — Engineering / Quality / Team Fitness).
-- **A default Tables list** — `Increment-Table` pinned to `Increments` (slicer `last_14d`), `UnitOfWork-Table` pinned to `Engineering` (slicer `open`), `Milestone-Table` pinned to `Results` (slicer `active`).
+- **Seven starter Variables** (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution), each with default `calculating`, `interpreting`, and `hover`.
 
-Cloning **FeatureFactory Playbook** is the recommended starting point. **FeatureFactory Playbook**'s `Increments` pin is what brings the Increments tab back on freshly-imported Projects (the tab is no longer hardcoded — see Act 2 / System Architecture Notes).
+Cloning **FeatureFactory Playbook** is the recommended starting point.
 
 **Pattern**: CRUDLF, with version history per Playbook.
 
@@ -315,26 +316,15 @@ Donland clicks **Playbooks** in the main nav.
   - **Future**: [Import from Mimir] (out of MVP)
 
 - **3. Variables** (structured, ordered list):
-  - Editable table with columns: drag-handle | **Name** | **Abbrev** | **Calculating** | **Interpreting** | **Hover** | **Dimensions** | row actions
+  - Editable table with columns: drag-handle | **Name** | **Abbrev** | **Calculating** | **Interpreting** | **Hover** | row actions
     - **Name**: e.g., "Cycle Time"
     - **Abbrev**: e.g., "CT"
     - **Calculating**: free-text — JQL, count/ratio expression, or natural-language prompt; the Agent decides how to apply
     - **Interpreting**: free-text mapping value → color, e.g. *"<5d & not climbing → green; climbing → orange; >5d → red"*
     - **Hover**: tooltip text shown on the project card and SitRep snapshot
-    - **Dimensions**: tag input (multi-select, free-text); typing creates new dimension labels; `"Vitals"` is reserved and routes to the hardcoded Vitals tab. New rows default to `["Vitals"]`.
   - [+ Add Variable] button (primary, below the table)
   - Row actions: [Duplicate] | [Remove]
-  - Drag-handle reorders rows; order is preserved on save and used to determine the order new dimension tabs appear on the Project view.
-
-- **4. Tables** (structured, ordered list):
-  - Editable table with columns: drag-handle | **Entity** | **Slicer** | **Dimensions** | row actions
-    - **Entity**: dropdown — fixed list `UnitOfWork | Increment | Milestone | Sprint | Contributor`. Free-text not allowed (this is the safety against typo-driven errors at authoring time — entities are hardcoded in code).
-    - **Slicer**: dropdown — auto-filtered to slicers valid for the picked Entity, sourced from Huginn's slicer registry (e.g. `today | this_week | last_14d | mine` for Increment; `open | closed | mine | stale_7d | priority_high` for UnitOfWork; etc.). Disabled until Entity is picked.
-    - **Dimensions**: tag input (multi-select, free-text), same component as Variables. New rows default to `["Vitals"]`.
-  - [+ Add Table] button (primary, below the table)
-  - Row actions: [Duplicate] | [Remove]
-  - Drag-handle reorders rows; order influences the rendered tile order on derived tabs.
-  - **Authoring-time validation**: the Entity dropdown is closed (no free-text). The API additionally validates the saved row server-side: Entity must be in the in-code canonical-entity catalog AND Slicer must be registered for the picked Entity. Submissions that fail either check are rejected before a new PlaybookVersion is created, with a per-row inline error on the form. A typo at authoring time is therefore impossible. A PlaybookVersion may still reference an entity or slicer that has been removed in a future Huginn upgrade; in that case the Project view renders the offending tile in an error or graceful-empty state — see Act 2 *Error states*. The Playbook editor surfaces a banner *"This Playbook references entities/slicers no longer in the catalog: …"* on Edit so Donland can fix or remove the row, and `PLAYBOOKS-VIEW_PLAYBOOK-1` exposes a `[Validate Playbook]` action that scans every saved version for the same drift.
+  - Drag-handle reorders rows; order is preserved on save and determines the order Variables appear in the informer bar and on the Variables tab.
 
 - **Top Actions**: [Save as v1] (primary) | [Cancel]
 
@@ -343,31 +333,26 @@ Donland clicks **Playbooks** in the main nav.
 **Layout** (matches Project detail tab pattern — `hg-detail-tabs-card` + `nav-tabs card-header-tabs`):
 
 - **Tabs**
-  - **Playbook** — read-only snapshot for the version in focus (default: **latest**): Metadata, Workflow (rendered markdown), Variables table, Tables panel, **Used by** (Projects + tracking indicator with links to `PROJECTS-VIEW_PROJECT-1`).
-  - **Versions** — immutable version log: vN, date, author, change summary (newest first); **[Compare with current]** when wired (diff across Workflow, Variables, Tables). Selecting a prior version to hydrate the Playbook tab is product wiring (same intent as before; navigation may use query params or in-page state).
+  - **Playbook** — read-only snapshot for the version in focus (default: **latest**): Metadata, Workflow (rendered markdown), Variables table, **Used by** (Projects + tracking indicator with links to `PROJECTS-VIEW_PROJECT-1`).
+  - **Versions** — immutable version log: vN, date, author, change summary (newest first); **[Compare with current]** when wired (diff across Workflow and Variables). Selecting a prior version to hydrate the Playbook tab is product wiring (navigation may use query params or in-page state).
 
-- **Validate Playbook**: **`[Validate Playbook]`** lives in the **page header toolbar** (with Edit, Clone). It runs a catalog drift scan across **every saved version** and expands/collapses a results panel below the header (above the tab card). Empty result: *"No catalog drift detected across N versions."* Findings deep-link **[Fix in Edit]** to `PLAYBOOKS-EDIT_PLAYBOOK-1` on the latest version. Diagnostic only — never modifies versions.
-
-- **Top Actions** (header toolbar): **[Validate Playbook]** | **[Clone]** | **[Edit]**
+- **Top Actions** (header toolbar): **[Clone]** | **[Edit]**
 
 #### Screen: PLAYBOOKS-EDIT_PLAYBOOK-1
 
-Same four-region form as CREATE (Metadata, Workflow, Variables, Tables), pre-populated with the latest version's content. Adds:
+Same three-region form as CREATE (Metadata, Workflow, Variables), pre-populated with the latest version's content. Adds:
 - "Change summary" field (required) — shown in version log
 - [Save as v(N+1)] — never overwrites; always creates a new version
-- **Catalog-drift banner** (top of form): if any existing PlaybookTable references an entity or slicer no longer present in the current Huginn catalog, the editor shows a warning banner listing the offending rows so Donland can fix or remove them before saving the new version. Saving with unresolved drift is allowed (preserving authoring intent), but the offending tiles render in error state on Project views — see Act 2.
 
 Editing semantics:
 - Workflow markdown edits are tracked diff-style.
 - Variables edits (add / remove / reorder / change any field) all contribute to the new version. The Variables snapshot for v(N+1) is the full edited list.
-- Tables edits (add / remove / reorder / change Entity, Slicer, or Dimensions) likewise contribute to the new version. The Tables snapshot for v(N+1) is the full edited list.
 
 On save:
 - New version becomes "latest"
-- Projects auto-tracking this Playbook will use the new Variables, Tables, and Workflow on their **next SitRep generation** (does not re-run past SitReps; existing SitReps keep their `variables_snapshot`)
+- Projects auto-tracking this Playbook will use the new Variables and Workflow on their **next SitRep generation** (does not re-run past SitReps; existing SitReps keep their `variables_snapshot`)
 - Pinned Projects keep their pinned version
-- Removing a Variable does **not** delete its existing `VariableDatapoint` history — the trend is preserved for audit but the Variable simply stops appearing on new SitReps and on the Project view's tabs.
-- Removing a PlaybookTable simply drops the corresponding tile from the next-rendered Project view; canonical-entity data is unaffected (tables read from the same hardcoded entity store regardless of Playbook pins).
+- Removing a Variable does **not** delete its existing `VariableDatapoint` history — the trend is preserved for audit but the Variable simply stops appearing on new SitReps and on the Variables tab.
 
 #### Screen: PLAYBOOKS-DELETE_PLAYBOOK-1
 
@@ -411,7 +396,7 @@ The daily loop. Donland opens Huginn, scans the Projects Dashboard, drills into 
     - **Project name** + DataSource icon
     - **Last SitRep timestamp** + "View SitRep →" link → `SITREP-VIEW_SITREP-1` (Act 5) for the latest SitRep
     - **Headline assessment** (1 line, from latest SitRep): e.g., "Milestone v1.21 at risk: 3 critical bugs open"
-    - **Variables mini-strip**: N dots, one per PlaybookVariable on the active Playbook (worst color first, then declared order). Hover a dot for `name (abbrev): value` and the dimension(s) it lives on.
+    - **Variables mini-strip**: N dots, one per PlaybookVariable on the active Playbook (worst color first, then declared order). Hover a dot for `name (abbrev): value`.
     - **Last sync**: timestamp + sync status icon (OK / syncing / error — token expired etc.)
     - **Playbook**: name + version (auto-tracking ⟳ or pinned 📌 indicator)
 - **Color semantics**:
@@ -430,7 +415,9 @@ The daily loop. Donland opens Huginn, scans the Projects Dashboard, drills into 
 
 ## Act 5: SitRep / Status Report
 
-**Context**: A SitRep is what Gjallarhorn produces after every sync (or on-demand). It is **per Project, per moment in time**. It evaluates current Variable values against the Project's active Playbook expectations, gives an overall RYG/orange assessment, narrates the situation, and proposes Decisions. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw at time T against Playbook version V.
+**Context**: A SitRep is what Gjallarhorn produces after every sync (or on-demand). It is **per Project, per moment in time**. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw at time T against Playbook version V.
+
+**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Playbook workflow + variables, enabled in-window FRAGOs, data: {...} for the period under assessment)` and calls the AI once. The AI returns a situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams).
 
 **Pattern**: LIST+FIND + VIEW. No CREATE (auto-generated), no EDIT (frozen), no DELETE (audit log).
 
@@ -470,9 +457,9 @@ Donland clicks [Open SitRep] or a row.
 
 - **Section 2 — Variables Snapshot**:
   - One row per PlaybookVariable on the evaluated PlaybookVersion, rendered from the SitRep's embedded `variables_snapshot` JSON (canonical, immutable record of what Gjallarhorn saw at generation time).
-  - Columns: **Name (abbrev)** | **Value** | **Color** (traffic light) | **Hover** | **Dimension(s)** | Δ vs. previous SitRep
+  - Columns: **Name (abbrev)** | **Value** | **Color** (traffic light) | **Hover** | Δ vs. previous SitRep
   - When a Variable's value could not be computed by the Agent, the row renders with `value = —` and `color = grey`.
-  - Each row links to `VARIABLES-VIEW-1` (Act 7) filtered to that Variable, and to the Variable's home tab on `PROJECTS-VIEW_PROJECT-1` (Act 2).
+  - Each row links to `VARIABLES-VIEW-1` (Act 7 / Variables tab) filtered to that Variable.
 
 - **Section 3 — Proposed Decisions**:
   - List of Decisions Gjallarhorn proposes based on the assessment
@@ -500,7 +487,7 @@ Donland clicks [Open SitRep] or a row.
 - *"Disregard broken builds tomorrow — known infra outage."*
 - *"Cycle time threshold ≤ 5 days suspended for Sprint 47 (holiday week)."*
 
-A FRAGO is **a short markdown body** scoped to one Project, with an optional time/scope filter (day-of-week, date range, Sprint/Milestone) and an optional **PlaybookVariable** tag for filtering. When tagged, the FRAGO retunes that Variable's `interpreting` rule for the effective window; it cannot introduce new variables. When Gjallarhorn generates a SitRep, it reads **enabled FRAGOs that are currently in their effective window** alongside the Playbook (Workflow + Variables) and reconciles them in the assessment — both human-authored, both natural language.
+A FRAGO is **a short markdown body** scoped to one Project, with an optional time/scope filter (day-of-week, date range, Sprint/Milestone) and an optional **Affects** designation (Narrative or Variable(s)). When set to Variable(s), the FRAGO retunes that Variable's `interpreting` rule for the effective window; it cannot introduce new variables. When Gjallarhorn generates a SitRep, it reads **enabled FRAGOs that are currently in their effective window** alongside the Playbook (Workflow + Variables) and reconciles them in the assessment — both human-authored, both natural language.
 
 **Activate / Deactivate**: each FRAGO has an `enabled` flag the Commander can toggle from the list or detail screen. **Deactivated FRAGOs are not consumed by Gjallarhorn** when producing SitReps, regardless of their effective window. Useful for short-term suspension without losing the FRAGO's context — re-enable to resume. Distinct from **Revoke** (which is soft-delete; revoked FRAGOs cannot be re-enabled).
 
@@ -520,9 +507,9 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 **Layout**:
 - **Header**: "FRAGOs — &lt;project name&gt;" when filtered by one Project; **"FRAGOs — All projects"** when unscoped
 - **Top Actions**: **[+ New FRAGO]** → create screen; when the list is scoped with `?project=…`, the same parameter is appended for convenience so Project is pre-selected on the form
-- **Filter**: Project | Timing | Status | Affects (mock); operational list may add query-backed filters separately
+- **Filter**: Project | Timing (In Effect, Scheduled, Past) | Status (Active, Disabled, Revoked) | Affects (Narrative, Variable(s)); operational list may add query-backed filters separately
 - **Table**:
-  - Toggle | Title | PlaybookVariable tag | Effective window | Status | Actions
+  - Toggle | Title | Affects | Effective window | Status | Actions
 - **Toggle column** (leftmost): per-row enable/disable switch (`data-testid="frago-toggle-{id}"`). Click flips the `enabled` flag — no confirmation modal (action is reversible). On flip:
   - Status badge updates immediately
   - Toast confirmation: "Deactivated 'Belay Active Bug Count = 0 on Fridays' — Gjallarhorn will skip this FRAGO on the next SitRep."
@@ -544,7 +531,7 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 
 #### Screen: FRAGOS-CREATE_FRAGO-1
 
-Donland opens **New FRAGO** from the list or another surface. Links often include `?project=…` to **pre-select** Project (scoped FRAGO list, Project **Add FRAGO**, SitRep, Decision). The Commander **always picks or confirms Project on this form**; SitRep / Decision flows may still pre-fill other fields (e.g. PlaybookVariable tag).
+Donland opens **New FRAGO** from the list or another surface. Links often include `?project=…` to **pre-select** Project (scoped FRAGO list, Project **Add FRAGO**, SitRep, Decision). The Commander **always picks or confirms Project on this form**; SitRep / Decision flows may still pre-fill other fields (e.g. Affects).
 
 **Layout**:
 - **Header**: "New FRAGO"
@@ -552,7 +539,7 @@ Donland opens **New FRAGO** from the list or another surface. Links often includ
   - **Project** (required, **dropdown**) — choose target Project; pre-filled when `?project=` is present
   - Title (required) — e.g., "Belay Active Bug Count = 0 on Fridays"
   - **Body** (markdown) — the FRAGO content. Free-form natural language. Gjallarhorn reads this alongside the Playbook when generating SitReps.
-  - **PlaybookVariable tag** (optional, single-select) — pick from the active Playbook's Variables. When set, the FRAGO retunes that Variable's `interpreting` rule for the effective window. When unset, the FRAGO applies as a global narrative override (Gjallarhorn reads it alongside the Workflow). Cannot introduce new Variables.
+  - **Affects** (optional, single-select): **Narrative** — global context override, Gjallarhorn reads it alongside the Workflow; **Variable(s)** — retunes the interpreting rule for one or more Playbook Variables for the effective window.
   - **Scope filter** (optional):
     - Day-of-week: any combination of Mon–Sun
     - Date range: from / to (either or both optional)
@@ -562,7 +549,7 @@ Donland opens **New FRAGO** from the list or another surface. Links often includ
 #### Screen: FRAGOS-VIEW_FRAGO-1
 
 **Layout**:
-- Title | Status badge | PlaybookVariable tag (if any)
+- Title | Status badge | Affects (if any)
 - **Enable toggle** (header, prominent): switch labelled "Enabled" / "Disabled". Same semantics as the list toggle — flipping it changes whether Gjallarhorn applies the FRAGO on the next SitRep. Disabled when status = Revoked.
 - Body (rendered markdown)
 - Effective window
@@ -583,40 +570,35 @@ Confirmation modal:
 
 ---
 
-## Act 7: Variables Deep-Dive
+## Act 7: Variables Tab
 
-**Context**: Donland sees a breach on the SitRep and wants to understand the trend behind it — or wants to wander through Variables to spot anomalies the SitRep didn't surface. This screen presents every PlaybookVariable on the assigned PlaybookVersion, **grouped by `dimensions`**, with a daily-resolution trend chart per Variable derived from its `VariableDatapoint` history. Read-only — values come from SitReps, history from VariableDatapoint rows.
+**Context**: The Variables tab lives on `PROJECTS-VIEW_PROJECT-1` (Act 2). Donland arrives here from a SitRep breach link, from the informer bar on Vitals, or directly by clicking the Variables tab on a Project. This tab shows every PlaybookVariable on the active PlaybookVersion as a time-series diagram derived from `VariableDatapoint` history. Read-only — values come from SitReps, history from VariableDatapoint rows.
 
-**Pattern**: VIEW with filters. No CREATE/EDIT/DELETE. Open from main nav, from SitRep breach links, or from Project dashboard cards.
+**Pattern**: VIEW with period filter. No CREATE/EDIT/DELETE. Screen ID `VARIABLES-VIEW-1` is retained for cross-references.
 
 #### Screen: VARIABLES-VIEW-1
 
 **Layout**:
-- **Header**: "Variables — atlas-backend" + active PlaybookVersion indicator
-- **Time-range picker** (top-right, persistent):
-  - This week | Previous week | Last 2 weeks | This month | Custom (date range)
+- **Header**: "Variables" (within the Project page header — "Variables — atlas-backend") + active PlaybookVersion indicator
+- **Period selector** (top-right, persistent):
+  - Today | Yesterday | This week | Previous week | 30 days
   - Default: This week
-- **Dimension jump-nav** (sticky): one anchor per distinct `dimensions` value across the active Playbook's Variables (Vitals first if present, then in declaration order).
-- **Sections** (vertically stacked, one panel per dimension; scroll or jump-link nav):
-  - **Section header**: dimension name + count of Variables in this dimension.
-  - **Variable cards** within the section (one per PlaybookVariable whose `dimensions` includes this label):
-    - **Card header**: Name (abbrev) + current value + color band + status badge (with active FRAGO overrides applied)
-    - **Trend chart**: line of `VariableDatapoint.value` over the selected range; color of each point reflects the `interpreting` rule at that time
-    - **Calculating** (collapsed by default): the Variable's `calculating` text — JQL, expression, or prompt
-    - **Interpreting**: the Variable's `interpreting` rules, with overlay showing any FRAGO overrides currently in effect
-    - **Hover** preview
+- **Variable diagrams** (grid, one card per PlaybookVariable on the active PlaybookVersion, in declared order):
+  - **Card header**: Name (abbrev) + current value + color band + status badge (with active FRAGO overrides applied)
+  - **Diagram**: line chart — Y-axis = value, X-axis = time over the selected period; color of each data point reflects the `interpreting` rule at that time
+  - **Calculating** (collapsed by default): the Variable's `calculating` text — JQL, expression, or prompt
+  - **Interpreting**: the Variable's `interpreting` rules, with overlay showing any FRAGO overrides currently in effect
+  - **Hover** preview
 - **Per-card affordances**:
   - Click a data point → drill-down panel (right rail) showing that day's `VariableDatapoint` row + the originating SitRep + the `AgentInvocation` (collapsed by default; expand for the Agent's reasoning trace)
-  - [View in Chat] → opens `CHAT-1` with the Variable + range pre-loaded as context
+  - [View in Chat] → opens `CHAT-1` with the Variable + period pre-loaded as context
   - [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with this PlaybookVariable pre-selected as the tag
-  - [Open Variable's home tab on Project view →] → `PROJECTS-VIEW_PROJECT-1?tab=<dimension>` (Act 2)
 - **Variable-level affordances**:
   - "Edit Variable in Playbook" link → `PLAYBOOKS-EDIT_PLAYBOOK-1` (or pin warning if Project pins an old version)
 - **Empty states**:
   - Project has no assigned Playbook → "No Playbook assigned. Assign one in the Project view."
   - Playbook has no Variables → "This Playbook defines no Variables. Add some in `PLAYBOOKS-EDIT_PLAYBOOK-1`."
-  - A Variable has no VariableDatapoint history yet → trend area shows "No SitReps yet" instead of an empty chart.
-- **When the Project's Playbook is FeatureFactory Playbook** (the seed Playbook, or a clone preserving the starter Variables), the seven dimensions Donland is used to seeing — Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution — render unchanged. Custom Variables added to the Playbook contribute new sections or join existing ones based on their `dimensions`. Variables removed from the Playbook simply stop appearing here; their `VariableDatapoint` history is preserved for audit.
+  - A Variable has no VariableDatapoint history yet → diagram area shows "No SitReps yet" instead of an empty chart.
 
 ---
 
@@ -711,7 +693,7 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
   **Branch A — Create FRAGO**
   - Use when the Decision is "modify expectations going forward"
   - Pre-filled FRAGO form embedded inline (same fields as `FRAGOS-CREATE_FRAGO-1`):
-    - **Project** (fixed from the SitRep's Project scope), title, body (pre-filled from Decision rationale), PlaybookVariable tag, scope filter
+    - **Project** (fixed from the SitRep's Project scope), title, body (pre-filled from Decision rationale), Affects, scope filter
   - [Accept and Create FRAGO] → creates FRAGO, marks Decision Accepted with outcome reference
 
   **Branch B — Extend Situational Awareness**
@@ -843,10 +825,8 @@ Same layout as VIEW but document is editable (rich text per section).
 
 The following are deliberately deferred — captured here so they aren't silently lost between this artefact and ESM Activity 04 / implementation:
 
-1. **Seed Playbook starter Variables.** Exact `name / abbreviation / calculating / interpreting / hover / dimensions` values for each of the seven starters (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution). Tracked in a separate doc: `docs/features/playbooks-seed.md` (to be authored).
+1. **Seed Playbook starter Variables.** Exact `name / abbreviation / calculating / interpreting / hover` values for each of the seven starters (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution). Tracked in a separate doc: `docs/features/playbooks-seed.md` (to be authored).
 2. **SitRep cadence vs sync cadence default policy.** Sync may be `minutely`; SitRep generation is LLM-expensive. Default is "match sync"; minutely sync likely needs an explicit coarser SitRep beat (≥ hourly) to bound cost. See `docs/ideation/vision.md` Open Questions.
-3. **Per-Variable rich subchart enrichment.** The previous Variables Deep-Dive (Act 7) described rich auxiliary panels — burndown, churn quadrant, contributor scatter — that don't fit the single-value-per-Variable model. Open: declare them as additional Variables on **FeatureFactory Playbook**, attach them as auxiliary chart specs on a `PlaybookVariable`, or move them to a dedicated post-MVP "Project Analytics" surface.
+3. **Per-Variable rich subchart enrichment.** The Variables tab renders one diagram per Variable (Y = value, X = time, fixed period filter). Richer auxiliary panels — burndown, churn quadrant, contributor scatter — don't fit the single-value-per-Variable model. Options: declare them as additional Variables on **FeatureFactory Playbook**; attach auxiliary chart specs to a `PlaybookVariable`; or move them to a dedicated post-MVP "Project Analytics" surface.
 4. **PlaybookVariable.calculating typing.** Currently free text — the Agent decides whether to evaluate deterministically (JQL, count expression) or interpret + estimate. Open whether to add an explicit `calc_kind` hint to make Agent routing cheaper.
-5. **Slicer catalog evolution — decided.** The Slicer catalog is shipped per-canonical-entity in code; it starts small and grows driven by real Playbook needs. Removal/rename policy: when a Slicer is removed in a Huginn upgrade, existing PlaybookVersions pinning it stay loadable; the corresponding tile renders in **graceful-empty** state on the Project view (slicer name shown, empty result, soft "slicer no longer in catalog" hint with a link to the Playbook editor). This is distinct from the inline error reserved for the entity-removed case in #6 below. Auto-rename mapping is out of scope for MVP.
-6. **Missing-entity / invalid-slicer policy — decided.** Authoring-time correctness is enforced at **write time** by the Playbook editor + API (Entity is a closed dropdown; Slicer is validated server-side against the slicers registered for the picked Entity), so typos are impossible. DB stores `entity` and `slicer` as plain strings (no FK — canonical entities and slicers live in code, not the DB schema). When a previously-saved PlaybookVersion references an entity that has since been removed, the Project view renders the affected tile as an **inline error** (Act 2 *Error states*); when only the slicer is gone, see #5. A `[Validate Playbook]` CTA on `PLAYBOOKS-VIEW_PLAYBOOK-1` scans every saved version and deep-links each finding to a fix in `PLAYBOOKS-EDIT_PLAYBOOK-1` (in scope for MVP).
-7. **Situational Awareness scope — journey vs vision.** This journey treats Situational Awareness as **workspace-global** (Act 12). `docs/ideation/vision.md` still documents a per-Project SA relationship in places — reconcile domain model, persistence, and MCP/SitRep wiring in a dedicated ADR before implementation diverges.
+5. **Situational Awareness scope — journey vs vision.** This journey treats Situational Awareness as **workspace-global** (Act 12). `docs/ideation/vision.md` still documents a per-Project SA relationship in places — reconcile domain model, persistence, and MCP/SitRep wiring in a dedicated ADR before implementation diverges.

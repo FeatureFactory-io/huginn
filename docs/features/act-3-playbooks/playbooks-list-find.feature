@@ -127,16 +127,14 @@ Feature: PLAYBOOKS-LIST+FIND-1 Browse and filter Playbooks
     When I choose "Edit" from the row overflow menu for "Atlas Engineering Playbook"
     Then I am on the screen "PLAYBOOKS-EDIT_PLAYBOOK-1" for "Atlas Engineering Playbook"
 
+  @reimplement
   Scenario: PLAYBOOKS-LIST+FIND-19 Clone row action opens create form pre-filled with current content
     # Seed Playbook contents are tracked in docs/features/playbooks-seed.md (TBD).
-    # MVP wiring: only the Increment canonical entity is live, so the seed ships
-    # with one PlaybookTable (Increment | last_14d | [Increments]).
-    Given the seed Playbook "FeatureFactory Playbook" exists with its starter Variables and 1 default Table
+    Given the seed Playbook "FeatureFactory Playbook" exists with its starter Variables
     When I choose "Clone to new Playbook" from the row overflow menu for "FeatureFactory Playbook"
     Then I am on the screen "PLAYBOOKS-CREATE_PLAYBOOK-1"
     And the Workflow markdown is pre-filled from "FeatureFactory Playbook" v1
     And the Variables list is pre-filled with the seed's starter Variables in their seed order
-    And the Tables list is pre-filled with 1 row: "Increment | last_14d | [Increments]"
     And the Name field is empty
 
   Scenario: PLAYBOOKS-LIST+FIND-20 Delete row action is enabled when Playbook is unused

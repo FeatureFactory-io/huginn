@@ -41,21 +41,22 @@ Feature: FRAGOS-LIST+FIND-1 Browse, filter, and toggle FRAGOs for a Project
   # Filters
   # ---------------------------------------------------------------------------
 
-  Scenario: FRAGOS-LIST+FIND-05 Filter strip includes Status, Affected Variable, and In effect now
-    When I open the FRAGOs list for Project "atlas-backend"
-    Then I see a filter control labelled for Status with values including Active, Inactive, Scheduled, Expired, Revoked
-    And I see a filter control for Affected Variable listing Variables from the Project's active Playbook
-    And I see a filter control "In effect now"
+  Scenario: FRAGOS-LIST+FIND-05 Filter strip includes Project, Timing, Status, and Affects
+    When I open the FRAGOs list
+    Then I see a filter labelled "Project"
+    And I see a filter labelled "Timing" with options: In Effect, Scheduled, Past
+    And I see a filter labelled "Status" with options: Active, Disabled, Revoked
+    And I see a filter labelled "Affects" with options: Narrative, Variable(s)
 
-  Scenario: FRAGOS-LIST+FIND-06 Filtering by Affected Variable shows only matching rows
+  Scenario: FRAGOS-LIST+FIND-06 Filtering by Affects Narrative shows only narrative FRAGOs
     Given FRAGOs exist for Project "atlas-backend":
-      | title           | variable_tag_abbrev |
-      | Scope ABC only  | ABC                 |
-      | Global narrative| (none)              |
+      | title            | affects   |
+      | Scope ABC only   | variables |
+      | Global narrative | narrative |
     When I open the FRAGOs list for Project "atlas-backend"
-    And I filter by Affected Variable "ABC"
-    Then the table shows a row titled "Scope ABC only"
-    And the table does not show a row titled "Global narrative"
+    And I filter Affects by "Narrative"
+    Then the table shows a row titled "Global narrative"
+    And the table does not show a row titled "Scope ABC only"
 
   # ---------------------------------------------------------------------------
   # Table columns and empty state
