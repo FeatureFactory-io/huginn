@@ -1,6 +1,6 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}FRAGOs · {{ project_slug }}{% endblock %}
+{% block title %}{% if project_slug %}FRAGOs · {{ project_slug }}{% else %}FRAGOs — All projects{% endif %}{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="FRAGOS-LIST+FIND-1" screen_testid="fragos-list-find-loaded" %}
@@ -9,14 +9,60 @@
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
       <i class="fa-solid fa-puzzle text-primary" aria-hidden="true"></i>
-      <span>FRAGOs · {{ project_slug }}</span>
+      <span>{% if project_slug %}FRAGOs · {{ project_slug }}{% else %}FRAGOs — All projects{% endif %}</span>
     </h1>
-    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time.</p>
+    <p class="small text-muted mb-0">Overrides consumed by Gjallarhorn at SitRep time. {% if not project_slug %}Use <strong>New FRAGO</strong> to pick a project, or scope the table with the filter below.{% endif %}</p>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="FRAGO list actions">
-    <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+    {% if project_slug %}
+    <a class="btn btn-primary btn-sm" href="{% url 'mockup-fragos-create' %}?project={{ project_slug|urlencode }}" data-testid="fragos-new-btn"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
+    {% else %}
+    <div class="dropdown">
+      <button type="button"
+              class="btn btn-primary btn-sm dropdown-toggle"
+              id="fragos-new-dropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              data-testid="fragos-new-btn">
+        <i class="fa-solid fa-plus me-1"></i> New FRAGO
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="fragos-new-dropdown">
+        <li><h6 class="dropdown-header">Choose project</h6></li>
+        {% for slug, label in project_filter_choices %}
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-fragos-create' %}?project={{ slug|urlencode }}" data-testid="fragos-new-for-{{ slug }}">New for {{ label }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
   </div>
 </section>
+
+<div class="card border-0 shadow-sm rounded-3 mb-3">
+  <div class="card-body py-3">
+    <form method="get" action="{% url 'mockup-fragos-list' %}" class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label small mb-1" for="frago-filter-project">Project</label>
+        <select name="project" id="frago-filter-project" class="form-select form-select-sm" data-testid="fragos-filter-project" onchange="this.form.submit()" aria-describedby="frago-filter-help">
+          <option value="">— All projects (pick to scope list) —</option>
+          {% for slug, label in project_filter_choices %}
+          <option value="{{ slug }}" {% if project_slug == slug %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-primary" data-testid="fragos-filter-apply">Apply</button>
+      </div>
+      <p id="frago-filter-help" class="col-12 small text-muted mb-0">Changing Project reloads this page; Apply is optional.</p>
+      {% if project_slug %}
+      <div class="col-auto">
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'mockup-fragos-list' %}" data-testid="fragos-clear-project-filter">Clear project</a>
+      </div>
+      {% endif %}
+    </form>
+  </div>
+</div>
 
 <div class="card border-0 shadow-sm rounded-3">
   <div class="card-body table-responsive">
@@ -74,6 +120,16 @@
                   </li>
                 </ul>
               </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6" class="text-muted py-5 text-center">
+              {% if project_slug %}
+              No FRAGOs in this mock for <strong>{{ project_slug }}</strong>.
+              {% else %}
+              <strong>Choose a project</strong> above to see FRAGOs for that scope. Links from <strong>Projects</strong> or a SitRep include <code>?project=…</code> automatically.
+              {% endif %}
             </td>
           </tr>
         {% endfor %}

@@ -1,14 +1,26 @@
 from django.shortcuts import render
 
+from playbooks.markdown_utils import workflow_md_to_html
+
 
 def sitawareness_view(request):
-    proj = request.GET.get("project", "atlas-backend")
+    tab = (request.GET.get("tab") or "capsule").strip().lower()
+    if tab not in ("capsule", "versions"):
+        tab = "capsule"
+
+    standing_md = "**Team composition** …\n\n**Standing constraints** …"
+    active_md = "**GitLab outage** — sync gaps expected this week."
+
     ctx = {
-        "active_nav": "sitawareness-placeholder",
-        "project_slug": proj,
-        "versions": [{"n": 4, "on": "2026-05-01", "author": "Donland", "summary": "Captured GitLab outage context"}],
-        "standing": "**Team composition** …\n\n**Standing constraints** …",
-        "active": "**GitLab outage** — sync gaps expected this week.",
+        "active_nav": "sitawareness",
+        "active_tab": tab,
+        "standing_html": workflow_md_to_html(standing_md),
+        "active_html": workflow_md_to_html(active_md),
+        "versions": [
+            {"n": 4, "on": "2026-05-01 09:41", "author": "Donland", "summary": "Captured GitLab outage context"},
+            {"n": 3, "on": "2026-04-18 14:22", "author": "Donland", "summary": "Quarterly standing refresh"},
+            {"n": 2, "on": "2026-03-02 11:05", "author": "Chen", "summary": "Added contractor staffing note"},
+        ],
         "recent_entries": [
             {"title": "Outage acknowledgement", "on": "2026-05-01", "by": "Donland", "from_decision": "D-501"}
         ],
@@ -17,7 +29,4 @@ def sitawareness_view(request):
 
 
 def sitawareness_edit(request):
-    proj = request.GET.get("project", "atlas-backend")
-    return render(
-        request, "ui/mockups/sitawareness/edit.html", {"active_nav": "sitawareness-placeholder", "project_slug": proj}
-    )
+    return render(request, "ui/mockups/sitawareness/edit.html", {"active_nav": "sitawareness"})

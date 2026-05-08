@@ -20,6 +20,11 @@
       <div class="card-body">
         <form class="vstack gap-3">
           <div>
+            <label class="form-label" for="frago-project">Project <span class="text-danger">*</span></label>
+            <input id="frago-project" class="form-control" value="{{ project_slug }}" readonly aria-readonly="true" data-testid="frago-project-readonly">
+            <p class="form-text small mb-0">Set by <code>?project=…</code> from <strong>Projects → Add FRAGO</strong>, <strong>New FRAGO → choose project</strong> on the list, a scoped FRAGO list, SitRep, or Decision — not editable here.</p>
+          </div>
+          <div>
             <label class="form-label" for="frago-title">Title <span class="text-danger">*</span></label>
             <input id="frago-title" class="form-control" placeholder="Belay Active Bug Count = 0 on Fridays" data-testid="frago-title-input">
           </div>
@@ -54,7 +59,7 @@
             </div>
           </div>
           <div class="d-flex gap-2 justify-content-end">
-            <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-list' %}">Cancel</a>
+            <a class="btn btn-outline-secondary" href="{% url 'mockup-fragos-list' %}{% if project_slug %}?project={{ project_slug|urlencode }}{% endif %}">Cancel</a>
             <button type="button" class="btn btn-primary disabled" disabled>Save FRAGO</button>
           </div>
         </form>

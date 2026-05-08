@@ -1,4 +1,5 @@
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 
 FRAG_ROWS = [
     {
@@ -35,13 +36,31 @@ FRAG_ROWS = [
 
 
 def fragos_list(request):
-    proj = request.GET.get("project", "atlas-backend")
-    ctx = {"active_nav": "fragos", "project_slug": proj, "rows": FRAG_ROWS}
+    """No implicit project: absent ``?project=`` means all-projects mode until user picks one."""
+    proj = (request.GET.get("project") or "").strip()
+    rows = FRAG_ROWS if proj else []
+    ctx = {
+        "active_nav": "fragos",
+        "project_slug": proj,
+        "rows": rows,
+        "project_filter_choices": [
+            ("atlas-backend", "atlas-backend"),
+            ("mobile-shell", "mobile-shell"),
+        ],
+    }
     return render(request, "ui/mockups/fragos/list.html", ctx)
 
 
 def fragos_create(request):
-    return render(request, "ui/mockups/fragos/create.html", {"active_nav": "fragos"})
+    proj = (request.GET.get("project") or "").strip()
+    if not proj:
+        # Project is chosen on Project view or on FRAGO list (filter + New FRAGO)—never on this form.
+        return redirect(reverse("mockup-fragos-list"))
+    return render(
+        request,
+        "ui/mockups/fragos/create.html",
+        {"active_nav": "fragos", "project_slug": proj},
+    )
 
 
 def fragos_view(request, pk: int):  # noqa: ARG001

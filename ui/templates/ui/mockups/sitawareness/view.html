@@ -1,6 +1,6 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}Situational Awareness · {{ project_slug }}{% endblock %}
+{% block title %}Situational Awareness{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITAWARENESS-VIEW-1" screen_testid="sitawareness-view-loaded" %}
@@ -9,24 +9,82 @@
   <div class="flex-grow-1">
     <h1 class="hg-page-title d-flex align-items-center gap-2 mb-0 flex-wrap">
       <i class="fa-solid fa-map-location-dot text-primary" aria-hidden="true"></i>
-      <span>Situational Awareness · {{ project_slug }}</span>
+      <span>Situational Awareness</span>
     </h1>
   </div>
   <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Situational Awareness actions">
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}?project={{ project_slug }}" aria-label="Edit Situational Awareness"><i class="fa-solid fa-pen-to-square"></i></a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'mockup-sitawareness-edit' %}" aria-label="Edit Situational Awareness"><i class="fa-solid fa-pen-to-square"></i></a>
   </div>
 </section>
 
-<div class="row g-4">
-  <div class="col-lg-8">
-    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body" style="white-space:pre-wrap;">{{ standing }}</div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body">{{ active }}</div></article>
-    <article class="card border-0 shadow-sm rounded-3 mt-4"><div class="card-header bg-white fw-semibold">Recent entries</div><ul class="list-group list-group-flush">{% for e in recent_entries %}<li class="list-group-item"><strong>{{ e.title }}</strong> · {{ e.on }} · {{ e.by }} {% if e.from_decision %}<small class="text-muted">Decision {{ e.from_decision }}</small>{% endif %}</li>{% endfor %}</ul></article>
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 hg-detail-tabs-card">
+  <div class="card-header border-0 pt-3 px-3 pb-0">
+    <ul class="nav nav-tabs card-header-tabs" role="tablist" id="sitawareness-detail-tabs" data-testid="sitawareness-view-tablist">
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if active_tab == 'capsule' %}active{% endif %}"
+          href="{% url 'mockup-sitawareness-view' %}?tab=capsule"
+          role="tab"
+          aria-selected="{% if active_tab == 'capsule' %}true{% else %}false{% endif %}"
+          id="sitawareness-tab-capsule"
+          data-testid="sitawareness-tab-capsule"
+        ><i class="fa-solid fa-layer-group me-1" aria-hidden="true"></i>Capsule</a>
+      </li>
+      <li class="nav-item" role="presentation">
+        <a
+          class="nav-link {% if active_tab == 'versions' %}active{% endif %}"
+          href="{% url 'mockup-sitawareness-view' %}?tab=versions"
+          role="tab"
+          aria-selected="{% if active_tab == 'versions' %}true{% else %}false{% endif %}"
+          id="sitawareness-tab-versions"
+          data-testid="sitawareness-tab-versions"
+        ><i class="fa-solid fa-clock-rotate-left me-1" aria-hidden="true"></i>Versions</a>
+      </li>
+    </ul>
   </div>
-  <aside class="col-lg-4">
-    <article class="card border-0 shadow-sm rounded-3 mb-4"><div class="card-body"><h3 class="h6">Versions</h3><div class="list-group list-group-flush small">
-      {% for v in versions %}<button type="button" class="list-group-item text-start">{{ v.summary }} · v{{ v.n }}</button>{% endfor %}
-    </div></div></article>
-  </aside>
+
+  <div class="card-body">
+    {% if active_tab == 'capsule' %}
+    <div id="sitawareness-pane-capsule" role="tabpanel" aria-labelledby="sitawareness-tab-capsule" tabindex="0">
+      <div class="vstack gap-4">
+        <article class="card border-0 shadow-sm rounded-3 mb-0">
+          <div class="card-header bg-white fw-semibold border-bottom">Standing context</div>
+          <div class="card-body small hg-markdown-workflow" data-testid="sitawareness-standing-rendered">{{ standing_html|safe }}</div>
+        </article>
+        <article class="card border-0 shadow-sm rounded-3 mb-0">
+          <div class="card-header bg-white fw-semibold border-bottom">Active situations</div>
+          <div class="card-body small hg-markdown-workflow" data-testid="sitawareness-active-rendered">{{ active_html|safe }}</div>
+        </article>
+        <article class="card border-0 shadow-sm rounded-3 mb-0">
+          <div class="card-header bg-white fw-semibold border-bottom">Recent entries</div>
+          <ul class="list-group list-group-flush">
+            {% for e in recent_entries %}
+              <li class="list-group-item"><strong>{{ e.title }}</strong> · {{ e.on }} · {{ e.by }} {% if e.from_decision %}<small class="text-muted">Decision {{ e.from_decision }}</small>{% endif %}</li>
+            {% endfor %}
+          </ul>
+        </article>
+      </div>
+    </div>
+    {% else %}
+    <div id="sitawareness-pane-versions" role="tabpanel" aria-labelledby="sitawareness-tab-versions" tabindex="0">
+      <section class="card border-0 shadow-sm rounded-3 mb-0">
+        <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>Version history</span>
+          <button type="button" class="btn btn-link btn-sm p-0 disabled text-muted" aria-disabled="true" data-testid="sitawareness-versions-compare-btn">Compare</button>
+        </div>
+        <div class="list-group list-group-flush small" role="list" aria-label="Situational Awareness versions" data-testid="sitawareness-versions-list">
+          {% for v in versions %}
+            <button type="button" class="list-group-item list-group-item-action text-start border-0 border-bottom py-3"
+                    data-testid="sitawareness-version-row-{{ v.n }}">
+              <span class="fw-semibold">v{{ v.n }}</span>
+              <span class="text-muted"> · {{ v.on }}</span><br>
+              <span class="text-muted">{{ v.author }}</span> — {{ v.summary }}
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

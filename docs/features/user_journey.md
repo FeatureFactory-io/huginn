@@ -25,7 +25,7 @@
 **Non-standard screen patterns** (extensions to CRUDLF, established here per Activity 01):
 - `IMPORT` — Project: select-from-source instead of CREATE form
 - `VIEW` only — SitRep, Variables, Contributors (generated/computed)
-- `VIEW + EDIT` only — SituationalAwareness (one instance per Project)
+- `VIEW + EDIT` only — Situational Awareness (**workspace-global**: one capsule for the Commander / installation, not scoped per Project)
 - `LIST+FIND + VIEW` only — Action Stations (Jira-owned lifecycle, read-only display)
 - `CHAT` — Gjallarhorn (conversational, single-screen surface)
 
@@ -76,7 +76,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 | 9 | Decisions | LIST+FIND + VIEW (3-branch accept) | `DECISIONS-LIST+FIND-1` |
 | 10 | Contributors | LIST+FIND + VIEW (day-by-day) | `CONTRIBUTORS-LIST+FIND-1` |
 | 11 | Action Stations | LIST+FIND only (read-only Jira sync) | `ACTIONSTATIONS-LIST+FIND-1` |
-| 12 | Situational Awareness | VIEW + EDIT (per Project) | `SITAWARENESS-VIEW-1` |
+| 12 | Situational Awareness | VIEW + EDIT (workspace-global) | `SITAWARENESS-VIEW-1` |
 
 ---
 
@@ -506,14 +506,21 @@ A FRAGO is **a short markdown body** scoped to one Project, with an optional tim
 
 **Pattern**: CRUDLF + Activate/Deactivate. FRAGOs are user-created, editable, enable/disable-toggleable, and revocable (soft-delete, history preserved).
 
+**Project scope (mandatory in the UI)**
+Every FRAGO belongs to exactly one **Project**. Operational screens **must not** infer project from session cookies, navbar memory, or implicit defaults.
+
+- **Explicit context**: Any template that renders FRAGO links receives `project_slug` / `?project=` from **that screen's view** (Project view, SitRep, Variables, filtered list, etc.).
+- **Create FRAGO** URL always includes `?project=…`. Sources: **Project view → Add FRAGO**, **FRAGO list → New FRAGO** (when unscoped, a **split menu** picks the target Project first; when the list is already scoped, one click), SitRep / Decision deep-links, etc. There is **no Project dropdown on the create form** — visiting `/fragos/create/` without `?project=` redirects to the list.
+- **Main nav → FRAGOs** lands on the list in **all-projects** mode (optional) or with an explicit **Project** filter; deep links from elsewhere always carry `?project=<slug>`.
+
 #### Screen: FRAGOS-LIST+FIND-1
 
-Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation] from a SitRep breach card).
+Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation] from a SitRep breach card — SitRep supplies `project`; or **Add FRAGO** from `PROJECTS-VIEW_PROJECT-1`).
 
 **Layout**:
-- **Header**: "FRAGOs — atlas-backend" with count badge
-- **Top Actions**: [+ New FRAGO] (primary)
-- **Filter**: Status (Active / Inactive / Scheduled / Expired / Revoked) | PlaybookVariable tag (dropdown of Variables on the Project's active Playbook) | In effect now
+- **Header**: "FRAGOs — &lt;project name&gt;" when filtered by one Project; **"FRAGOs — All projects"** when unscoped, with a **Project** filter control required before create
+- **Top Actions**: [+ New FRAGO] — direct link to create with `?project=…` when the list filter is scoped to one Project; when **All projects**, a **dropdown** on the same control lists “New for &lt;project&gt;…” so Project is chosen explicitly before navigation (still no picker on the create form itself)
+- **Filter**: Project (when in all-projects mode) | Status (Active / Inactive / Scheduled / Expired / Revoked) | PlaybookVariable tag (dropdown from the **selected** Project's active Playbook; disabled until Project chosen) | In effect now
 - **Table**:
   - Toggle | Title | PlaybookVariable tag | Effective window | Status | Actions
 - **Toggle column** (leftmost): per-row enable/disable switch (`data-testid="frago-toggle-{id}"`). Click flips the `enabled` flag — no confirmation modal (action is reversible). On flip:
@@ -537,11 +544,12 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 
 #### Screen: FRAGOS-CREATE_FRAGO-1
 
-Donland clicks [+ New FRAGO]. Or — when launched from a SitRep breach card or a Decision Branch A — the form opens with the relevant PlaybookVariable tag pre-selected.
+Donland reaches **New FRAGO** with `?project=…` already set (Project view, scoped list, **New FRAGO → choose project** menu when unscoped, SitRep, or Decision). When launched from a SitRep breach card or Decision Branch A, **Project** is fixed from that SitRep's scope; PlaybookVariable tag may be pre-selected.
 
 **Layout**:
 - **Header**: "New FRAGO"
 - **Form**:
+  - **Project** (required, read-only on screen) — always from `?project=`; create without it is not allowed (redirect to list)
   - Title (required) — e.g., "Belay Active Bug Count = 0 on Fridays"
   - **Body** (markdown) — the FRAGO content. Free-form natural language. Gjallarhorn reads this alongside the Playbook when generating SitReps.
   - **PlaybookVariable tag** (optional, single-select) — pick from the active Playbook's Variables. When set, the FRAGO retunes that Variable's `interpreting` rule for the effective window. When unset, the FRAGO applies as a global narrative override (Gjallarhorn reads it alongside the Workflow). Cannot introduce new Variables.
@@ -652,7 +660,7 @@ Confirmation modal:
 
 # ACTION
 
-Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. Each Decision branches into one of three concrete outcomes: a new FRAGO, an extension of Situational Awareness, or a `HUGINN`-tagged Jira issue. He then verifies what landed (Contributors and Action Stations) and writes back doctrine memory (Situational Awareness).
+Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. Each Decision branches into one of three concrete outcomes: a new **project-scoped** FRAGO, an extension of **workspace** Situational Awareness, or a `HUGINN`-tagged Jira issue. He then verifies what landed (Contributors and Action Stations) and maintains global doctrine memory (Situational Awareness).
 
 ---
 
@@ -703,13 +711,13 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
   **Branch A — Create FRAGO**
   - Use when the Decision is "modify expectations going forward"
   - Pre-filled FRAGO form embedded inline (same fields as `FRAGOS-CREATE_FRAGO-1`):
-    - Title, body (pre-filled from Decision rationale), PlaybookVariable tag, scope filter
+    - **Project** (fixed from the SitRep's Project scope), title, body (pre-filled from Decision rationale), PlaybookVariable tag, scope filter
   - [Accept and Create FRAGO] → creates FRAGO, marks Decision Accepted with outcome reference
 
   **Branch B — Extend Situational Awareness**
   - Use when the Decision is "remember this context for future evaluations"
   - Inline rich-text input with title + body
-  - Preview shows: "This will be appended as a new entry in the Project's Situational Awareness, dated today, attributed to you."
+  - Preview shows: "This will be appended to **workspace** Situational Awareness (shared across all SitReps), dated today, attributed to you."
   - [Accept and Extend Awareness] → appends entry, marks Decision Accepted with outcome reference
 
   **Branch C — Create Jira Issue (`HUGINN`-tagged)**
@@ -798,11 +806,11 @@ Donland clicks **Action Stations** in the main nav.
 
 ---
 
-## Act 12: Situational Awareness — VIEW + EDIT (per Project)
+## Act 12: Situational Awareness — VIEW + EDIT (workspace-global)
 
-**Context**: Some Decisions extend Situational Awareness (Branch B in Act 9) — adding context that future SitReps should consider. This is **per-Project durable narrative memory**: known constraints, ongoing situations ("GitLab outage all week — expect sync errors"), team context, anything Donland wants Gjallarhorn to remember when generating future SitReps.
+**Context**: Some Decisions extend Situational Awareness (Branch B in Act 9) — adding context that future evaluations should consider. This is **workspace-global narrative memory** for the Commander (single capsule per Huginn workspace / tenant): known constraints, ongoing situations ("GitLab outage all week — expect sync errors"), cross-cutting context — **not** keyed by Project. FRAGOs remain **per-Project** calibration (Act 6); SA is the shared story Gjallarhorn reads for **every** SitRep regardless of which Project it is for.
 
-**Pattern**: VIEW + EDIT. One Situational Awareness instance per Project. No CREATE (created with Project), no DELETE (cleared on Project archive).
+**Pattern**: VIEW + EDIT. One Situational Awareness capsule per workspace. No `?project=` routing — URLs are `/sitawareness/` (or equivalent). No separate CREATE screen (capsule exists implicitly); no DELETE in MVP.
 
 #### Screen: SITAWARENESS-VIEW-1
 
@@ -820,7 +828,7 @@ Donland clicks **Situational Awareness** in the main nav (or arrives from a Deci
   - Click to view a past version; [Compare with current] for diff view
 - **Top Actions**: [Edit] → `SITAWARENESS-EDIT-1`
 
-**Gjallarhorn behavior**: when generating SitReps, Gjallarhorn reads the active Situational Awareness for the Project as additional context alongside the Playbook. SitRep narratives may explicitly reference Situational Awareness entries ("Per Situational Awareness 2026-04-19: GitLab outage in progress, sync gaps expected").
+**Gjallarhorn behavior**: when generating **any** SitRep, Gjallarhorn reads this single active Situational Awareness alongside that Project's Playbook and **that Project's** FRAGOs. SitRep narratives may reference SA explicitly ("Per Situational Awareness 2026-04-19: GitLab outage in progress, sync gaps expected").
 
 #### Screen: SITAWARENESS-EDIT-1
 
@@ -841,3 +849,4 @@ The following are deliberately deferred — captured here so they aren't silentl
 4. **PlaybookVariable.calculating typing.** Currently free text — the Agent decides whether to evaluate deterministically (JQL, count expression) or interpret + estimate. Open whether to add an explicit `calc_kind` hint to make Agent routing cheaper.
 5. **Slicer catalog evolution — decided.** The Slicer catalog is shipped per-canonical-entity in code; it starts small and grows driven by real Playbook needs. Removal/rename policy: when a Slicer is removed in a Huginn upgrade, existing PlaybookVersions pinning it stay loadable; the corresponding tile renders in **graceful-empty** state on the Project view (slicer name shown, empty result, soft "slicer no longer in catalog" hint with a link to the Playbook editor). This is distinct from the inline error reserved for the entity-removed case in #6 below. Auto-rename mapping is out of scope for MVP.
 6. **Missing-entity / invalid-slicer policy — decided.** Authoring-time correctness is enforced at **write time** by the Playbook editor + API (Entity is a closed dropdown; Slicer is validated server-side against the slicers registered for the picked Entity), so typos are impossible. DB stores `entity` and `slicer` as plain strings (no FK — canonical entities and slicers live in code, not the DB schema). When a previously-saved PlaybookVersion references an entity that has since been removed, the Project view renders the affected tile as an **inline error** (Act 2 *Error states*); when only the slicer is gone, see #5. A `[Validate Playbook]` CTA on `PLAYBOOKS-VIEW_PLAYBOOK-1` scans every saved version and deep-links each finding to a fix in `PLAYBOOKS-EDIT_PLAYBOOK-1` (in scope for MVP).
+7. **Situational Awareness scope — journey vs vision.** This journey treats Situational Awareness as **workspace-global** (Act 12). `docs/ideation/vision.md` still documents a per-Project SA relationship in places — reconcile domain model, persistence, and MCP/SitRep wiring in a dedicated ADR before implementation diverges.

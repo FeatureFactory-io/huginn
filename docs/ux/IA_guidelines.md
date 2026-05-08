@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — LIST+FIND row pattern (name + kebab); Playbook VIEW tabs; detail header toolbar (§3.4).
+> Last updated: May 2026 — LIST+FIND row pattern (name + kebab); LIST+FIND filters (immediate, no Apply); Playbook VIEW tabs; detail header toolbar (§3.4).
 
 ---
 
@@ -205,10 +205,11 @@ Every page follows this structure:
 |---|---|---|
 | **3-column card grid** | Projects Dashboard | `row g-3` / `col-md-6 col-xl-4` |
 | **9+3 split** (cards + rail) | Projects Dashboard | `col-lg-9` / `col-lg-3` |
-| **2-pane** (doc + versions) | Playbook View, SitAwareness | custom flex or `row` |
+| **Detail tabs card** | Playbook VIEW, SitAwareness VIEW | `hg-detail-tabs-card` + `nav-tabs` |
 | **2-pane chat** (conversation + context) | Gjallarhorn Chat | custom flex, fixed height |
 | **Single-column form** | Create / Edit screens | `col-md-8 col-lg-6`, centred |
 | **Full-width table** | LIST+FIND screens | `table-responsive` |
+| **Filter row → table** | LIST+FIND screens | Filter controls in a `row` directly above the table card (§5.2) |
 
 ### 3.3 Navbar CSS
 
@@ -258,7 +259,8 @@ Grouped by journey phase (not shown as sections in the navbar — just ordered):
 | Projects | `/projects/` | Inception / management | `fa-folder-open` |
 | Playbooks | `/playbooks/` | Inception | `fa-book` |
 | Data Sources | `/datasources/` | Inception | `fa-plug` |
-| FRAGOs | `/fragos/` | Calibration | `fa-flag` |
+| FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-flag` |
+| Situational Awareness | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-brain` |
 | Decisions | `/decisions/` | Action | `fa-gavel` |
 | Contributors | `/contributors/` | Action | `fa-users` |
 | Action Stations | `/action-stations/` | Action | `fa-list-check` |
@@ -374,6 +376,46 @@ Bootstrap btn overrides to apply brand primary:
 ```
 
 ### 5.2 Molecules
+
+#### LIST+FIND filter row
+
+Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a **single horizontal filter row** between the page header and the data table.
+
+**Behavior (app-wide)**
+
+| Rule | Detail |
+|---|---|
+| **Immediate application** | Changing a filter **reloads or narrows results right away**. Do **not** use an **Apply**, **Filter**, or **Submit** button for standard dropdown / preset filters. |
+| **Implementation** | Full-page `GET` with query params, HTMX (`change` on `<select>`, debounced `input` on search fields), or client-side filtering for static mocks — the **UX contract** is the same: no separate apply step. |
+| **Combined search** | When a text search sits beside dropdowns, it should also take effect as the user types (debounce ~300ms) or on Enter, **without** a dedicated Search button unless the journey explicitly calls for a heavy query. |
+
+**Look and feel**
+
+| Element | Pattern |
+|---|---|
+| **Placement** | Directly under **`hg-page-header`**, **`mb-3`** gap, then the table **`card`**. |
+| **Layout** | `row g-3` with one **`col-md-*`** per filter (equal-width columns when counts match; responsive wrap on small screens). |
+| **Labels** | **`label.form-label.hg-label-caps.mb-1`** above each control — small uppercase labels with letter-spacing (§2.4). |
+| **Dropdowns** | **`select.form-select.form-select-sm`** — Bootstrap chevron, compact height. On the global page background, give controls a **soft filled look** with **`bg-body-secondary`**, **`border-0`**, and **`rounded-2`** so they match the Playbooks LIST+FIND reference screenshot. |
+| **No trailing actions** | The filter row ends with the last control — **no** primary button in that row for “applying” filters. |
+
+**Markup sketch**
+
+```html
+<div class="row g-3 mb-3" role="search" aria-label="{Entity} filters">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="{id}-author">Author</label>
+    <select class="form-select form-select-sm bg-body-secondary border-0 rounded-2"
+            id="{id}-author" data-testid="{entity}-filter-author">
+      <option>All</option>
+      <!-- … -->
+    </select>
+  </div>
+  <!-- one column per filter -->
+</div>
+```
+
+**Canonical reference (mockup):** `ui/templates/ui/mockups/playbooks/list.html`.
 
 #### Project Card (Dashboard)
 
@@ -621,7 +663,7 @@ Use **`rounded-2`** on the header panel where the shell matches Projects / Playb
 
 | Trigger | `hx-target` | `hx-swap` | Notes |
 |---|---|---|---|
-| Filter / search form | `#table-container` | `innerHTML` | Debounced via `hx-trigger="input changed delay:300ms"` |
+| Filter / search form | `#table-container` | `innerHTML` | Debounced via `hx-trigger="input changed delay:300ms"`; `<select>` filters fire on **`change`** — **no Apply button** (§5.2 LIST+FIND filter row) |
 | Inline form submit | `#form-container` | `outerHTML` | Replaces the whole form section on success |
 | Detail panel open | `#detail-panel` | `innerHTML` | Right-rail detail in LIST+FIND screens |
 | Toast (server push) | `#toast-container` | `beforeend` | Append new toast; JS auto-shows it |
