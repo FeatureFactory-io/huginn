@@ -264,7 +264,10 @@ class FragoForm(forms.ModelForm):
             "title": forms.TextInput(
                 attrs={
                     "class": "form-control form-control-sm",
-                    "placeholder": "Belay Active Bug Count = 0 on Fridays",
+                    "placeholder": (
+                        "Brief imperative label—identifies this FRAGO in lists "
+                        "and when Gjallarhorn applies it to SitReps"
+                    ),
                     "data-testid": "frago-title-input",
                 },
             ),
