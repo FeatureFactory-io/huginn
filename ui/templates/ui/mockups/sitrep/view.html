@@ -1,83 +1,201 @@
 {% extends "base_mockups.html" %}
 
-{% block title %}SitRep #{{ sitrep_pk }} · Huginn{% endblock %}
+{% block title %}SitRep {{ generated_at }} · {{ project }} · Huginn{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="SITREP-VIEW_SITREP-1" screen_testid="sitrep-view-sitrep-loaded" %}
 
-<nav aria-label="breadcrumb" class="mb-3"><ol class="breadcrumb small"><li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li><li class="breadcrumb-item">{{ project }}</li><li class="breadcrumb-item"><a href="{% url 'mockup-sitrep-list' %}">SitReps</a></li><li class="breadcrumb-item active">#{{ sitrep_pk }}</li></ol></nav>
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'mockup-projects-view' 1 %}">{{ project }}</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'mockup-sitrep-list' %}">SitReps</a></li>
+    <li class="breadcrumb-item active" aria-current="page">{{ generated_at }}</li>
+  </ol>
+</nav>
 
-<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+{# ── Page header ─────────────────────────────────────────────────────────── #}
+<section class="hg-page-header rounded-2 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <h1 class="hg-page-title" data-testid="page-title">Situation Report · {{ generated }}</h1>
-    <p class="text-muted mb-0 small">{{ project }} · Playbook evaluated v<strong>{{ pb_version_eval }}</strong></p>
+    <h1 class="hg-page-title mb-1" data-testid="page-title">
+      <i class="fa-solid fa-file-lines hg-page-title-icon text-primary me-2" aria-hidden="true"></i>Situation Report · {{ generated_at }}
+    </h1>
+    <p class="text-muted mb-0 small d-flex flex-wrap align-items-center gap-2">
+      <span>{{ project }}</span>
+      <span class="text-muted">·</span>
+      <span aria-label="Assessed period" data-testid="sitrep-assessed-period">{{ assessed_period }}</span>
+      <span class="text-muted">·</span>
+      <span>Playbook v<strong>{{ pb_version_eval }}</strong></span>
+      <span class="text-muted">·</span>
+      <span class="badge {% if trigger_label == 'Auto' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+        {{ trigger_label }}
+      </span>
+    </p>
   </div>
-  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="SitRep actions">
-    <span class="badge rounded-pill align-self-center text-uppercase fs-6" style="background:var(--hg-{{ overall.status }});">{{ overall.badge }}</span>
-    <a class="btn btn-primary btn-sm" href="{% url 'mockup-decisions-list' %}" data-testid="sitrep-open-decisions">Open Decisions</a>
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'mockup-variables-view' %}?project={{ project|urlencode }}" data-testid="sitrep-open-variables">Open Variables</a>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0"
+       role="toolbar" aria-label="SitRep actions">
+    {# Mode badge #}
+    <span class="badge bg-secondary align-self-center"
+          data-testid="sitrep-mode-badge"
+          aria-label="Mode at generation">{{ mode_at_generation }}</span>
+    {# Status badge — grey in narrative phase (no Variables) #}
+    <span class="badge bg-secondary align-self-center"
+          data-testid="sitrep-status-badge"
+          aria-label="Status: No Variables">No Variables</span>
+    {# Secondary actions #}
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{% url 'mockup-decisions-list' %}"
+       data-testid="sitrep-open-decisions-btn">
+      <i class="fa-solid fa-gavel me-1" aria-hidden="true"></i>Open Decisions
+    </a>
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{% url 'mockup-variables-view' %}?project={{ project|urlencode }}"
+       data-testid="sitrep-open-variables-btn">
+      <i class="fa-solid fa-chart-bar me-1" aria-hidden="true"></i>Open Variables
+    </a>
+    {# Generate SitRep for another period ▾ #}
+    <div class="dropdown">
+      <button class="btn btn-outline-primary btn-sm dropdown-toggle"
+              type="button"
+              id="sitrep-view-generate-dropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              data-testid="sitrep-generate-another-btn">
+        <i class="fa-solid fa-bolt me-1" aria-hidden="true"></i>Generate for another period
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="sitrep-view-generate-dropdown">
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=since_this" data-testid="sitrep-period-since-this">
+            <i class="fa-solid fa-history fa-fw me-2 text-muted" aria-hidden="true"></i>Since this SitRep
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=2h">
+            <i class="fa-solid fa-clock fa-fw me-2 text-muted" aria-hidden="true"></i>Last 2 hours
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=4h">
+            <i class="fa-solid fa-clock fa-fw me-2 text-muted" aria-hidden="true"></i>Last 4 hours
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=today">
+            <i class="fa-solid fa-calendar-day fa-fw me-2 text-muted" aria-hidden="true"></i>Today
+          </a>
+        </li>
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=yesterday">
+            <i class="fa-solid fa-calendar fa-fw me-2 text-muted" aria-hidden="true"></i>Yesterday
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item" href="{% url 'mockup-sitrep-list' %}?generated=1&period=custom">
+            <i class="fa-solid fa-calendar-range fa-fw me-2 text-muted" aria-hidden="true"></i>Custom…
+          </a>
+        </li>
+      </ul>
+    </div>
   </div>
 </section>
 
 <div class="vstack gap-4">
+
+  {# ── Section 1 — Situation Assessment ────────────────────────────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-situation">
-    <div class="card-header bg-white fw-semibold">1 · Situation assessment</div>
+    <div class="card-header bg-white d-flex align-items-center justify-content-between">
+      <span class="fw-semibold">1 · Situation Assessment</span>
+      <span class="badge bg-secondary ms-2"
+            data-testid="sitrep-section1-status-chip"
+            aria-label="No Variables computed">No Variables</span>
+    </div>
     <div class="card-body">
-      <p class="mb-3">{{ situation_narrative }}</p>
-      <ul class="list-group list-group-flush">
-        {% for b in breaches %}
-          <li class="list-group-item d-flex justify-content-between gap-4">
-            <div><strong>{{ b.var }}</strong><div class="small text-muted">{{ b.expected }} → actual {{ b.actual }}</div></div>
-            <span class="badge" style="background:var(--hg-{{ b.sev }});">{{ b.sev }}</span>
-          </li>
-        {% endfor %}
-      </ul>
+      <p class="mb-0" data-testid="sitrep-situation-assessment">{{ situation_assessment }}</p>
     </div>
   </article>
 
+  {# ── Section 2 — Variables Snapshot (placeholder — narrative phase) ──────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-variables">
-    <div class="card-header bg-white fw-semibold">2 · Variables snapshot</div>
-    <div class="card-body"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
-      <thead class="table-light"><tr><th>Section</th><th>Traffic</th></tr></thead>
-      <tbody>
-        {% for v in matrix_vars %}
-          <tr><td><a href="{% url 'mockup-variables-view' %}">{{ v.label }}</a></td><td><span class="hg-var-dot {{ v.traffic }}"></span>{{ v.traffic }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table></div></div>
+    <div class="card-header bg-white fw-semibold">2 · Variables Snapshot</div>
+    <div class="card-body">
+      <div class="text-center py-4 text-muted" data-testid="sitrep-variables-placeholder">
+        <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+        <p class="mb-0 fw-medium">Variables will be available in a future release.</p>
+        <p class="small mb-0 mt-1">Once Variable computation is enabled, this section will show the snapshot Gjallarhorn evaluated.</p>
+      </div>
+    </div>
   </article>
 
+  {# ── Section 3 — Decisions (placeholder — narrative phase) ───────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-decisions">
-    <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">3 · Proposed Decisions<span class="small text-muted">Mock</span></div>
-    <div class="card-body"><div class="row g-3">
-      {% for d in decisions_cards %}
-        <div class="col-md-6">
-          <div class="border rounded-3 p-3 h-100">
-            <h3 class="h6 fw-semibold">{{ d.title }}</h3>
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'mockup-decisions-view' d.id %}">Review</a>
-          </div>
-        </div>
-      {% endfor %}
-    </div></div>
+    <div class="card-header bg-white fw-semibold">3 · Decisions</div>
+    <div class="card-body">
+      <div class="text-center py-4 text-muted" data-testid="sitrep-decisions-placeholder">
+        <i class="fa-solid fa-gavel fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+        <p class="mb-0 fw-medium">No Decisions proposed.</p>
+        <p class="small mb-0 mt-1">Decision generation will be available once Variable computation is enabled.</p>
+      </div>
+    </div>
   </article>
 
+  {# ── Section 4 — FRAGOs Applied ───────────────────────────────────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-fragos">
-    <div class="card-header bg-white fw-semibold">4 · FRAGOs applied</div>
-    <div class="card-body"><ul class="mb-0">
-      {% for f in fragos_applied %}
-        <li><a href="{% url 'mockup-fragos-view' 701 %}">{{ f.title }}</a></li>
-      {% endfor %}
-      </ul></div>
+    <div class="card-header bg-white fw-semibold">4 · FRAGOs Applied</div>
+    <div class="card-body" data-testid="sitrep-fragos-applied">
+      {% if fragos_applied %}
+        <ul class="list-unstyled mb-0">
+          {% for f in fragos_applied %}
+            <li class="d-flex align-items-center gap-2 py-1 border-bottom last-child-no-border">
+              <i class="fa-solid fa-puzzle fa-fw text-muted" aria-hidden="true"></i>
+              <a href="{% url 'mockup-fragos-view' f.id %}"
+                 class="hg-list-name-link"
+                 data-testid="sitrep-frago-link-{{ f.id }}">{{ f.title }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted mb-0 small" data-testid="sitrep-fragos-empty">
+          No FRAGOs were applied to this assessment.
+        </p>
+      {% endif %}
+    </div>
   </article>
 
+  {# ── Section 5 — Notable Activity ────────────────────────────────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-activity">
-    <div class="card-header bg-white fw-semibold">5 · Notable activity</div>
-    <div class="card-body">{{ notable }}</div>
+    <div class="card-header bg-white fw-semibold">5 · Notable Activity</div>
+    <div class="card-body" data-testid="sitrep-notable-activity">
+      {% if notable_items %}
+        <ul class="list-unstyled mb-0">
+          {% for item in notable_items %}
+            <li class="d-flex align-items-start gap-2 py-1 border-bottom">
+              <i class="fa-solid fa-user fa-fw text-muted mt-1" aria-hidden="true"></i>
+              <div>
+                <span class="fw-medium small">{{ item.contributor }}</span>
+                <span class="text-muted small ms-1">— {{ item.detail }}</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted mb-0 small" data-testid="sitrep-notable-empty">
+          No notable activity in this period.
+        </p>
+      {% endif %}
+    </div>
   </article>
 
-  <div class="text-end">
-    <a class="btn btn-outline-secondary" href="{% url 'mockup-chat' %}" data-testid="sitrep-open-gjallarhorn">Open Gjallarhorn</a>
+  {# ── Bottom action — Open Chat ────────────────────────────────────────────── #}
+  <div class="d-flex justify-content-end">
+    <a class="btn btn-outline-secondary btn-sm"
+       href="{% url 'mockup-chat' %}"
+       data-testid="sitrep-open-chat">
+      <i class="fa-solid fa-comments me-1" aria-hidden="true"></i>Open Chat about this SitRep
+    </a>
   </div>
-</div>
 
+</div>
 {% endblock %}
