@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 15 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and produces a SitRep at the morning daily planning session. The PM conducts Observe-Orient (OO) with Gjallarhorn AI, then makes Decisions and defines Actions (DA).
+Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 15 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and — via **Gjallarhorn AI** — automatically generates a SitRep after each sync. The PM conducts Observe-Orient (OO) with Gjallarhorn in Chat, then approves or rejects its proposed Decisions (Semi-Autonomous mode) or watches Gjallarhorn execute autonomously (Autonomous mode). Gjallarhorn runs on `claude-sonnet-4-6` with extended thinking, caches stable context (Playbook, FRAGOs, Situational Awareness), and executes multi-step tasks via an `ExecutionPlan` / `PlanStep` engine backed by Celery.
 
 **Key architectural decisions:**
 - Django MTV + Celery hybrid: web UI and async ingestion in one monorepo
@@ -29,8 +29,8 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 |---|---|
 | `accounts/` | Custom user model (`AUTH_USER_MODEL`), authentication hooks. |
 | `ingestion/` | Extraction jobs per source (GitLab, Jira, …). Celery tasks, connector clients, raw data models. |
-| `analytics/` | Master Variable computation (THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION). Reads from ingested data, writes computed metrics. |
-| `sitrep/` | SitRep generation, FRAGO store, Situational Awareness snapshots. |
+| `analytics/` | Master Variable computation (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION). Reads from ingested data, writes computed metrics. |
+| `sitrep/` | SitRep records, Decision records, VariableDatapoint records, FRAGO store, Situational Awareness snapshots. (Generation is `gjallarhorn/`'s responsibility.) |
 | `ui/` | Django views, HTMX responses, ECharts JSON endpoints, templates. |
 | `gjallarhorn/` | FastMCP wrapper exposing Huginn data to AI. Gjallarhorn AI interface. |
 
@@ -47,7 +47,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - `analytics/` → reads from `ingestion/` models
 - `sitrep/` → reads from `analytics/` + `ingestion/`
 - `ui/` → reads from all apps, no business logic
-- `gjallarhorn/` → reads from `sitrep/` and `analytics/`
+- `gjallarhorn/` → reads from `sitrep/`, `analytics/`, and `ingestion/`; writes SitRep + Decision records + VariableDatapoints to `sitrep/` in all modes; in Autonomous mode additionally writes FRAGOs + SitAwareness entries and calls `ingestion/` Jira connector to execute Decision outcomes
 - `ingestion/` → no internal dependencies
 
 **Ingestion sync engine (foundation):**
@@ -67,7 +67,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 
 **AI interface:** FastMCP wrapper (`gjallarhorn/`) exposing Huginn data as MCP tools to Gjallarhorn AI.
 
-**Inter-service communication:** Redis + Celery queue (async). Django web process enqueues tasks; Celery workers consume them.
+**Inter-service communication:** Redis + Celery queue (async task dispatch). Django web process enqueues tasks; Celery workers consume them. Redis is also used as a pub/sub broker for SSE event broadcasting — Celery workers publish chat and Plan progress events; `gjallarhorn/views/chat_views.py` subscribes and streams them to browsers via `GET /chat/stream/<conversation_id>/`.
 
 **External source connectors — v1:**
 
@@ -75,6 +75,8 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 |---|---|---|---|
 | GitLab | `python-gitlab` | 8.x | Full REST API coverage: commits, MRs, branches, members |
 | Jira | `jira` (pycontribs) | latest | Better Jira-specific coverage than `atlassian-python-api` |
+
+**MVP — Decision → Jira write path:** Issues created by **Branch C** (approved Decision outcomes) authenticate against a **`DataSource` row with type Jira**: same `ingestion/` `DataSource` model GitLab uses, but **wired for outbound REST writes** (`create_jira_issue`) before read-side Jira ingestion ships. Exactly which Jira `DataSource`(s) apply to a workspace (and how the Action Stations mirror picks its source) remains a wiring detail documented with the `Decision`/`ActionStation` implementations.
 
 **External source connectors — TBD (resolve before respective sprint):**
 
@@ -112,14 +114,21 @@ huginn/
 │   └── tests/
 ├── sitrep/
 │   ├── models/
-│   ├── services/        # SitRep generation, FRAGO logic
+│   ├── services/        # SitRep, Decision, FRAGO, VariableDatapoint, SitAwareness CRUD
 │   └── tests/
 ├── ui/
 │   ├── views/
 │   ├── templates/
 │   └── tests/
 ├── gjallarhorn/
-│   ├── mcp_tools/       # FastMCP tool definitions
+│   ├── llm/             # LLM ABC, ClaudeLLM, retry_on_rate_limit
+│   ├── agent/           # GjallarhornAgent, ToolExecutor, prompts
+│   ├── mcp_tools/       # FastMCP tool definitions (data, sitrep, decision, plan)
+│   ├── models/          # Conversation, Message, ExecutionPlan, PlanStep
+│   ├── services/        # sitrep_service, factory
+│   ├── tasks/           # plan_tasks, sitrep_tasks
+│   ├── views/           # chat_views (HTMX endpoints)
+│   ├── templates/       # chat_sidebar.html, chat_fullscreen.html, plan_progress_card.html
 │   └── tests/
 ├── huginn/              # Django project settings
 │   ├── settings/
@@ -313,11 +322,24 @@ services:
 **Services (production — `docker-compose.prod.yml`):**
 ```yaml
 services:
-  web:     # gunicorn, runs migrate --noinput on startup, mapped :8080→:8000
+  web:     # gunicorn --worker-class=gthread --workers=2 --threads=4
+           # gthread workers allow each worker to serve multiple concurrent SSE streams
+           # runs migrate --noinput on startup, mapped :8080→:8000
   worker:  # Celery worker, concurrency=2
   beat:    # Celery beat (DatabaseScheduler)
-  redis:   # redis:7-alpine with healthcheck
+  redis:   # redis:7-alpine with healthcheck; also used as SSE pub/sub broker
   # no db  — uses RDS
+```
+
+**SSE / nginx requirement:** the EB nginx config must not buffer responses from the `/chat/stream/` path — buffering would hold SSE events until the buffer flushes rather than delivering them immediately. Add to `.ebextensions/01_nginx_proxy.config` (alongside the existing upstream patch):
+```nginx
+location /chat/stream/ {
+    proxy_pass         http://127.0.0.1:8080;
+    proxy_buffering    off;
+    proxy_cache        off;
+    add_header         X-Accel-Buffering no;
+    proxy_read_timeout 3600s;   # keep SSE connection alive up to 1 hour
+}
 ```
 
 **Local dev:** `make run` starts all services via `docker compose up`. `.env` file provides local config. Django `runserver` runs locally (outside Docker) with F5 / Cursor debugpy launch config; only `db` and `redis` run in Compose containers.
@@ -445,6 +467,23 @@ push to main
 - No Prometheus/Grafana for v1 — CloudWatch is sufficient
 
 **Correlation IDs:** Django middleware injects `X-Request-ID` header; included in all log entries.
+
+**AI-layer log fields:** every log line in `gjallarhorn/` should include the following fields when available, enabling grep-based trace reconstruction across Chat, Plans, and tools:
+
+| Field | Source | Example |
+|---|---|---|
+| `correlation_id` | `X-Request-ID` from request (or frontend-generated ID for async tasks) | `req-abc123` |
+| `conversation_id` | `Conversation.id` | `42` |
+| `plan_id` | `ExecutionPlan.plan_id` | `uuid-...` |
+| `tool` | tool function name | `list_commits` |
+| `user` | `request.user.username` | `donland` |
+
+Log pattern:
+```
+INFO gjallarhorn.agent Executing tool | correlation_id=req-123 | plan_id=abc | tool=list_commits | user=donland
+```
+
+To reconstruct a full SitRep generation trace: `grep "plan_id=<uuid>" logs/app.log`.
 
 **Alerting:** CloudWatch alarm → email notification to PM on Celery exhaustion.
 
@@ -581,6 +620,596 @@ Write an ADR for every significant technology or architecture choice. This SAO.m
 
 ---
 
+## 17. AI Architecture — Gjallarhorn
+
+### 17.1 Component Layers
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                  Chat UI  (HTMX / Django templates)          │
+│   CHAT-SIDEBAR-1 (global rail)   CHAT-FULLSCREEN-1 (2-pane) │
+│   PlanProgressCard — live updates via SSE stream             │
+└────────────────────────┬─────────────────────────────────────┘
+                         │  HTMX POST + SSE (htmx-sse)  →  gjallarhorn/views/
+┌────────────────────────▼─────────────────────────────────────┐
+│                    GjallarhornAgent                           │
+│  process_user_message()  /  execute_single_step()            │
+│  create_plan()  →  enqueues execute_plan Celery task         │
+└──────────────┬──────────────────────┬────────────────────────┘
+               │                      │
+┌──────────────▼──────┐   ┌───────────▼──────────────────────┐
+│    LLM  (ABC)       │   │       ToolExecutor               │
+│  ClaudeLLM          │   │  security-context-aware wrapper  │
+│  claude-sonnet-4-6  │   │  around all  *services.py        │
+│  extended thinking  │   │  FastMCP tool definitions        │
+│  retry_on_rate_limit│   └──────────────────────────────────┘
+└─────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│              Celery async execution layer                     │
+│  execute_plan   /   generate_sitrep_for_project              │
+│  execute_decision_outcome (**Autonomous** outcomes + reuse)  │
+│  ExecutionPlan  /  PlanStep  (models in gjallarhorn/)        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Dependency rule** (authoritative — §1 matches): `gjallarhorn/` reads from `sitrep/`, `analytics/`, and `ingestion/`; always writes SitRep records + Decision records + VariableDatapoints to `sitrep/`; in Autonomous mode additionally writes FRAGOs + SitAwareness entries and calls the Jira connector via `ingestion/` to execute Decision outcomes.
+
+---
+
+### 17.2 `gjallarhorn/` App Layout
+
+```
+gjallarhorn/
+├── llm/
+│   ├── base.py            # LLM ABC — generate_with_tools() → LLMResponse
+│   ├── claude.py          # ClaudeLLM; extended prompt caching; claude-sonnet-4-6-thinking
+│   └── retry.py           # retry_on_rate_limit decorator (30 s → 60 s → 120 s exp backoff)
+├── agent/
+│   ├── agent.py           # GjallarhornAgent(llm, tool_executor); main loop
+│   ├── tool_executor.py   # Permission checks + delegates to *services.py
+│   └── prompts.py         # Base system prompt (cacheable block)
+├── mcp_tools/             # FastMCP tool definitions
+│   ├── data_tools.py      # list_commits, list_issues, get_contributor, …
+│   ├── sitrep_tools.py    # get_sitrep, list_sitreps, list_decisions, …
+│   ├── playbook_tools.py  # get_playbook, list_variables, …
+│   ├── decision_tools.py  # approve_decision, create_frago, extend_sitawareness, …
+│   └── plan_tools.py      # create_plan
+├── models/
+│   ├── conversation.py    # Conversation, Message
+│   ├── execution_plan.py  # ExecutionPlan
+│   └── plan_step.py       # PlanStep
+├── services/
+│   ├── sitrep_service.py  # build ExecutionPlan from Playbook Workflow
+│   └── factory.py         # create_agent(agent_type) factory
+├── tasks/
+│   ├── plan_tasks.py      # execute_plan; _notify_ai_of_plan_{success,failure}
+│   ├── chat_tasks.py      # process_chat_message (enqueued on POST /chat/message/)
+│   └── sitrep_tasks.py    # generate_sitrep_for_project (fired on Sync Complete)
+├── views/
+│   └── chat_views.py      # /chat/message/ (POST→202), /chat/stream/<id>/ (SSE), /chat/, /chat/sidebar/
+└── templates/
+    └── gjallarhorn/
+        ├── chat_sidebar.html
+        ├── chat_fullscreen.html
+        └── plan_progress_card.html
+```
+
+---
+
+### 17.3 LLM Layer
+
+**`LLM` ABC** (`gjallarhorn/llm/base.py`):
+```python
+class LLM(ABC):
+    @abstractmethod
+    def generate_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        system_blocks: list[dict],   # ordered cache-control blocks
+    ) -> LLMResponse: ...
+
+@dataclass
+class LLMResponse:
+    content: str
+    stop_reason: str       # 'end_turn' | 'tool_use'
+    usage: dict            # input_tokens, output_tokens, cache_read_input_tokens
+    tool_calls: list[dict]
+    model: str
+```
+
+**`ClaudeLLM`** (`gjallarhorn/llm/claude.py`):
+- Model: `claude-sonnet-4-6` with `thinking: {type: "enabled", budget_tokens: 8000}`
+- Anthropic **extended prompt caching** via `cache_control: {"type": "ephemeral"}` on four stable system blocks (see §17.6). Cache hit avoids re-billing those tokens; Claude's cache TTL is 5 minutes (refreshed on each hit).
+- Method `generate_with_tools()` is wrapped with `@retry_on_rate_limit(max_retries=3, base_delay=30, status_callback=...)`. The `status_callback` publishes a `rate_limit_status` SSE event to the conversation's Redis pub/sub channel (e.g. *"Hmm, I'm thinking… Give me 30 seconds."*), which the browser receives in real time via the `/chat/stream/` endpoint (see §17.11).
+
+---
+
+### 17.4 Agent
+
+**`GjallarhornAgent`** (`gjallarhorn/agent/agent.py`):
+
+| Method | Purpose |
+|---|---|
+| `process_user_message(user_id, message_text, conversation_id)` | Main chat loop: call LLM, handle tool calls via `ToolExecutor`, iterate until `stop_reason == 'end_turn'`; store `Message` rows |
+| `execute_single_step(plan, step)` | Execute one `PlanStep`: records pre-execution `reasoning_why_needed` + `expected_outcome`; calls tool(s); records `result` + `outcome_assessment` |
+| `create_plan(conversation, goal, steps)` | Persist `ExecutionPlan` + `PlanStep` rows; enqueue `execute_plan.delay(plan_id)` |
+
+**`ToolExecutor`** (`gjallarhorn/agent/tool_executor.py`):
+- Carries `user` and `project` scope; validates permissions before every service call.
+- **Read tools** — auto-execute, no confirmation: `list_*`, `get_*`, `find_*`.
+- **Write tools** — require an in-Chat confirmation card (`[Confirm] / [Cancel]`) in Semi-Auto; auto-execute in Autonomous (Owner = `"Gjallarhorn"`):
+  - `create_frago`, `extend_sitawareness`, `create_jira_issue`, `approve_decision`
+- Destructive calls that are never auto-executed regardless of mode: none in MVP (Huginn only creates, never deletes).
+- **Standardized response envelope** — every tool call returns:
+  ```python
+  {"success": bool, "result": ..., "error": str | None}
+  ```
+  The foundation prompt instructs Gjallarhorn: *"If a tool returns `success: false`, explain what went wrong and suggest an alternative approach. Never swallow errors."*
+
+**Two-tier tool strategy** — Gjallarhorn uses different tool sets depending on context:
+
+| Context | Tool set | Delivery | Rationale |
+|---|---|---|---|
+| **Chat (conversational)** | Project context snapshot (cached) + write/mutation tools only (~10 tools). No `list_*` / `get_*` calls. | Synchronous; < 1 s response | AI reads from snapshot; minimal API calls; low rate-limit exposure |
+| **Plan execution (workflow)** | Full tool set (~40 tools) | Async via Celery; 1–3 min | Complex multi-step analysis needs all data tools |
+
+In Chat, Gjallarhorn receives a pre-built `ProjectContextSnapshot` (active Playbook + FRAGOs + SitAwareness + recent SitReps index) in the prompt — AI reads from it rather than calling `list_*` tools. After any write tool mutates state, the snapshot is invalidated in Redis (5-minute TTL). During Plan execution, the full tool set is available so each step can freely query any entity.
+
+**Hybrid step execution** — each `PlanStep` gets its own LLM invocation rather than mechanical tool-call parsing:
+
+```
+execute_single_step(plan, step):
+  1. Build step prompt:
+       - Full workflow context (Playbook goal, Variable definitions)
+       - Previous step results (continuity — prevents hallucinating IDs or values)
+       - Step-specific instruction:
+           "STEP GOAL: {step.action}
+            REASONING: {step.reasoning_why_needed}
+            PREVIOUS STEPS COMPLETED: {formatted_results}
+            Execute this step now using available tools."
+  2. Call LLM → LLM decides which tools to call
+  3. Execute tool calls via ToolExecutor
+  4. LLM synthesises results → stored as step.result + step.outcome_assessment
+  5. Step marked 'completed'; next step picks up synthesised context
+```
+
+This prevents the class of bugs where pre-parsing step descriptions into literal tool calls causes the AI to hallucinate data IDs or skip reasoning about intermediate results.
+
+---
+
+### 17.5 Plans & Async Execution
+
+**Data models** (`gjallarhorn/models/`):
+
+```python
+class ExecutionPlan(Model):
+    plan_id          = UUIDField(primary_key=True, default=uuid4)
+    conversation     = ForeignKey(Conversation, on_delete=CASCADE, related_name='plans')
+    goal             = TextField()
+    status           = CharField()   # pending|running|completed|failed|waiting_retry
+    retry_count      = IntegerField(default=0)
+    max_retries      = IntegerField(default=5)
+    celery_task_id   = CharField(blank=True)
+    paused_at        = DateTimeField(null=True)
+    last_error       = TextField(blank=True)
+    last_error_type  = CharField(blank=True)
+    retry_after      = DateTimeField(null=True)
+    progress_current = IntegerField(default=0)
+    progress_total   = IntegerField(default=0)
+    progress_message = CharField(blank=True)
+    created_at       = DateTimeField(auto_now_add=True)
+
+class PlanStep(Model):
+    step_id              = UUIDField(primary_key=True, default=uuid4)
+    plan                 = ForeignKey(ExecutionPlan, on_delete=CASCADE, related_name='steps')
+    order                = IntegerField()
+    action               = TextField()
+    reasoning_why_needed = TextField()
+    expected_outcome     = TextField()
+    status               = CharField()  # pending|running|completed|failed
+    result               = JSONField(null=True)
+    outcome_assessment   = TextField(blank=True)
+    is_critical          = BooleanField(default=True)  # False → failure skips step, plan continues (post-MVP)
+    # UniqueConstraint(plan, order)
+
+# In sitrep/ — links each Variable assessment back to the step that produced it
+class VariableDatapoint(Model):
+    project          = ForeignKey(Project, on_delete=CASCADE)
+    variable         = ForeignKey(PlaybookVariable, on_delete=CASCADE)
+    from_dt          = DateTimeField()
+    to_dt            = DateTimeField()
+    value            = FloatField(null=True)
+    color            = CharField(max_length=16)     # 'green'|'amber'|'red'
+    source_plan_step = ForeignKey('gjallarhorn.PlanStep', null=True, blank=True, on_delete=SET_NULL)
+    created_at       = DateTimeField(auto_now_add=True)
+    # UniqueConstraint(project, variable, from_dt, to_dt)
+```
+
+**`execute_plan` Celery task** (`gjallarhorn/tasks/plan_tasks.py`, `@shared_task(bind=True, max_retries=5)`):
+
+1. `plan.mark_started()` → `status = 'running'`
+2. Loop: `step = plan.get_next_pending_step()` → `agent.execute_single_step(plan, step)` → `plan.update_progress()`
+3. All steps done → `plan.mark_completed(result)` → `_notify_ai_of_plan_success(plan)` → Agent presents findings in Conversation
+4. `RateLimitError` / `TimeoutError` / `NetworkError` → `plan.mark_paused_for_retry(e)` → `raise self.retry(countdown=delay)` — Celery reschedules; **completed steps are never re-run** (`get_next_pending_step()` returns only `pending` steps)
+5. Any other exception → `plan.mark_failed(e)` → `_notify_ai_of_plan_failure(plan, e)` → injects `PLAN EXECUTION FAILED` context into Conversation → Agent generates recovery analysis (partial results + concrete options)
+
+**Resilience matrix:**
+
+| Error class | LLM-level (`retry_on_rate_limit`) | Celery-level (`execute_plan`) |
+|---|---|---|
+| Claude 429 / rate limit | 3 retries: 30 s → 60 s → 120 s; status message in Chat thread | `mark_paused_for_retry` + `self.retry(countdown=delay)`, up to 5 Celery retries |
+| Timeout / network error | Same decorator path | Same Celery retry |
+| Tool error / data unavailable | Raised immediately (not a rate limit) | `mark_failed` + `_notify_ai_of_plan_failure` → recovery analysis in Chat |
+
+**`PlanProgressCard`** — HTMX partial (`plan_progress_card.html`) embedded in the Chat message thread:
+- Updated live via `plan_step_update` / `plan_completed` / `plan_failed` SSE events on the conversation stream (see §17.11); no polling required.
+- Displays: goal · progress bar (`3 / 9 steps`) · live step list.
+- Step status icons: ○ pending / ⟳ running / ✓ done / ✗ failed / ⏸ waiting (rate-limit retry — shows `retry in Xs`).
+- Each step shows pre-execution reasoning (pending/running) or result summary (completed) or error text (failed/waiting).
+- `is_critical = False` steps that fail show `⊘ skipped` and the plan continues (post-MVP; MVP defaults all steps to `is_critical = True`).
+
+---
+
+### 17.6 Token Economy & Prompt Caching
+
+Context assembly for each Gjallarhorn invocation:
+
+| Block | Delivery | Typical size | Refresh trigger |
+|---|---|---|---|
+| Base system prompt (role, output rules, security constraints) | Anthropic cache block 1 | ~2 k tokens | Never — universal |
+| Active Playbook (Workflow markdown + PlaybookVariables) | Cache block 2 | 3–8 k tokens | Playbook edit / version bump |
+| Active FRAGOs (concatenated body text, enabled only) | Cache block 3 | 1–5 k tokens | FRAGO toggle / edit |
+| Situational Awareness capsule | Cache block 4 | 1–3 k tokens | SA edit |
+| Previous SitReps | Embedding vector + text index (≤ 500 tokens) | Grows | Never re-sent in full |
+| Current-period data (new Increments, sync results, standing open Decisions) | Live tokens | 2–10 k tokens | Every invocation |
+
+**Min-RAG for previous SitReps:** Gjallarhorn receives a short text index (date · period · headline Variable values · Decision count). If it needs detail it calls the `get_sitrep(sitrep_id)` tool — only that SitRep's content is fetched. This keeps the context window bounded as project history grows.
+
+**Cache economics:** Anthropic charges ~10 % of normal input-token price for cache reads. Blocks 1–4 together save ~8–18 k tokens per invocation once warmed. Write cost (first call with a new Playbook) is normal; all subsequent calls within the 5-minute TTL pay the read rate.
+
+---
+
+### 17.7 SitRep Generation Flow
+
+**Triggers:**
+- **Automatic** (default): `ingestion.sync_project` success → `generate_sitrep_for_project.delay(project_id, from_dt, to_dt)` where `to_dt = now()` and `from_dt` = time of last SitRep for this Project.
+- **Manual**: Commander clicks `[Generate SitRep ▾]` on `PROJECTS-VIEW_PROJECT-1`, selects period (preset or custom `from_date`/`to_date`). View handler calls `generate_sitrep_for_project.delay(project_id, from_dt, to_dt, trigger='manual')` and returns 202; the browser subscribes to the resulting Conversation's SSE stream to show the Plan in progress.
+
+```
+Sync Complete
+  └─▶ generate_sitrep_for_project (Celery)
+        ├─ create Conversation(type='sitrep_generation')
+        └─ Agent.create_plan(goal='Generate SitRep …', steps=[
+               "Get commits for period",
+               "Assess Variable: Freshness",       # → color + score
+               "Save Freshness VariableDatapoint",
+               "Get issue updates",
+               "Assess Variable: Progress",
+               "Save Progress VariableDatapoint",
+               …  (one assess + save pair per PlaybookVariable)
+               "Compose SitRep narrative",
+               "Propose Decisions",
+           ])
+          └─▶ execute_plan.delay(plan_id)
+                  └─▶ per step: tool calls via ToolExecutor → *services.py
+                  └─▶ _notify_ai_of_plan_success
+                          └─▶ Agent writes SitRep record + Decision records
+                              ├─ Semi-Auto: Decision.status = 'Proposed'
+                              └─ Autonomous: Decision.status = 'Auto-approved';
+                                            outcomes executed immediately
+```
+
+`VariableDatapoint` is written once per Variable per SitRep — the timestamped record powering the Variables tab charts. The SitRep record itself stores `from_dt`, `to_dt`, `trigger` (`'automatic'` / `'manual'`), and `mode_at_generation`.
+
+---
+
+### 17.8 Decision Lifecycle
+
+```
+Proposed  →  [Commander reviews — Semi-Auto only]
+    ├── Approved:  Commander provides Reasoning + chooses outcome branch (A/B/C)
+    │       └─▶  Semi-Auto: outcome executes **inline in the Decision approve POST** —
+    │            `ToolExecutor` runs synchronously inside the Django view/request.
+    │       └─▶  On outcome success → Decision.status='Approved'; Owner=Commander;
+    │             Reasoning + outcome_ref stored; Decisions Logic FRAGO gets the usual markdown line
+    │       └─▶  Branch C (Jira) failure (timeout/API error) → **Decision stays Proposed**; error returned in HTMX
+    │       └─▶  Branches → A: create FRAGO · B: extend SA · C: POST Jira (`HUGINN` label) ·
+    │              each may optionally spawn ExecutionPlan afterward for complex fallout
+    ├── Rejected:  reject note optional; no Jira from reject path (MVP)
+    │       └─▶  Reject note only → Decision.status='Rejected'; usually contributes DL row
+    │       └─▶  Vigilance → same creatives as Branch A (FRAGO) or B (SA); Decision stays Rejected
+    │       └─▶  Bare reject (no note, no artefacts) → no DL contribution
+    └── [Autonomous] Auto-approved:  Gjallarhorn provides machine Reasoning
+            └─▶  Decision.status='Auto-approved'; Owner='Gjallarhorn'
+            └─▶  Same outcome semantics as Approved; typically runs **inside the SitRep Celery pipeline**
+                      (still may call `gjallarhorn.tasks.execute_decision_outcome` or shared service code —
+                      not the Semi-Auto HTTP path)
+```
+
+**Decisions Logic FRAGO** (`kind='decisions_logic'` — exactly **one** per Project):
+- Single markdown body Commander **extends / modifies / removes** (`FRAGOS-EDIT_FRAGO-1`). Most resolved Decisions (**Approved**, **Auto-approved**, **Rejected**) **usually** spawn a structured line on completion; omit for **bare dismiss** and other omission cases (`user_journey.md` Act 9).
+- **Structured line canonical format:** one **markdown bullet** per contribution, embedding the fields inline (readable by Commander and LLM alike). Recommended template (` · ` separators):
+  `- **2026-05-11 14:03** · Decision: *Increase coverage gates* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Outcome: [FRAGO #42](…) / Jira `HUGINN-302` / SA entry / vigilance refs as applicable`
+- Auto-created when **first qualifying line lands**; always Active; not revocable.
+- Included as Gjallarhorn cached context (FRAGO block) — **current body** is authoritative, not immutable history.
+- **Audit:** general FRAGO rows use **`django-simple-history`** (`HistoricalRecords` on `FRAGO`/equivalent ORM model) so `FRAGOS-VIEW_FRAGO-1`'s toggle/edit timeline is backed by real diffs rather than bespoke log tables — including the Decisions Logic FRAGO whenever it is edited.
+
+---
+
+### 17.9 Operating Modes
+
+| Aspect | Semi-Autonomous (`'semi_auto'`) | Autonomous (`'auto'`) |
+|---|---|---|
+| SitRep generation | Automatic on Sync Complete | Automatic on Sync Complete |
+| Decision status after SitRep | `Proposed` | `Auto-approved` |
+| Outcome execution (Semi-Auto) | **`DECISIONS-VIEW`** approve POST awaits `ToolExecutor` **synchronously**; Branch **C Jira failures** leave `Decision` **`Proposed`** | Runs inside SitRep/async pipeline immediately after SitRep persists `Auto-approved` rows |
+| Write tool confirmation | Required (in-Chat card) | Auto-executes |
+| Owner on Decisions | Commander (human) | `'Gjallarhorn'` |
+| Toggle surface | Pill `[Semi-Auto \| Auto]` on `PROJECTS-VIEW_PROJECT-1` top bar | ← same |
+| DB field | `Project.gjallarhorn_mode = 'semi_auto'` | `Project.gjallarhorn_mode = 'auto'` |
+
+Autonomous mode is intended after a training period: the Commander has reviewed enough Decisions and provided Reasoning that adjustments to the Playbook/FRAGOs are stable. There is no automated gate — the Commander flips the toggle manually.
+
+---
+
+### 17.10 Event-Driven Invocation
+
+| Event | Source | Celery task | Action |
+|---|---|---|---|
+| `Sync Complete` | `ingestion.sync_project` success | `gjallarhorn.tasks.generate_sitrep_for_project` | Build ExecutionPlan from Playbook Workflow; run steps; write SitRep + Decisions |
+| `Decision Approved` | Commander submits Approve (+ Reasoning + branch) — Semi-Auto | *(none — synchronous)* | `ui` Decision view calls `ToolExecutor` / `*services.py` **in the HTTP request**; Branch C Jira errors leave `Decision` **`Proposed`** |
+| `Decision Made` (auto) | Autonomous SitRep path — Gjallarhorn auto-approve | `gjallarhorn.tasks.execute_decision_outcome` (or inline in `generate_sitrep` chain) | Execute outcome branch (FRAGO / SitAwareness / Jira); may spawn ExecutionPlan for multi-step |
+| Chat message | HTMX POST `/chat/message/` → 202; Celery task; SSE push | `gjallarhorn.tasks.process_chat_message` | Store message, enqueue task, push `ai_message` + any Plan events via SSE stream |
+
+MVP events: `Sync Complete`, Commander-side synchronous **Decision Approved** handling (HTTP), and **`Decision Made` / auto-outcomes** inside the autonomous pipeline (`execute_decision_outcome` shared code). Chat-initiated Plans are also in MVP.
+
+---
+
+### 17.11 Chat Architecture
+
+**Models** (`gjallarhorn/models/conversation.py`):
+
+```python
+class Conversation(Model):
+    user              = ForeignKey(User, on_delete=CASCADE)
+    project           = ForeignKey('ingestion.Project', on_delete=CASCADE, null=False)
+    title             = CharField(blank=True, default='')
+    agent_identity    = CharField()     # 'gjallarhorn'
+    conversation_type = CharField()     # 'ad_hoc'|'sitrep_generation'|'decision_execution'
+    created_at        = DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'project'],
+                name='uniq_conversation_user_project',
+            ),
+        ]
+    # Note: no 'status' field — retry messages are pushed as SSE events, not stored
+
+class Message(Model):
+    conversation = ForeignKey(Conversation, on_delete=CASCADE, related_name='messages')
+    role         = CharField()    # 'user' | 'assistant' | 'system'
+    content      = TextField()
+    created_at   = DateTimeField(auto_now_add=True)
+```
+
+**Message flow (SSE-based):**
+
+```
+1. User sends message
+   POST /chat/message/  →  202 Accepted
+   (Message stored; Celery task enqueued: process_chat_message)
+
+2. Browser holds open SSE connection
+   GET /chat/stream/<conversation_id>/  →  text/event-stream
+
+3. Celery task calls LLM → publishes events to Redis pub/sub channel
+   ← event: typing_indicator      (immediately on task start)
+   ← event: rate_limit_status     ("Hmm, thinking… 30s" — from retry callback)
+   ← event: ai_message            (full response when LLM completes)
+   ← event: plan_started          (if Agent creates an ExecutionPlan)
+   ← event: plan_step_update      (per completed / failed step)
+   ← event: plan_completed        (all steps done)
+   ← event: plan_failed           (step failure; includes partial results)
+```
+
+**Server side** (`gjallarhorn/views/chat_views.py`):
+- `POST /chat/message/` — stores `Message(role='user')`, enqueues `process_chat_message.delay(conversation_id, message_id)`, returns `202`.
+- `GET /chat/stream/<conversation_id>/` — `StreamingHttpResponse(event_generator(), content_type='text/event-stream')`. The generator subscribes to `redis.pubsub()` on channel `chat:stream:{conversation_id}` and yields SSE-formatted events until the connection closes. Requires `proxy_buffering off` on nginx (see §8).
+
+**Client side** — HTMX `htmx-sse` extension:
+```html
+<div hx-ext="sse" sse-connect="/chat/stream/{{ conversation.id }}/">
+  <div sse-swap="ai_message"        hx-target="#thread" hx-swap="beforeend"></div>
+  <div sse-swap="plan_step_update"  hx-target="#plan-{{ plan_id }}" hx-swap="outerHTML"></div>
+  <div sse-swap="rate_limit_status" hx-target="#typing-indicator" hx-swap="innerHTML"></div>
+</div>
+```
+
+**URL routes** (`gjallarhorn/urls.py`):
+
+| URL | Method | View | Purpose |
+|---|---|---|---|
+| `/chat/message/` | POST | `send_message` | Store message, enqueue task, return 202 |
+| `/chat/stream/<conversation_id>/` | GET | `chat_stream` | SSE stream — pushes all chat + plan events |
+| `/chat/sidebar/` | GET | `sidebar` | Full sidebar render |
+| `/chat/` | GET | `fullscreen` | Full-screen two-pane chat |
+
+**`gjallarhorn/views/` update** — remove `chat_views.py` entry for `plan-status/<plan_id>/`; add `chat_stream`. Also update `gjallarhorn/tasks/` — add `process_chat_message` task alongside `plan_tasks.py`.
+
+**Conversation threading:** `CHAT-SIDEBAR-1` and `CHAT-FULLSCREEN-1` share **one persistent `Conversation` per `(authenticated user, Project)` pair** (`UniqueConstraint` on `[user_id, project_id]`). Changing the Commander's navigation to a **different Project** loads that Project's Conversation (distinct `conversation_id`/message queryset). Expanding sidebar → fullscreen passes through the active Project's conversation id so the SSE stream target stays stable; SSE reconnect re-subscribes to `chat:stream:{conversation_id}`.
+
+---
+
+### 17.12 Component Interaction Sequence Diagrams
+
+Three primary flows showing how components interact end-to-end.
+
+---
+
+#### Flow A — Sync Complete → SitRep Generation
+
+```mermaid
+sequenceDiagram
+    participant Beat as CeleryBeat
+    participant SyncTask as ingestion.sync_project
+    participant GitLab as GitLab API
+    participant DB as PostgreSQL
+    participant SitRepTask as gjallarhorn.generate_sitrep
+    participant Agent as GjallarhornAgent
+    participant LLM as Claude API
+    participant ToolExec as ToolExecutor
+    participant Redis as Redis (pub/sub)
+    participant Browser as Browser (SSE)
+
+    Beat->>SyncTask: sync_due_projects (every 15 min)
+    SyncTask->>GitLab: fetch commits / MRs since cursor
+    GitLab-->>SyncTask: IncrementDTOs
+    SyncTask->>DB: upsert Increment rows (idempotent on external_id)
+    SyncTask->>DB: write IngestionRun(status=success)
+    SyncTask->>SitRepTask: generate_sitrep_for_project.delay(project_id, from_dt, to_dt)
+
+    SitRepTask->>DB: create Conversation(type=sitrep_generation)
+    SitRepTask->>Agent: create_plan(goal, steps=[...])
+    Agent->>DB: create ExecutionPlan + PlanSteps
+    Agent->>SitRepTask: execute_plan.delay(plan_id)
+    SitRepTask->>Redis: publish plan_started
+    Redis-->>Browser: SSE: plan_started → PlanProgressCard appears in Chat
+
+    loop per PlanStep
+        Agent->>LLM: execute_single_step(step + prev results)
+        alt 429 rate limit
+            LLM-->>Agent: RateLimitError
+            Agent->>Redis: publish rate_limit_status ("Hmm, thinking 30s…")
+            Redis-->>Browser: SSE: rate_limit_status → step shows ⏸ waiting
+            Agent->>LLM: retry after 30 s / 60 s / 120 s
+        end
+        LLM-->>Agent: tool_calls + synthesis
+        Agent->>ToolExec: execute tool (list_commits / assess_variable / …)
+        ToolExec->>DB: query via *services.py
+        DB-->>ToolExec: {success, result, error}
+        ToolExec-->>Agent: tool result
+        Agent->>DB: step.result = synthesis; step.status = completed
+        Agent->>DB: write VariableDatapoint (source_plan_step = this step)
+        Agent->>Redis: publish plan_step_update
+        Redis-->>Browser: SSE: plan_step_update → step shows ✓ done
+    end
+
+    Agent->>LLM: compose SitRep narrative + propose Decisions
+    LLM-->>Agent: SitRep text + Decision list
+    Agent->>DB: create SitRep(from_dt, to_dt, trigger, mode_at_generation)
+    Agent->>DB: create Decision records (Proposed or Auto-approved)
+    Agent->>DB: contribute SitRep-cycle Decisions to Decisions Logic FRAGO (usual; curator may edit later)
+    Agent->>Redis: publish plan_completed
+    Redis-->>Browser: SSE: plan_completed → PlanProgressCard → Done
+```
+
+---
+
+#### Flow B — Commander Chat Message → SSE Response
+
+```mermaid
+sequenceDiagram
+    participant Browser as Browser
+    participant Views as gjallarhorn.chat_views
+    participant ChatTask as gjallarhorn.process_chat_message
+    participant Agent as GjallarhornAgent
+    participant LLM as Claude API
+    participant ToolExec as ToolExecutor
+    participant Redis as Redis (pub/sub)
+    participant DB as PostgreSQL
+
+    Browser->>Views: POST /chat/message/ (text, conversation_id)
+    Views->>DB: Message(role=user)
+    Views->>ChatTask: process_chat_message.delay(conversation_id, message_id)
+    Views-->>Browser: 202 Accepted
+
+    Note over Browser,Views: SSE connection already open (or re-opens)
+    Browser->>Views: GET /chat/stream/<conversation_id>/ (SSE)
+    Views->>Redis: subscribe chat:stream:{conversation_id}
+    ChatTask->>Redis: publish typing_indicator
+    Redis-->>Browser: SSE: typing_indicator
+
+    Note over Agent,LLM: ProjectContextSnapshot (cache blocks 1–4) + mutation tools only
+    ChatTask->>Agent: process_user_message(text)
+    Agent->>LLM: generate_with_tools(snapshot + messages)
+    alt 429 rate limit
+        LLM-->>Agent: RateLimitError
+        Agent->>Redis: publish rate_limit_status
+        Redis-->>Browser: SSE: rate_limit_status → typing indicator updates
+        Agent->>LLM: retry after backoff
+    end
+    LLM-->>Agent: response (+ optional tool calls)
+    opt write tool call (Semi-Auto: requires confirmation)
+        Agent->>Redis: publish tool_confirmation_request
+        Redis-->>Browser: SSE: confirmation card ([Confirm] / [Cancel])
+        Browser->>Views: POST /chat/confirm-tool/ (confirm)
+        Views->>Agent: confirmed
+    end
+    opt write tool call (Autonomous: auto-executes)
+        Agent->>ToolExec: execute write tool
+        ToolExec->>DB: write via *services.py
+        DB-->>ToolExec: {success, result, error}
+    end
+    Agent->>DB: Message(role=assistant, content)
+    Agent->>Redis: publish ai_message
+    Redis-->>Browser: SSE: ai_message → HTMX swaps message into thread
+```
+
+---
+
+#### Flow C — Commander Approves Decision → Outcome Executed
+
+```mermaid
+sequenceDiagram
+    participant Browser as Browser
+    participant Views as ui.decision_views
+    participant ToolExec as ToolExecutor
+    participant JiraAPI as Jira API
+    participant Agent as GjallarhornAgent
+    participant DB as PostgreSQL
+    participant Redis as Redis (pub/sub)
+
+    Browser->>Views: POST /decisions/id/approve/ (branch, Reasoning)
+
+    alt Branch A — create FRAGO
+        Views->>ToolExec: create_frago(project, title, body)
+        ToolExec->>DB: FRAGO persisted
+    else Branch B — extend SitAwareness
+        Views->>ToolExec: extend_sitawareness(entry)
+        ToolExec->>DB: SA entry persisted
+    else Branch C — create Jira issue (credentials via DataSource Jira)
+        Views->>ToolExec: create_jira_issue(summary, description)
+        ToolExec->>JiraAPI: POST /rest/api/3/issue
+        alt Success
+            JiraAPI-->>ToolExec: issue key (HUGINN-NNN)
+        else Failure
+            ToolExec-->>Views: error
+            Views->>DB: Decision remains Proposed
+            Views-->>Browser: HTMX error toast / partial with message
+            Note over Views,Browser: No Approved status; no DL line on Branch C failure
+        end
+    end
+
+    opt outcome success paths for A/B or successful C only
+        Views->>DB: Decision.status Approved; Reasoning outcome_ref finalized
+        Views->>DB: append markdown bullet row to Decisions Logic FRAGO
+        Views-->>Browser: HTMX partial Decision Approved
+    end
+
+    opt Branch follow-up Plan (optional)
+        Views->>Agent: create_plan(goal, steps)
+        Agent->>DB: ExecutionPlan + PlanSteps + Celery enqueue
+        Note over Agent,Redis: same async Plan SSE path as Flow A
+        Agent->>Redis: publish plan_started
+    end
+```
+
+**Contract:** Semi-Automatic MVP uses **single HTTP request semantics** above so the Commander never observes an `Approved` Decision whose Jira issue never landed. Autonomous executions keep using the Celery/async flavor described in §17.8 (`execute_decision_outcome` helper code **shared** with the view-layer service whenever practical).
+
+---
+
 ## Technology Stack
 
 | Layer | Tool | Version | Install (macOS) | Install (Linux) | Verify |
@@ -596,6 +1225,8 @@ Write an ADR for every significant technology or architecture choice. This SAO.m
 | HTTP retries | tenacity | 9.x | `pip install tenacity` | `pip install tenacity` | `pip show tenacity` |
 | Connector | jira (pycontribs) | latest | `pip install jira` | `pip install jira` | `pip show jira` |
 | AI interface | FastMCP | latest | `pip install fastmcp` | `pip install fastmcp` | `pip show fastmcp` |
+| SSE (Chat) | htmx-sse extension | latest | CDN — no install | CDN — no install | loaded in base template |
+| Model history | django-simple-history | latest | `pip install django-simple-history` | same | exposes FRAGO histories for UI |
 | Test runner | pytest + pytest-django | 8.x | `pip install pytest pytest-django` | `pip install pytest pytest-django` | `pytest --version` |
 | HTTP mocking | responses | latest | `pip install responses` | `pip install responses` | `pip show responses` |
 | Test data | factory_boy | latest | `pip install factory_boy` | `pip install factory_boy` | `pip show factory_boy` |
@@ -640,6 +1271,12 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | Connectors v1 | python-gitlab + jira (pycontribs) | Both actively maintained; `jira` preferred over `atlassian-python-api` for Jira-specific coverage |
 | Testing | pytest + Django test client, no E2E | Internal tool; browser E2E overhead not justified; ECharts tested via JSON endpoints |
 | Observability | AWS CloudWatch | Co-located with EB; no additional tooling needed |
+| Chat streaming | SSE (`htmx-sse` + `StreamingHttpResponse` + Redis pub/sub) over HTMX polling | LLM responses and Plan progress need real-time push; polling adds 1–5 s lag and wastes requests; SSE is a unidirectional long-lived HTTP stream compatible with Django sync views when using `gthread` workers; Celery workers publish to Redis pub/sub, the `chat_stream` view subscribes and streams to browser |
+| FRAGO auditing | **`django-simple-history`** on FRAGO rows | Gives `FRAGOS-VIEW_FRAGO-1`'s chronological toggle/edit timeline without bespoke `FRAGOEvent` tables |
+| Semi-Auto Decision approvals | Branch outcomes run **inside the Django view/request** (`ToolExecutor`). Branch **C**: Jira **failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
+| Conversation scope | Exactly **one** `gjallarhorn.Conversation` (`UNIQUE(user, project)`), plus optional `conversation_type` | Sidebar + fullscreen share SSE + history per Project boundary |
+| Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |
+| Decisions Logic lines | Canonical **single markdown bullet** template per contribution (human + LLM readable) | Matches product decision; deterministic rendering for tooling |
 | TLS | CloudFront + ACM | ACM in us-east-1 (`featurefactory.io` + `*.featurefactory.io`); CloudFront in front of EB `huginn-prod` origin; Django `SECURE_SSL_REDIRECT=True` + `SECURE_PROXY_SSL_HEADER` |
 | IaC | AWS CDK (Python) | `infra/` — `HuginnCdn` stack deployed; Network/Data/App stacks + `cdk import` for legacy resources tracked as later phases |
 
@@ -693,6 +1330,29 @@ After Route53 changes, the local machine may serve stale records from its DNS ca
 
 **Local Django dev server vs Docker Compose hostname resolution.**
 When running Django `runserver` locally (outside Docker), `POSTGRES_HOST=db` cannot be resolved — `db` is a Docker Compose service name. Override with `POSTGRES_HOST=localhost` in `.env` to reach the Docker-mapped port `5432`.
+
+**FastMCP tools: `sync_to_async` must use `thread_sensitive=True`.**
+FastMCP tool functions are `async def`. When they wrap Django ORM operations via `sync_to_async`, omitting `thread_sensitive=True` causes transactions to **silently roll back** — the tool returns a success dict but the database shows old values, with no exception raised.
+
+Root cause: `thread_sensitive=False` (the default) runs the sync function in a thread-pool thread with a **new** database connection. `@transaction.atomic` commits on that connection, which is then discarded on thread return — implicit rollback.
+
+```python
+# Wrong — transaction rolls back silently
+@mcp.tool()
+async def create_frago(...):
+    return await sync_to_async(_create_frago)(...)
+
+# Correct — shares the Django DB connection
+@mcp.tool()
+async def create_frago(...):
+    return await sync_to_async(_create_frago, thread_sensitive=True)(...)
+```
+
+Also: use `inspect.iscoroutinefunction(func)` in `ToolExecutor` to detect whether a tool is async — not `hasattr(func, '__wrapped__')`. The `@transaction.atomic` decorator adds `__wrapped__` to sync functions, causing false positives that would attempt `async_to_sync` on a sync function.
+
+**FRAGO edit/toggle auditing:** Persist `FRAGOS-VIEW_FRAGO-1`'s chronological **state change log** via **`django-simple-history`** (`HistoricalRecords`) on every FRAGO model row (including Decisions Logic). Rendering can map history rows → `{timestamp, action, actor}` without inventing bespoke `FRAGOStateChange` tables.
+
+---
 
 ### Retrospective Updates
 

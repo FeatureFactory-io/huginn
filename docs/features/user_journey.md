@@ -8,9 +8,19 @@
 
 **Screen ID convention**: every screen is identified by `{ENTITY}-{OPERATION}-{VERSION}` (e.g., `PROJECTS-LIST+FIND-1`). Used in this document, in screen-flow diagrams, in feature files, and as HTML comments / hidden divs in templates for grep-able traceability.
 
-**Gjallarhorn** — the AI component. Two surfaces:
-1. **Background**: generates SitReps after each successful sync, evaluating Variables against the active Playbook expectations.
-2. **Chat**: interactive surface (Act 8) that exposes platform CRUDL via `services.py` / `tool_executor.py`. `find_*` tools provide full-text search; list operations support pagination, page size, filters.
+**Gjallarhorn** — the AI component. Three surfaces:
+1. **Background**: event-driven — fires on `Sync Complete` (generates SitRep, evaluating Variables against the active Playbook + FRAGOs + Situational Awareness). In **Autonomous** mode, approved outcomes for auto-generated Decisions execute via the SitRep / `execute_decision_outcome` Celery chain. **Semi-Auto** Commander approvals **do not enqueue that path** — FRAGO / SA / Jira branches run **synchronously inside the Decision review HTTP request** (SAO §17.8 / Flow C).
+2. **Chat — full-screen** (`CHAT-FULLSCREEN-1`, Act 8): two-pane interactive surface that exposes platform CRUDL via `services.py` / `tool_executor.py`. `find_*` tools provide full-text search; list operations support pagination, page size, filters.
+3. **Chat — sidebar** (`CHAT-SIDEBAR-1`): collapsible right rail mounted in the global layout, visible on every screen. **One Conversation per authenticated user + Project** — navigation switches threads when the anchored Project changes; the context chip auto-updates from the current screen within that scope. `[Expand to full screen]` opens `CHAT-FULLSCREEN-1` preserving the active Project conversation and pinned context (`docs/architecture/SAO.md` §17.11).
+
+**Operating mode** (per-Project, persisted as `Project.gjallarhorn_mode`):
+- **Semi-Autonomous** (default): Gjallarhorn generates SitReps and proposes Decisions. The Commander reviews each Decision: **Approve** persists outcomes **synchronously in the Decision review POST** (FRAGO / SA / Branch C Jira). **Reject** declines the proposed action but **may still** capture a vigilance FRAGO / Sit-Awareness snippet (or reject note)—or dismiss entirely with no artefacts (see Act 9).
+- **Autonomous**: Gjallarhorn auto-approves its own Decisions (with machine-generated Reasoning attributed to `"Gjallarhorn"`) and executes outcomes. The Commander observes via audit log.
+- Toggle is a pill `[Semi-Auto | Auto]` on the `PROJECTS-VIEW_PROJECT-1` top action bar.
+
+**Decisions Logic FRAGO** (per-Project, system-managed): **one dedicated FRAGO** per Project (`kind = decisions_logic`) — Donland maintains **judgment memory in that single body**: the system **contributes structured lines by default from most Completed reviews** (**Approved**, **Auto-approved**, and materially recorded **Rejected** — see Act 9); exceptions include e.g. a **bare dismiss** with nothing to remember. Commander **extends**, **modifies**, or **removes** bullets via **`FRAGOS-EDIT_FRAGO-1`**. Automatic contributions use the **canonical markdown-bullet template** in SAO §17.8 (` · `-separated inline fields — one bullet per qualifying review). Auto-created when the **first** such line lands. Not revocable, not toggleable, always Active. Playbook stays the canonical definition of **what good looks like**; this FRAGO captures **how reasoning has evolved** for that Project. Gjallarhorn reads its current body when proposing new Decisions.
+
+**Plans**: Gjallarhorn's internal async execution engine. When any multi-step task is needed — primarily SitRep generation (translating the Playbook Workflow into concrete tool calls: get commits, assess Variable, assign color, save Datapoint…) or occasionally a complex Decision implementation — Gjallarhorn creates an `ExecutionPlan` and runs it step-by-step via Celery. Plans are **visible in the Chat** as a collapsible `PlanProgressCard` (goal + progress bar + live step list). Each step records pre-execution reasoning (`why needed`, `expected outcome`) and post-execution reflection (`actual result`, `outcome assessment`). Plans always start automatically — there is no Commander approval gate on a Plan. The Commander only gates the *Decisions* that a SitRep Plan produces (in Semi-Auto mode). On permanent step failure, Gjallarhorn posts a recovery analysis message in Chat with partial results and next-step options (see PlanProgressCard spec in Act 8). On transient failure (Claude 429), the step pauses for exponential-backoff retry (30 s → 60 s → 120 s) before resuming — completed steps are never re-executed.
 
 **Jira / GitLab / etc.** — systems of record for raw work data. Huginn ingests via DataSources. **Huginn writes one thing back to Jira: issues created from accepted Decisions, tagged `HUGINN`.** No comment write-back, no annotation write-back.
 
@@ -18,9 +28,11 @@
 
 **Playbook lifecycle**: Playbooks are versioned. A Playbook is metadata + a Workflow (markdown) + an ordered list of `PlaybookVariable` (structured). A Project auto-tracks the latest version of its assigned Playbook unless explicitly pinned to a specific version. Editing a Playbook (Workflow markdown OR any PlaybookVariable) creates a new version; Projects on auto-track receive the new expectations on their next SitRep. (In the future version you can import Playbook/Workflow from Mimir Server.)
 
+**Time period granularity (systemwide)**: periods in Huginn span hours or days, not just calendar days. Sync can run as frequently as every hour; SitReps can cover sub-day windows ("last 2 hours", "last 4 hours", "today"). Period selectors throughout the UI offer both day-level and hour-level presets. Custom periods use datetime pickers (`from_date` / `to_date`) resolved to the minute. All timestamps and period bounds are stored and displayed in the user's local timezone.
+
 **Project view tabs**: tabs on the Project view are **system-defined**, not Playbook-derived:
 - **Vitals** — hardcoded, present on every Project. Contains: Identity / Playbook / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `PlaybookVariable` on the active PlaybookVersion (in declared order), showing `name (abbrev)` with value and color on hover.
-- **Variables** — one diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history for the selected period. Fixed period filter: today / yesterday / this week / previous week / 30 days.
+- **Variables** — one diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history for the selected period. Period filter supports both hour-level and day-level presets plus a custom datetime range.
 - **Adapter-driven tabs** — one tab per registered ingestion adapter. Today: the **Increments** tab, contributed by `ingestion/adapters/gitlab_commits.py`. New adapters add new tabs as they land.
 
 **DataSource credentials**: PATs (GitLab) are user-set and may have an expiry; Jira API tokens generally don't. Huginn tracks an `expires_at` per DataSource and surfaces a warning before expiry. No automatic refresh — the API doesn't support it for PATs.
@@ -30,7 +42,8 @@
 - `VIEW` only — SitRep, Variables, Contributors (generated/computed)
 - `VIEW + EDIT` only — Situational Awareness (**workspace-global**: one capsule for the Commander / installation, not scoped per Project)
 - `LIST+FIND + VIEW` only — Action Stations (Jira-owned lifecycle, read-only display)
-- `CHAT` — Gjallarhorn (conversational, single-screen surface)
+- `CHAT-FULLSCREEN` — Gjallarhorn full-screen conversational surface (Act 8)
+- `CHAT-SIDEBAR` — Gjallarhorn collapsible global rail (persistent across all screens)
 
 ---
 
@@ -70,7 +83,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 | 5 | SitRep / Status Report | LIST+FIND + VIEW (per Project) | `SITREP-LIST+FIND-1` |
 | 6 | FRAGO | CRUDLF (Playbook adjustment) | `FRAGOS-LIST+FIND-1` |
 | 7 | Variables Deep-Dive | VIEW with filters | `VARIABLES-VIEW-1` |
-| 8 | Gjallarhorn Chat | CHAT | `CHAT-1` |
+| 8 | Gjallarhorn Chat | CHAT-FULLSCREEN + CHAT-SIDEBAR | `CHAT-FULLSCREEN-1` / `CHAT-SIDEBAR-1` |
 
 ### ACTION — decide, execute, observe
 
@@ -147,7 +160,7 @@ Donland clicks **Data Sources** in the main nav.
 Donland clicks [+ Add Data Source].
 
 **Layout**:
-- **Step 1 — Type**: Two cards (GitLab / Jira). Jira disabled with "Coming soon" tooltip in MVP.
+- **Step 1 — Type**: Two cards (GitLab / Jira). **GitLab** covers project import + commit sync. **Jira** is selectable when the workspace needs **Decision Branch C** outbound issues + Action Stations read-sync — the same `DataSource(type=Jira)` stores PAT/API token + base URL (`docs/architecture/SAO.md` §2). Deep ingest of arbitrary Jira scopes beyond `HUGINN`-labelled mirrors may still roll out iteratively; connecting Jira here is still required before Branch C succeeds.
 - **Step 2 — Connection form**:
   - Name (required) — Donland's label, e.g., "company-gitlab"
   - Base URL (required) — e.g., `https://gitlab.example.com`
@@ -236,31 +249,37 @@ Donland clicks [+ Import Projects] (from this screen, Act 1's shortcut, or Act 0
 
 **Layout** — tabbed page. Tabs are **system-defined** (not Playbook-derived).
 
-- **Header**: Project name + status badge + DataSource
+- **Header**: Project name + status badge + DataSource + **mode badge** (pill: `Semi-Auto` or `Auto`, matches the current `Project.gjallarhorn_mode`)
 - **Vitals tab** (hardcoded, present on every Project):
   - **Identity**: source path, source URL, imported on, imported by
   - **Playbook**: name + version (or "Not assigned" — link to assign)
-  - **Sync**: last sync time, next scheduled, current status (idle / syncing / error)
+  - **Sync**: last sync time, next scheduled, current status (idle / syncing / error); **Last SitRep generated**: timestamp + link to `SITREP-VIEW_SITREP-1` for the latest SitRep (shown as "—" when no SitRep exists yet). This is a separate line from "Last sync" — ingestion timing and AI evaluation timing are intentionally distinct.
   - **Transparency card**: hardcoded system-wide health signal — how stale are updates? (See `ingestion/adapters/` for the metric definition.)
   - **Informer bar**: one colored dot per `PlaybookVariable` on the active PlaybookVersion, in declared order. Hover shows `name (abbrev): value`. When no Playbook is assigned, the bar is empty.
 - **Variables tab**:
   - One diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history.
-  - **Period selector** (top-right, persistent): today / yesterday / this week / previous week / 30 days.
-  - Each diagram: Variable name + abbrev as title; Y-axis = value; X-axis = time. Color of each data point reflects the `interpreting` rule at that time.
-  - Per-card affordances: [View in Chat] (Act 8) with Variable + period pre-loaded | [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with Variable pre-selected | reasoning-trace drilldown (click a data point to open a right-rail panel showing the originating `VariableDatapoint` row + SitRep + `AgentInvocation`, collapsed by default).
+  - **Period selector** (top-right, persistent): Last 2h / Last 4h / Last 8h / Today / Yesterday / This week / Previous week / 30 days / Custom datetime range. Default adapts to the project's sync cadence (see Act 7 for full spec).
+  - Each diagram: Variable name + abbrev as title; Y-axis = value; X-axis = time over the selected period. Color of each data point reflects the `interpreting` rule at that time.
+  - Per-card affordances: [View in Chat] (Act 8) with Variable + period pre-loaded | [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with Variable pre-selected | reasoning-trace drilldown (click a data point to open a right-rail panel showing the originating `VariableDatapoint` row + SitRep + originating **`PlanStep`** from the SitRep `ExecutionPlan`, collapsed by default).
   - Empty states: no Playbook assigned → "No Playbook assigned. Assign one in the Project view." | Playbook has no Variables → "This Playbook defines no Variables." | Variable has no history yet → "No SitReps yet" in place of the chart.
 - **Increments tab** (contributed by `ingestion/adapters/gitlab_commits.py`): system-defined view of ingested commit/increment data. Layout and content defined by the adapter. Further adapter-driven tabs will appear here as new adapters land.
 - Deep-link: `?tab=vitals` | `?tab=variables` | `?tab=increments` (or the adapter slug).
 - Sync engine behavior (beat, idempotency, error states) is specified in `docs/features/act-2-projects/projects-sync-engine.feature`; architecture in `docs/architecture/SAO.md` §1 (Ingestion sync engine), §4, §7.
-- **Top Actions**: [Edit] | [Sync Now] | [Archive] | [Open SitReps] (→ Act 5)
+- **Top Actions**: [Edit] | [Sync Now] | [Generate SitRep ▾] | [Archive] | [Open SitReps] (→ Act 5) | **Mode toggle** — pill `[Semi-Auto | Auto]`, persists `Project.gjallarhorn_mode`. Tooltip on Auto: *"Gjallarhorn will execute Decisions without your approval."* Switching to Auto shows a confirmation modal: "Enable Autonomous mode? Gjallarhorn will auto-approve and execute Decisions for this project. You can switch back at any time."
+
+  **[Generate SitRep ▾]** opens a small dropdown with period options:
+  - **Since last SitRep** (default, pre-selected): covers `last_sitrep.generated_at → now`. Label shows the computed window, e.g. "Since last SitRep (3h 20m ago)". Disabled with tooltip "No previous SitRep — use a custom period" when none exists.
+  - **Last 2 hours** | **Last 4 hours** | **Today** | **Yesterday** | **Custom…**
+  - **Custom…** opens an inline datetime picker: `From` (date + time) and `To` (date + time, defaults to now). Both fields resolved to the minute.
+  - Clicking any preset or confirming a custom range fires a `POST /projects/{slug}/sitreps/generate/` request. A toast appears: "SitRep generation started — this may take a moment." On completion the Vitals "Last SitRep generated" line updates and a notification links to the new SitRep.
 
 #### Screen: PROJECTS-EDIT_PROJECT-1
 
 Editable fields:
 - Display name (Huginn-side label; source path is immutable)
 - Assigned Playbook (dropdown of Playbooks; can also pick a specific version, default is "auto-track latest")
-- Sync schedule: `daily | hourly | minutely`, each with a pattern (e.g. `daily 08:00`, `hourly :30`, `every 5m from :00`). Default: `hourly :00`.
-- SitRep cadence: defaults to "match sync"; may be set to a coarser cadence (≥ hourly) when sync runs minutely, to bound LLM cost. *(Open question — see vision.md.)*
+- Sync schedule: **`hourly` | `every 6h` | `daily`** — matches `Project.sync_schedule` in code (Celery fan-out every 15 minutes checks whether the project is due). Default: **hourly**.
+- SitRep cadence: defaults to "match sync"; may be set to a coarser cadence when LLM cost must be bounded. *(Open question — see vision.md.)*
 - [Save Changes] | [Cancel]
 
 #### Screen: PROJECTS-ARCHIVE_PROJECT-1
@@ -280,6 +299,8 @@ Confirmation modal:
 - **Seven starter Variables** (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution), each with default `calculating`, `interpreting`, and `hover`.
 
 Cloning **FeatureFactory Playbook** is the recommended starting point.
+
+**Decisions Logic FRAGO relationship**: the Playbook defines what "good" looks like (authoritative expectations, Workflow, Variables). The per-Project **`Decisions Logic` FRAGO** (Act 6) is **one living document**: **most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected** where memory is warranted) deposit a structured line by default; Donland routinely **extends, merges, rewrites, or deletes** entries in that same FRAGO so future proposals reflect curated judgment—not a frozen append-only log. Playbook stays the stable template; Decisions Logic is **mutable** Commander–Gjallarhorn memory.
 
 **Pattern**: CRUDLF, with version history per Playbook.
 
@@ -389,12 +410,12 @@ The daily loop. Donland opens Huginn, scans the Projects Dashboard, drills into 
 
 **Layout**:
 - **Header**: "Projects" + last refresh timestamp + [Refresh] button
-- **Summary strip** (top): counts by color — "2 red · 1 orange · 4 yellow · 6 green"
+- **Summary strip** (top): counts by color + mode — "2 red · 1 orange · 4 yellow · 6 green | 8 semi-auto · 5 auto"
 - **Project cards grid** (sorted by health: worst first):
   - Each card contains:
     - **Color bar** (top edge, full-width): red / orange / yellow / green
-    - **Project name** + DataSource icon
-    - **Last SitRep timestamp** + "View SitRep →" link → `SITREP-VIEW_SITREP-1` (Act 5) for the latest SitRep
+    - **Project name** + DataSource icon + **mode badge** (subtle pill: `Semi-Auto` or `Auto`)
+    - **Last SitRep**: timestamp + "View SitRep →" link → `SITREP-VIEW_SITREP-1` (Act 5) for the latest SitRep. Distinct from Last sync below — shown as "No SitRep yet" when none exists.
     - **Headline assessment** (1 line, from latest SitRep): e.g., "Milestone v1.21 at risk: 3 critical bugs open"
     - **Variables mini-strip**: N dots, one per PlaybookVariable on the active Playbook (worst color first, then declared order). Hover a dot for `name (abbrev): value`.
     - **Last sync**: timestamp + sync status icon (OK / syncing / error — token expired etc.)
@@ -415,11 +436,15 @@ The daily loop. Donland opens Huginn, scans the Projects Dashboard, drills into 
 
 ## Act 5: SitRep / Status Report
 
-**Context**: A SitRep is what Gjallarhorn produces after every sync (or on-demand). It is **per Project, per moment in time**. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw at time T against Playbook version V.
+**Context**: A SitRep is what Gjallarhorn produces after a sync completes or when requested manually. It is **per Project, per assessed period**. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw over `period: [from_dt, to_dt]` against Playbook version V.
 
-**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Playbook workflow + variables, enabled in-window FRAGOs, data: {...} for the period under assessment)` and calls the AI once. The AI returns a situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams).
+**Generation triggers**:
+- **Automatic**: fired by the `Sync Complete` event after each successful ingestion run, using a default period of `last_sitrep.generated_at → sync_completed_at` (i.e., everything new since the previous SitRep). If no prior SitRep exists, the default period is the full ingestion history.
+- **Manual**: Commander clicks [Generate SitRep ▾] on `PROJECTS-VIEW_PROJECT-1` and selects a period — either the "Since last SitRep" default or a custom `from_dt → to_dt` window (supports hour-level granularity: "last 2 hours", "last 4 hours", "today", "yesterday", or a custom datetime range).
 
-**Pattern**: LIST+FIND + VIEW. No CREATE (auto-generated), no EDIT (frozen), no DELETE (audit log).
+**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Playbook workflow + variables, enabled in-window FRAGOs, data: {period: [from_dt, to_dt], …})` and runs a **multi-step `ExecutionPlan`** (one LLM invocation per `PlanStep`: gather evidence, assess each Variable, save `VariableDatapoint`s, then compose narrative + Decisions). The `period` is stored on the `SitRep` record and displayed in the view header. The final composition steps produce the situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams); each datapoint links to its producing **`PlanStep`** where applicable.
+
+**Pattern**: LIST+FIND + VIEW. No user-initiated CREATE form (generation is triggered via [Generate SitRep] on the Project view), no EDIT (frozen), no DELETE (audit log).
 
 #### Screen: SITREP-LIST+FIND-1
 
@@ -427,18 +452,19 @@ Donland clicks a Project card on the Dashboard, or **SitReps** from the Project 
 
 **Layout**:
 - **Header**: "SitReps — atlas-backend"
+- **Top Actions**: **[Generate SitRep ▾]** — same period-picker dropdown as on `PROJECTS-VIEW_PROJECT-1` (see Act 2). Provides a shortcut so the Commander can trigger generation without navigating away from the SitRep list.
 - **Latest SitRep card** (pinned, prominent):
-  - Date + time generated
+  - Date + time generated | **Assessed period** (e.g., "09:00 → 13:15" or "2026-04-19 09:00 → 2026-04-20 09:00")
   - Overall status badge (red / orange / yellow / green)
   - Headline assessment (1–2 lines)
   - Pending Decisions count
   - [Open SitRep] (primary) → `SITREP-VIEW_SITREP-1`
 - **History table** below:
-  - Generated at | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
+  - Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
   - Sort by date (default: newest first)
-  - Filter: status, date range, Playbook version
+  - Filter: status, date range, Playbook version, trigger type
 - **Row Actions**: [View]
-- **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Playbook is assigned."
+- **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Playbook is assigned. You can also generate one manually using [Generate SitRep ▾] above."
 
 #### Screen: SITREP-VIEW_SITREP-1
 
@@ -447,8 +473,8 @@ Donland clicks [Open SitRep] or a row.
 **Layout** (read-only document, multi-section):
 
 - **Header**:
-  - Project | Date generated | Playbook version evaluated against | Overall status badge
-  - [Open Decisions] (primary, jumps to Decisions section) | [Open Variables] (jumps to Variables section)
+  - Project | Date generated | **Assessed period** (`from_dt → to_dt`, displayed in local timezone; e.g., "Mon 09:00 → 13:15" for a 4-hour window, or "2026-04-19 09:00 → 2026-04-20 09:00" for a daily window) | **Trigger** badge (Auto / Manual) | Playbook version evaluated against | Overall status badge | **Mode at generation** indicator (Semi-Auto / Auto — records which mode was active when Gjallarhorn ran; explains whether Decisions were proposed or already auto-approved)
+  - [Open Decisions] (primary, jumps to Decisions section) | [Open Variables] (jumps to Variables section) | [Generate SitRep for another period ▾] (secondary — same period picker, pre-selects "Since this SitRep")
 
 - **Section 1 — Situation Assessment**:
   - Overall status (red/orange/yellow/green) with one-paragraph narrative
@@ -461,10 +487,10 @@ Donland clicks [Open SitRep] or a row.
   - When a Variable's value could not be computed by the Agent, the row renders with `value = —` and `color = grey`.
   - Each row links to `VARIABLES-VIEW-1` (Act 7 / Variables tab) filtered to that Variable.
 
-- **Section 3 — Proposed Decisions**:
-  - List of Decisions Gjallarhorn proposes based on the assessment
-  - Each Decision shown as a card: title + rationale (2–4 sentences) + [Review →] button
-  - [Review] → `DECISIONS-VIEW_DECISION-1` (Act 9) where the 3-branch Accept flow lives
+- **Section 3 — Decisions**:
+  - List of Decisions Gjallarhorn generated based on the assessment. In Semi-Auto these are `Proposed`; in Autonomous mode they may already be `Auto-approved` and executed by the time the SitRep is viewed.
+  - Each Decision shown as a card: title + status badge (`Proposed` / `Auto-approved`) + Owner attribution + rationale (2–4 sentences) + [Review →] button
+  - [Review] → `DECISIONS-VIEW_DECISION-1` (Act 9) where the approval flow lives
 
 - **Section 4 — FRAGOs applied**:
   - Which FRAGOs Gjallarhorn applied to this evaluation (i.e., enabled and in effective window at generation time; e.g., "Active Bug Count expected to be 0 — belay on Fridays, ≤3 OK")
@@ -476,7 +502,7 @@ Donland clicks [Open SitRep] or a row.
   - Anomalies (e.g., "Anton: 0 commits — first time in 14 days")
 
 **Top-right utility**:
-- [Open Chat about this SitRep] → `CHAT-1` (Act 8) with this SitRep pre-loaded as context
+- [Open Chat about this SitRep] → `CHAT-FULLSCREEN-1` (Act 8) with this SitRep pre-loaded as context
 
 ---
 
@@ -493,6 +519,13 @@ A FRAGO is **a short markdown body** scoped to one Project, with an optional tim
 
 **Pattern**: CRUDLF + Activate/Deactivate. FRAGOs are user-created, editable, enable/disable-toggleable, and revocable (soft-delete, history preserved).
 
+**"Decisions Logic" FRAGO (special, system-managed)**: **Exactly one** per Project (`kind = decisions_logic`). Created automatically when the **first** qualifying Decision review produces a structured line (**Approved**, **Auto-approved**, **Rejected** with material to record — Act 9; **bare** reject skips). Not user-creatable as a duplicate, not revocable, not toggleable — always Active. The **markdown body** holds judgment memory **read verbatim** by Gjallarhorn on the next invocation.
+
+- **Title** is fixed: *"Decisions Logic — {project name}"*.
+- **Body** — primarily **structured lines**, one markdown bullet **in most cases** (canonical template documented in SAO §17.8 — fields inline with ` · ` separators). Example: `- **2026-05-11 14:03** · Decision: *Coverage gate* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Outcome: Jira **HUGINN-302**`. Exceptions: omit line when nothing should be preserved (Act 9). Commander **maintains one document**: add free-form preamble, consolidate several bullets into one summary, rewrite wording, drop obsolete noise — **`FRAGOS-EDIT_FRAGO-1`**; edits surface in **`django-simple-history`** like any other FRAGO.
+- **Prompt caching**: the Decisions Logic FRAGO body is part of the cached context Gjallarhorn keeps for the Project, meaning changes land on the very next SitRep without any extra cost.
+- Visually pinned at the top of `FRAGOS-LIST+FIND-1` with a distinct icon (e.g., a brain or logic node); toggle column and `[Revoke]` row action are absent for this row.
+
 **Project scope (mandatory in the UI)**
 Every FRAGO belongs to exactly one **Project**. Operational screens **must not** infer project from session cookies, navbar memory, or implicit defaults.
 
@@ -508,7 +541,8 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 - **Header**: "FRAGOs — &lt;project name&gt;" when filtered by one Project; **"FRAGOs — All projects"** when unscoped
 - **Top Actions**: **[+ New FRAGO]** → create screen; when the list is scoped with `?project=…`, the same parameter is appended for convenience so Project is pre-selected on the form
 - **Filter**: Project | Timing (In Effect, Scheduled, Past) | Status (Active, Disabled, Revoked) | Affects (Narrative, Variable(s)); operational list may add query-backed filters separately
-- **Table**:
+- **Pinned row — "Decisions Logic"**: when the list is scoped to a single Project and that Project has a Decisions Logic FRAGO, this row always appears first, visually distinct (brain/logic icon, shaded background). It has no toggle switch (always Active) and no `[Revoke]` action. Row Actions are limited to **[View]** and **[Edit]**. Not selectable for bulk actions.
+- **Table** (remaining rows):
   - Toggle | Title | Affects | Effective window | Status | Actions
 - **Toggle column** (leftmost): per-row enable/disable switch (`data-testid="frago-toggle-{id}"`). Click flips the `enabled` flag — no confirmation modal (action is reversible). On flip:
   - Status badge updates immediately
@@ -533,6 +567,8 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
 
 Donland opens **New FRAGO** from the list or another surface. Links often include `?project=…` to **pre-select** Project (scoped FRAGO list, Project **Add FRAGO**, SitRep, Decision). The Commander **always picks or confirms Project on this form**; SitRep / Decision flows may still pre-fill other fields (e.g. Affects).
 
+Note: the **"Decisions Logic"** FRAGO (`kind = decisions_logic`) is system-managed and cannot be user-created through this form. It appears when the Project's **first qualifying structured line** is recorded (Act 9). This create form always creates a `kind = general` FRAGO.
+
 **Layout**:
 - **Header**: "New FRAGO"
 - **Form**:
@@ -554,7 +590,7 @@ Donland opens **New FRAGO** from the list or another surface. Links often includ
 - Body (rendered markdown)
 - Effective window
 - **Application history**: list of SitReps where this FRAGO was applied (date, link to SitRep). Useful to verify activation/deactivation took effect — a deactivated FRAGO will not appear in subsequent SitReps' history.
-- **State change log**: chronological log of toggles and edits (timestamp, action, actor)
+- **State change log**: chronological log of toggles and edits (timestamp, action, actor) — backed by **`django-simple-history`** on the FRAGO model (diff-friendly)
 - [Edit] | [Revoke]
 
 #### Screen: FRAGOS-EDIT_FRAGO-1
@@ -581,8 +617,10 @@ Confirmation modal:
 **Layout**:
 - **Header**: "Variables" (within the Project page header — "Variables — atlas-backend") + active PlaybookVersion indicator
 - **Period selector** (top-right, persistent):
-  - Today | Yesterday | This week | Previous week | 30 days
-  - Default: This week
+  - **Sub-day**: Last 2 hours | Last 4 hours | Last 8 hours
+  - **Day-level**: Today | Yesterday | This week | Previous week | 30 days
+  - **Custom…**: datetime range picker (`from_dt` / `to_dt`, resolved to the minute)
+  - Default: Today (switches automatically to **Last 4 hours** when the project sync cadence is **hourly** so sub-day resolution stays meaningful — `every 6h`/daily presets still favor day-scale windows unless the Commander picks sub-day manually)
 - **Variable diagrams** (grid, one card per PlaybookVariable on the active PlaybookVersion, in declared order):
   - **Card header**: Name (abbrev) + current value + color band + status badge (with active FRAGO overrides applied)
   - **Diagram**: line chart — Y-axis = value, X-axis = time over the selected period; color of each data point reflects the `interpreting` rule at that time
@@ -590,8 +628,8 @@ Confirmation modal:
   - **Interpreting**: the Variable's `interpreting` rules, with overlay showing any FRAGO overrides currently in effect
   - **Hover** preview
 - **Per-card affordances**:
-  - Click a data point → drill-down panel (right rail) showing that day's `VariableDatapoint` row + the originating SitRep + the `AgentInvocation` (collapsed by default; expand for the Agent's reasoning trace)
-  - [View in Chat] → opens `CHAT-1` with the Variable + period pre-loaded as context
+  - Click a data point → drill-down panel (right rail) showing that datapoint's `VariableDatapoint` row (with its `from_dt → to_dt` period) + the originating SitRep + the originating **`PlanStep`** (collapsed by default; expands to pre/post reasoning + tool trace for that SitRep execution step)
+  - [View in Chat] → opens `CHAT-FULLSCREEN-1` with the Variable + period pre-loaded as context
   - [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with this PlaybookVariable pre-selected as the tag
 - **Variable-level affordances**:
   - "Edit Variable in Playbook" link → `PLAYBOOKS-EDIT_PLAYBOOK-1` (or pin warning if Project pins an old version)
@@ -602,13 +640,37 @@ Confirmation modal:
 
 ---
 
-## Act 8: Gjallarhorn Chat — CHAT
+## Act 8: Gjallarhorn Chat
 
-**Context**: When the SitRep doesn't answer Donland's question, he opens the chat. Gjallarhorn has CRUDL access to the platform via `services.py` / `tool_executor.py` and can search, list, and inspect any entity in the user's context. This is also where Donland often arrives from a SitRep ("Open Chat about this SitRep") or a Variable ("View in Chat") with context pre-loaded.
+**Context**: When the SitRep doesn't answer Donland's question, he opens the chat. Gjallarhorn has CRUDL access to the platform via `services.py` / `tool_executor.py` and can search, list, and inspect any entity in the user's context. Chat is available in two modes: a persistent collapsible sidebar on every screen, and a full-screen surface for richer exploration.
 
-**Pattern**: CHAT (single screen, conversational). Non-CRUDLF.
+**Pattern**: CHAT (conversational). Non-CRUDLF. Two screen IDs: `CHAT-SIDEBAR-1` (global rail) and `CHAT-FULLSCREEN-1` (two-pane dedicated surface).
 
-#### Screen: CHAT-1
+#### Screen: CHAT-SIDEBAR-1
+
+**Context**: A collapsible right rail, part of the global layout. Available on every screen. Default state is collapsed. Within the Commander's workspace, **messages live in separate threads per `(user, Project)` pair** — the rail always displays the Conversation for whichever Project navigation most recently anchored context (explicit Project selector overrides when needed). Persisted pinned context survives navigation **within that same Project**.
+
+**Layout** (single-pane, narrow):
+- **Header bar**: "Gjallarhorn" + [Expand ↗] button (opens `CHAT-FULLSCREEN-1`) + [×] collapse button
+- **Context chip** (top of thread): auto-updates to reflect the current screen — e.g., "Viewing: SitRep 2026-04-20 09:15 · atlas-backend". Clicking the chip opens the referenced entity in its own screen. Pinned context items (manually attached by the user) appear below the auto-chip and persist across navigation.
+- **Message thread** (scrollable):
+  - User messages (right-aligned)
+  - Gjallarhorn messages (left-aligned, AI badge)
+  - Tool-call traces collapsed by default (one-line summary: "Used `list_uows` → 14 results")
+  - **PlanProgressCard** (when Gjallarhorn is running a multi-step Plan): collapsible card embedded in the thread showing the Plan goal, progress bar (`3 / 9 steps`), and live step list. Each step: status icon (○ pending / ⟳ running / ✓ done / ✗ failed / ⏸ waiting) + action description + pre-execution reasoning (pending/running steps) or result summary (completed steps) or error (failed/waiting steps). Card collapses to a one-line summary when minimised. Updates live via SSE stream as steps complete (`plan_step_update` events on the conversation stream).
+    - **Rate-limit retry** (`⏸ waiting`): if Claude returns 429 during a step, the step shows `⏸ waiting (retry in 30s)` and a status message appears in the thread below the card: *"Hmm, I'm thinking… Give me 30 seconds to gather my thoughts."* Gjallarhorn retries with exponential backoff (30 s → 60 s → 120 s at the LLM level; up to 5 Celery-level task retries). Completed steps are never re-executed — execution resumes from the paused step. When the retry succeeds the card resumes normally; if all retries are exhausted the step transitions to `✗ failed` and the permanent-failure flow kicks in.
+    - **Permanent step failure** (e.g. GitLab data not yet available, tool error): the failed step shows `✗ failed` + error text. The card's overall state changes to `Failed`. Gjallarhorn immediately posts a **recovery message** in the thread below the card containing: how many steps completed before the failure, what the failing step was trying to do, and a concrete proposal — e.g. *"I couldn't fetch commits — the GitLab sync may not have run yet. Options: (1) wait for the next sync and re-trigger the SitRep, (2) I can generate a partial SitRep from the data I already collected."* The Commander responds in Chat; Gjallarhorn may create a revised Plan if needed.
+  - Citations render as clickable chips
+- **Input box** at bottom: textarea + [Send] + [Attach context] (pin a SitRep, FRAGO, Variable, etc.)
+
+**Behavior**:
+- Opening the sidebar from any screen restores the Conversation for **the Project currently in focus**; the context chip updates with the routed screen.
+- `[Expand ↗]` opens `CHAT-FULLSCREEN-1` in the same tab, carrying **the active Project conversation** plus all pinned context.
+- Same tool inventory and citation behavior as full-screen.
+
+#### Screen: CHAT-FULLSCREEN-1
+
+**Context**: Full-screen two-pane chat surface. Donland arrives here from `[Expand ↗]` on the sidebar, from "Open Chat about this SitRep" on a SitRep, or from "View in Chat" on a Variable card. Context (SitRep, Variable + period) is pre-loaded when arriving from another screen.
 
 **Layout** (two-pane):
 
@@ -619,6 +681,9 @@ Confirmation modal:
   - User messages (right-aligned)
   - Gjallarhorn messages (left-aligned, AI badge)
   - **Tool-call traces** (collapsible) below each Gjallarhorn message that used tools — shows which tool(s) were called, their args, and result counts. Donland can expand to inspect.
+  - **PlanProgressCard** (when Gjallarhorn is running a multi-step Plan): collapsible card embedded in the thread showing the Plan goal, progress bar (`3 / 9 steps`), and live step list. Each step: status icon (○ pending / ⟳ running / ✓ done / ✗ failed / ⏸ waiting) + action description + pre-execution reasoning (pending/running steps) or result summary (completed steps) or error (failed/waiting steps). Card collapses to a one-line summary when minimised. Updates live via SSE stream as steps complete (`plan_step_update` events on the conversation stream).
+    - **Rate-limit retry** (`⏸ waiting`): if Claude returns 429 during a step, the step shows `⏸ waiting (retry in 30s)` and a status message appears in the thread below the card: *"Hmm, I'm thinking… Give me 30 seconds to gather my thoughts."* Gjallarhorn retries with exponential backoff (30 s → 60 s → 120 s at the LLM level; up to 5 Celery-level task retries). Completed steps are never re-executed — execution resumes from the paused step. When the retry succeeds the card resumes normally; if all retries are exhausted the step transitions to `✗ failed` and the permanent-failure flow kicks in.
+    - **Permanent step failure** (e.g. GitLab data not yet available, tool error): the failed step shows `✗ failed` + error text. The card's overall state changes to `Failed`. Gjallarhorn immediately posts a **recovery message** in the thread below the card containing: how many steps completed before the failure, what the failing step was trying to do, and a concrete proposal — e.g. *"I couldn't fetch commits — the GitLab sync may not have run yet. Options: (1) wait for the next sync and re-trigger the SitRep, (2) I can generate a partial SitRep from the data I already collected."* The Commander responds in Chat; Gjallarhorn may create a revised Plan if needed.
   - Citations: when Gjallarhorn references entities (UoW, Contributor, SitRep, Variable datapoint), they render as clickable chips → open the entity's view screen
 - Input box at bottom: textarea + [Send] button + [Attach context] dropdown (manually pin a SitRep, FRAGO, etc. as additional context)
 
@@ -642,15 +707,21 @@ Confirmation modal:
 
 # ACTION
 
-Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. Each Decision branches into one of three concrete outcomes: a new **project-scoped** FRAGO, an extension of **workspace** Situational Awareness, or a `HUGINN`-tagged Jira issue. He then verifies what landed (Contributors and Action Stations) and maintains global doctrine memory (Situational Awareness).
+Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. On **Approve**, each Decision branches into one of three concrete outcomes: a new **project-scoped** FRAGO, an extension of **workspace** Situational Awareness, or a `HUGINN`-tagged Jira issue. On **Reject**, he is *not* endorsing Gjallarhorn's proposed action — but he may still record **vigilance**: optional **reject note** and/or the same **FRAGO** or **Sit-Awareness** affordances as on approve (e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"* as a watch FRAGO, or a workspace SA entry). No Jira issue is created from the Reject path in MVP. Gjallarhorn executes outcomes — sometimes via a multi-step Plan visible in Chat. He then verifies what landed (Contributors and Action Stations) and maintains global doctrine memory (Situational Awareness).
 
 ---
 
-## Act 9: Decisions — LIST+FIND + VIEW (3-branch accept)
+## Act 9: Decisions — LIST+FIND + VIEW (approve: 3 branches; reject: optional vigilance)
 
-**Context**: Each SitRep proposes Decisions. Donland reviews them one at a time, accepts or rejects with rationale, and chooses the outcome. Decisions are also browseable as a per-Project log — the audit trail of what was decided, when, why, and what came of it.
+**Context**: Each SitRep generates Decisions. In Semi-Auto mode they are `Proposed` and the Commander **approves** (Reasoning required) or **rejects** (**reject note optional** — skip for a frictionless dismiss). A reject **may still leave Gjallarhorn better informed**: optional **reject note** only, **or** a **vigilance FRAGO**, **or** a **Sit-Awareness** entry (e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"*), **or note + vigilance**. **Most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected**) **contribute a structured line by default** to the Project's **single** Decisions Logic FRAGO; **exceptions** — e.g. **bare dismiss** — record **no line**. Commander **maintains that one FRAGO** (extend/modify/remove — Act 6). See Act 9.
 
-**Pattern**: LIST+FIND + VIEW. Decisions are AI-proposed (no user CREATE form). Acceptance is the central action; it spawns one of three outcomes.
+**Pattern**: LIST+FIND + VIEW. Decisions are AI-generated (no user CREATE form). Semi-Auto centres on **review** (Approve with required Reasoning, or Reject with optional note and/or vigilance artefacts). In Autonomous mode the list is primarily an audit log.
+
+**Decision status set**:
+- `Proposed` (blue) — awaiting the Commander's review (Semi-Auto only)
+- `Approved` (green) — human-approved; Commander provided Reasoning (required) and chose an outcome
+- `Auto-approved` (teal) — Gjallarhorn approved itself in Autonomous mode; machine Reasoning attached; outcome already executed
+- `Rejected` (grey) — human-rejected in Semi-Auto; Commander **may** leave a reject note (optional); **may** attach a follow-up **FRAGO** and/or **SA** entry (`HUGINN` Jira issues are approve-only)
 
 #### Screen: DECISIONS-LIST+FIND-1
 
@@ -658,51 +729,59 @@ Donland clicks **Decisions** in the main nav (or [Open Decisions] from a SitRep)
 
 **Layout**:
 - **Header**: "Decisions — atlas-backend" + count badge
-- **Filter**: Status (Proposed / Accepted / Rejected) | Outcome type (FRAGO / Sit-Awareness / Jira issue / —) | Date range | Source SitRep
+- **Filter**: Status (Proposed / Approved / Auto-approved / Rejected) | Owner (me / Gjallarhorn / all) | Mode (Semi-Auto / Auto) | Outcome type (FRAGO / Sit-Awareness / Jira issue / None / —) — for `Rejected`, **Outcome** reflects an optional vigilance artefact (`FRAGO` or `Sit-Awareness`) when created on reject | Date range | Source SitRep
 - **Table**:
-  - Date | Title | Status | Outcome | Source SitRep | Actions
-- **Status badges**: Proposed (blue) / Accepted (green) / Rejected (grey)
-- **Row Actions**: [Review] / [View] → `DECISIONS-VIEW_DECISION-1`
-- **Empty State**: "No Decisions yet. Decisions are proposed by Gjallarhorn in each SitRep."
+  - Date | Title | Status | Owner | Mode | Outcome | Source SitRep | Actions
+- **Row Actions**: [Review] (when `Proposed`) / [View] → `DECISIONS-VIEW_DECISION-1`
+- **Empty State**: "No Decisions yet. Decisions are generated by Gjallarhorn in each SitRep."
 
 **Example Data**:
-- 20 Apr 09:15 | "Belay Active Bug Count = 0 on Fridays" | Accepted | FRAGO | sitrep #142
-- 20 Apr 09:15 | "Investigate Friday bug-carry pattern" | Accepted | Jira (HUGINN-302) | sitrep #142
-- 19 Apr 09:00 | "Refactor auth module immediately" | Rejected | — | sitrep #141
+- 20 Apr 09:15 | "Belay Active Bug Count = 0 on Fridays" | Approved | Donland | Semi-Auto | FRAGO | sitrep #142
+- 20 Apr 09:15 | "Investigate Friday bug-carry pattern" | Auto-approved | Gjallarhorn | Auto | Jira (HUGINN-302) | sitrep #142
+- 19 Apr 09:00 | "Refactor auth module immediately" | Rejected | Donland | Semi-Auto | — | sitrep #141 — plain dismiss
+- 19 Apr 09:30 | "Tighten coverage to 95% now" | Rejected | Donland | Semi-Auto | FRAGO (watch Radon ≥ B−) | sitrep #141 — rejected the proposed remediation, opened a vigilance FRAGO instead
 
 #### Screen: DECISIONS-VIEW_DECISION-1
 
-The single most action-dense screen of the daily loop. Donland reviews each proposed Decision here.
+The single most action-dense screen of the daily loop. Donland reviews each proposed Decision here. For `Auto-approved` Decisions the page is read-only on arrival — the outcome has already been executed.
 
 **Layout** (single-column, top-to-bottom flow):
 
-- **Header**: Decision title + status badge + source SitRep link
+- **Header**: Decision title + status badge + Owner + Mode badge + source SitRep link
 
 - **Section 1 — Gjallarhorn's case**:
   - Rationale (full text, 1–4 paragraphs)
-  - Supporting evidence: Variables that triggered, FRAGOs in effect, related UoWs/Contributors (clickable chips)
+  - Supporting evidence: Variables that triggered, FRAGOs in effect (including Decisions Logic FRAGO), related UoWs/Contributors (clickable chips)
   - Confidence indication
 
-- **Section 2 — Decision** (when status = Proposed):
-  - **Two top-level actions**: [Accept] (primary, green) | [Reject] (secondary)
-  - Rejection flow: rationale text area → [Confirm Rejection]. Decision moves to status Rejected; outcome = none.
-  - Acceptance flow: opens **3-branch outcome chooser** below.
+- **Section 2 — Decision** (when status = `Proposed`; hidden for terminal statuses):
+  - **Two top-level actions**: [Approve] (primary, green) | [Reject] (secondary)
+  - **Approve** — **Reasoning** textarea (required): why you accepted Gjallarhorn's recommendation; opens **Section 3 — Outcome chooser**. On successful outcome completion, Decision → `Approved` (**Branch C failures keep `Proposed`** — §17.8 in `docs/architecture/SAO.md`); the system **normally** appends **one markdown bullet line** per Act 6 / SAO template, including Reasoning, Owner, and outcome ref — Donland edits the **same** Decisions Logic FRAGO anytime (**extend**, **modify**, **remove** bullets).
+  - **Reject** — **Reject note** textarea (optional): free text if you want Decisions Logic to capture *why not* — skip entirely for a bare dismiss below.
+  - **Reject note without vigilance artefacts** → **normally** one structured line toward Decisions Logic; Donland later **modify/remove** rows in **`FRAGOS-EDIT_FRAGO-1`**.
+  - After **[Reject]** (before confirm): optional **follow-up vigilance** (same forms as Branch A FRAGO / Branch B SA below — pre-filled blanks, Commander writes the watch condition in natural language, e.g. *"Keep an eye on code quality; if Radon drops below B−, flag it."*):
+    - **None** — bare reject: leave **reject note** empty **and** do not create vigilance artefacts → Decision → `Rejected`; **no line** contributed to Decisions Logic.
+    - **Create FRAGO (watch/teach)** — same field set as approving Branch A, but Decision stays **`Rejected`**; outcome ref = created FRAGO. Primary action e.g. **[Reject and create watch FRAGO]**. System **normally** adds `{status: Rejected, …}` line to Decisions Logic.
+    - **Extend Situational Awareness** — same as approving Branch B, but Decision stays **`Rejected`**; outcome ref = SA entry. Primary action e.g. **[Reject and extend awareness]**. System **normally** adds the analogous line.
+  - **[Confirm Rejection]** submits the chosen path (`Rejected` + optional artefacts).
+  - Approval flow remainder: Reasoning filled → **Section 3**.
 
-- **Section 3 — Outcome (when accepting)**: three choices, mutually exclusive, presented as cards:
+- **Section 3 — Outcome (when approving)**: Three outcome branches (+ implicit execution). Choosing one is mutually exclusive:
 
   **Branch A — Create FRAGO**
   - Use when the Decision is "modify expectations going forward"
   - Pre-filled FRAGO form embedded inline (same fields as `FRAGOS-CREATE_FRAGO-1`):
     - **Project** (fixed from the SitRep's Project scope), title, body (pre-filled from Decision rationale), Affects, scope filter
-  - [Accept and Create FRAGO] → creates FRAGO, marks Decision Accepted with outcome reference
+  - [Approve and Create FRAGO] → creates FRAGO, marks Decision `Approved` with outcome reference
 
   **Branch B — Extend Situational Awareness**
   - Use when the Decision is "remember this context for future evaluations"
   - Inline rich-text input with title + body
   - Preview shows: "This will be appended to **workspace** Situational Awareness (shared across all SitReps), dated today, attributed to you."
-  - [Accept and Extend Awareness] → appends entry, marks Decision Accepted with outcome reference
+  - [Approve and Extend Awareness] → appends entry, marks Decision `Approved` with outcome reference
 
   **Branch C — Create Jira Issue (`HUGINN`-tagged)**
+  - Uses the workspace's **`DataSource` row with type Jira** (connected PAT/API token — same ingestion primitive GitLab uses) for REST authentication + default project/issue metadata routing
   - Use when the Decision is "execute work in the team's tracker"
   - Inline form:
     - Summary (required)
@@ -711,12 +790,20 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
     - Assignee (Jira accounts list, optional)
     - Priority
     - The `HUGINN` label is **automatically applied and not editable** — this is the marker Action Stations syncs on
-  - [Accept and Create Jira Issue] → calls Jira API; on success, Decision marked Accepted with the Jira key as outcome reference; on failure, Decision stays Proposed and error is shown
+  - [Approve and Create Jira Issue] → calls Jira API **synchronously inside the approve request** (`ToolExecutor`/service); on success, Decision marked `Approved` with the Jira key as outcome reference; on failure, Decision **stays `Proposed`**, nothing is written to Decisions Logic for that attempt, and an inline/HTMX error explains the fault (timeouts must be surfaced clearly because the Commander blocks on this POST)
 
-- **Section 4 — Outcome (when status = Accepted/Rejected)**:
+  > When the Decision scope requires multi-step implementation, Gjallarhorn may execute it via a Plan internally. The Plan appears in the Chat thread as a `PlanProgressCard`. No Commander action required — the Plan runs automatically and reports results back through the conversation.
+
+- **Section 4 — Outcome (when status = `Approved`, `Auto-approved`, or `Rejected`)**:
   - Decision is now read-only
-  - Shows the outcome record with link to the created FRAGO / Sit-Awareness entry / Jira issue
-  - Shows acceptance/rejection rationale and timestamp
+  - **Reasoning** (approve / auto) or **Reject note** (reject, if any) displayed when present; machine Reasoning for `Auto-approved`
+  - **Owner** and Mode at decision time
+  - Shows the outcome record with link to the created FRAGO / Sit-Awareness entry / Jira issue **when one exists** (including `Rejected` + vigilance FRAGO or SA)
+  - For `Rejected` with **no** vigilance outcome (FRAGO / SA): omit FRAGO/Jira/SA outcome links — may still show rejected **reject note** text if Commander wrote one without Artefacts **or** omit entire outcome block for a bare dismiss
+  - For `Auto-approved`: informational banner — "This Decision was auto-approved by Gjallarhorn in Autonomous mode. [View Decisions Logic FRAGO →]"
+  - **Decisions Logic FRAGO** — when **this Decision review contributed a structured line**, show *"[View Decisions Logic FRAGO →]."* **Bare rejects** omit. Banner does **not** imply the body is append-only — Donland edits one shared FRAGO.
+
+> Plans surface exclusively as a `PlanProgressCard` in the Chat message thread (see Act 8 Chat). After a Plan completes, the SitRep it generated (or the Decision outcome it implemented) gains a "View execution plan →" link that deep-links to that message in the conversation history.
 
 ---
 
@@ -764,7 +851,7 @@ Donland clicks **Contributors** in the main nav.
 
 **Context**: Donland just accepted three Decisions that created `HUGINN`-tagged Jira issues. He wants to confirm they landed. Action Stations is the read-only mirror of all `HUGINN`-tagged issues across his connected Jira projects, kept in sync via [Sync] button or scheduled pull. **He does not edit, complete, or annotate here** — to act on an issue, he opens it in Jira.
 
-**Pattern**: LIST+FIND only. No CREATE (created by Act 9 acceptance), no EDIT (Jira is the system of record), no DELETE (Jira-side action).
+**Pattern**: LIST+FIND only. No CREATE (created by Act 9 approval), no EDIT (Jira is the system of record), no DELETE (Jira-side action).
 
 #### Screen: ACTIONSTATIONS-LIST+FIND-1
 
@@ -826,7 +913,10 @@ Same layout as VIEW but document is editable (rich text per section).
 The following are deliberately deferred — captured here so they aren't silently lost between this artefact and ESM Activity 04 / implementation:
 
 1. **Seed Playbook starter Variables.** Exact `name / abbreviation / calculating / interpreting / hover` values for each of the seven starters (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution). Tracked in a separate doc: `docs/features/playbooks-seed.md` (to be authored).
-2. **SitRep cadence vs sync cadence default policy.** Sync may be `minutely`; SitRep generation is LLM-expensive. Default is "match sync"; minutely sync likely needs an explicit coarser SitRep beat (≥ hourly) to bound cost. See `docs/ideation/vision.md` Open Questions.
+2. **SitRep cadence vs sync cadence default policy.** **MVP ingestion sync** is capped at **`hourly` \| `every_6h` \| `daily`** (`Project.sync_schedule`). SitRep generation is still LLM-expensive; optional coarser-than-sync SitRep beats may be desirable. See `docs/ideation/vision.md` Open Questions about future finer-grained ingest cadences vs LLM budgets. *Partially resolved*: the **period model** is explicit — each SitRep stores `from_dt → to_dt`; manual on-demand generation with any period (including sub-day) is specified. What remains open is the **default automatic** SitRep throttle when/if sync becomes more frequent post-MVP.
 3. **Per-Variable rich subchart enrichment.** The Variables tab renders one diagram per Variable (Y = value, X = time, fixed period filter). Richer auxiliary panels — burndown, churn quadrant, contributor scatter — don't fit the single-value-per-Variable model. Options: declare them as additional Variables on **FeatureFactory Playbook**; attach auxiliary chart specs to a `PlaybookVariable`; or move them to a dedicated post-MVP "Project Analytics" surface.
 4. **PlaybookVariable.calculating typing.** Currently free text — the Agent decides whether to evaluate deterministically (JQL, count expression) or interpret + estimate. Open whether to add an explicit `calc_kind` hint to make Agent routing cheaper.
 5. ~~**Situational Awareness scope — journey vs vision.**~~ **Resolved:** persistence and UI use one **workspace-global** SA capsule (singleton). FRAGOs stay per-Project. If `docs/ideation/vision.md` still mentions per-Project SA, treat it as superseded by Act 12 unless an ADR says otherwise.
+6. **Chat sidebar keyboard shortcut.** Global keyboard shortcut to expand/collapse `CHAT-SIDEBAR-1` (e.g., `⌘+Shift+G`). Deferred — needs keybinding UX design and conflict resolution with browser shortcuts.
+7. **Auto-approved Decision reversal.** In Autonomous mode, `Auto-approved` Decisions are audit-only in MVP — no UI to reverse the outcome after the fact. Post-MVP: define a "Revert Decision" flow that creates compensating artefacts (e.g., deactivate the auto-created FRAGO, reverse the Jira issue) and records a Reversal Reasoning. Deferred.
+8. **Decisions Logic FRAGO pruning UX.** The Decisions Logic FRAGO body grows over time. Commander can edit it directly (`FRAGOS-EDIT_FRAGO-1`), but there is no structured pruning, archiving, or summarisation UI in MVP. Options: (a) manual curation in the edit form; (b) Gjallarhorn-assisted "summarise and compress" action; (c) versioned checkpoint with rollback. Deferred.
