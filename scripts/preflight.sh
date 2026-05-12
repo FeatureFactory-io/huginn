@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
 # preflight.sh — Phase 0 dry gate for dark-factory (tools, git clean, milestone, issues).
 #
-# Usage: scripts/preflight.sh [--allow-dirty] <milestone-title>
+# Usage: scripts/preflight.sh [--allow-dirty] [--allow-missing-featurefile-ref] <milestone-title>
 #
 # Milestone must match GitLab's milestone filter for `glab issue list --milestone`.
-# Each issue title/description must mention at least one path like docs/features/.../*.feature
+# By default, each issue title/description must mention at least one path like
+# docs/features/.../*.feature. Pass --allow-missing-featurefile-ref to warn-only
+# when some issues omit that (e.g. pure infra/tech tasks); default stays strict.
 
 set -euo pipefail
 
 ALLOW_DIRTY=false
+ALLOW_MISSING_FEATUREFILE_REF=false
 ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --allow-dirty) ALLOW_DIRTY=true ;;
+    --allow-missing-featurefile-ref) ALLOW_MISSING_FEATUREFILE_REF=true ;;
     *) ARGS+=("$arg") ;;
   esac
 done
@@ -78,8 +82,16 @@ ISSUES_JSON="$(glab issue list -R "$GLAB_REPO" --milestone "$MILESTONE" -O json)
   exit 1
 }
 
+if [[ "$ALLOW_MISSING_FEATUREFILE_REF" == true ]]; then
+  export PREFLIGHT_ALLOW_MISSING_FEATUREFILE_REF=1
+else
+  unset PREFLIGHT_ALLOW_MISSING_FEATUREFILE_REF
+fi
+
 printf '%s' "$ISSUES_JSON" | python3 -c '
-import json, re, sys
+import json, os, re, sys
+
+allow_missing = os.environ.get("PREFLIGHT_ALLOW_MISSING_FEATUREFILE_REF") == "1"
 
 try:
     issues = json.load(sys.stdin)
@@ -98,11 +110,16 @@ for i in issues:
     if not pat.search(body):
         missing.append(str(i.get("iid", "?")))
 if missing:
-    print(
-        "error: issues missing docs/features/.../*.feature in title or description:",
-        ", ".join(missing),
-        file=sys.stderr,
+    msg = "issues missing docs/features/.../*.feature in title or description: " + ", ".join(
+        missing
     )
-    sys.exit(1)
-print("preflight ok:", len(issues), "issue(s); feature paths referenced")
+    if allow_missing:
+        print("warn:", msg, "(allowed by --allow-missing-featurefile-ref)", file=sys.stderr)
+    else:
+        print("error:", msg, file=sys.stderr)
+        sys.exit(1)
+    print("preflight ok:", len(issues), "issue(s);", len(missing), "without feature path (waived)")
+else:
+    print("preflight ok:", len(issues), "issue(s); feature paths referenced")
 '
+unset PREFLIGHT_ALLOW_MISSING_FEATUREFILE_REF 2>/dev/null || true

@@ -34,7 +34,7 @@ Run from the **repository root**.
 # Attach: tmux a -t huginn-Your-Milestone-Slug
 ```
 
-**Preflight flags:** `--allow-dirty` — skip “clean git working tree” check.
+**Preflight flags:** `--allow-dirty` — skip “clean git working tree” check. `--allow-missing-featurefile-ref` — warn but pass when some milestone issues omit `docs/features/.../*.feature` (default remains strict).
 
 ## Cursor CLI in `factory.sh`
 
