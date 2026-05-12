@@ -1,7 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Build and push app image to ECR (Kaniko). Invoked from GitLab build job only.
 # Same logic as: make ci-build
-set -euo pipefail
+# POSIX sh: Kaniko debug executor has busybox only (no bash, no Alpine apk).
+set -eu
 : "${CI_PROJECT_DIR:?}"
 : "${CI_COMMIT_BRANCH:?}"
 : "${CI_COMMIT_SHORT_SHA:?}"

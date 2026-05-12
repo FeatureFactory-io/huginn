@@ -181,7 +181,7 @@ ci-prepare-aws: ## [CI] Install AWS CLI v2 for EB deploy/promote jobs
 
 .PHONY: ci-build
 ci-build: ## [CI] Kaniko → ECR (requires /kaniko/executor; GitLab build job)
-	bash scripts/ci-kaniko-build.sh
+	sh scripts/ci-kaniko-build.sh
 
 .PHONY: gitlab-release
 gitlab-release: ## [CI] GitLab Release via release-cli (GitLab release stage)
