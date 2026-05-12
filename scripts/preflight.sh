@@ -78,7 +78,7 @@ ISSUES_JSON="$(glab issue list -R "$GLAB_REPO" --milestone "$MILESTONE" -O json)
   exit 1
 }
 
-echo "$ISSUES_JSON" | python3 <<'PY'
+printf '%s' "$ISSUES_JSON" | python3 -c '
 import json, re, sys
 
 try:
@@ -105,4 +105,4 @@ if missing:
     )
     sys.exit(1)
 print("preflight ok:", len(issues), "issue(s); feature paths referenced")
-PY
+'
