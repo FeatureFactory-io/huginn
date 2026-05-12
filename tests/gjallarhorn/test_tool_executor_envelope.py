@@ -1,9 +1,10 @@
-"""ToolExecutor envelope contract tests — T-65a."""
+"""ToolExecutor envelope contract tests — T-65a + T-65b."""
 
 import pytest
 from django.contrib.auth import get_user_model
 
 from gjallarhorn.agent.tool_executor import ToolExecutor
+from gjallarhorn.services.factory import build_executor
 from ingestion.models import Project
 
 User = get_user_model()
@@ -68,3 +69,17 @@ class TestToolExecutorEnvelope:
         assert result["success"] is False
         assert result["result"] is None
         assert "Tool failed intentionally" in result["error"]
+
+    def test_build_executor_registers_five_tools(self):
+        """build_executor returns ToolExecutor with 5 tools registered."""
+        user = User.objects.create_user(email="test@example.com", password="test")
+        project = Project.objects.create(name="test-proj", slug="test-proj")
+
+        executor = build_executor(user=user, project=project)
+
+        assert len(executor._registry) == 5
+        assert "list_commits" in executor._registry
+        assert "get_contributor_activity" in executor._registry
+        assert "get_active_playbook" in executor._registry
+        assert "get_active_situational_awareness" in executor._registry
+        assert "list_active_fragos" in executor._registry
