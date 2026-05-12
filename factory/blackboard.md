@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 1 — Ingestion complete; awaiting human review before Phase 2 decomposition.
+**Phase:** 2 — Decomposition in progress.
 
 **Milestone:** AI → SitRep (GitLab IID 4, internal id 7419357)
 
@@ -43,7 +43,7 @@
 
 ## Blocked / risks
 
-- `ANTHROPIC_API_KEY` must be present in `.env` for `ClaudeLLM` to instantiate; `ImproperlyConfigured` raised otherwise. CI must inject it as a secret (or use `ScriptedLLM` only path).
+- ~~`ANTHROPIC_API_KEY`~~ — **resolved**: confirmed present in `.env`.
 - SSE / Redis publish stubs are `# TODO(chat-milestone)` throughout — do NOT implement them in this sprint.
 - Write tools (`create_frago`, `extend_sitawareness`, `create_jira_issue`) are `# TODO(decisions-milestone)` — blocked from narrative phase.
 - `process_user_message` on `GjallarhornAgent` must `raise NotImplementedError` — confirmed by test in #66.
@@ -52,11 +52,14 @@
 
 ## Open questions for human
 
-_None currently — sprint plan is clear._
+_None._
 
 ---
 
 # Event log
 
 <!-- Append-only: LE and workers add dated lines -->
+- **2026-05-12** Phase 2 decomposition started. Human confirmed ANTHROPIC_API_KEY present. Task register:
+  - **pending**: T-60, T-61-steps, T-62-steps, T-63-steps
+  - **blocked**: T-64 (→T-60), T-65a (→T-64), T-65b (→T-65a), T-66 (→T-65b), T-67 (→T-66), T-61-impl (→T-67+T-61-steps), T-62-impl (→T-61-impl+T-62-steps), T-63-impl (→T-61-impl+T-63-steps)
 - **2026-05-12** Phase 1 ingestion complete. Read milestone IID 4 (8 issues: #60–67). Read `docs/features/act-5-sitrep/*.feature` (3 files, 468 scenarios total). Read `docs/architecture/SAO.md §17` (Gjallarhorn AI architecture, all sub-sections). Wrote `factory/blueprints/system.md` and updated this blackboard. Awaiting human review before Phase 2 decomposition.
