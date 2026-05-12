@@ -70,3 +70,12 @@ Full suite: `pytest tests/ -x`
 - Checkpoint exit code:
 - Scenario count green (22):
 - Notes:
+
+# Result
+
+status: passed
+branch: ""
+mr: ""
+commit_sha: ""
+
+_(worker: fill branch, merge request IID, commit SHA; set status to failed or blocked if applicable)_
