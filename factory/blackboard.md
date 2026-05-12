@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution (Batch 1 COMPLETE ✓ | Next: Batch 2 on Sonnet 4.6 Extended Thinking)
+**Phase:** 3 — Execution (Batch 3: Sonnet 4.5 — UI views)
 
 **Milestone:** AI → SitRep (GitLab IID 4, internal id 7419357)
 
@@ -64,6 +64,7 @@ _None._
   - Step-defs: T-61-steps (MR !9, 20 RED), T-62-steps (MR !10, 19 RED), T-63-steps (MR !11, 31 RED)
   - Total: 5 models, LLM layer, ToolExecutor, 5 tools, 70 RED test stubs
   - All existing tests pass (388 passed)
+- **2026-05-12** Phase 3 Batch 3 started (Sonnet 4.5). All backend tasks done (T-60, T-64, T-65a, T-65b, T-66, T-67, T-61-impl). Unblocked: T-62-impl (22 stubs, sitrep list view) + T-63-impl (31 stubs, sitrep detail view). Running factory.sh mini-sprint.
 - **2026-05-12** Phase 3 Batch 1 started (Sonnet 4.5). Executing: T-60 → T-64 → T-65a → T-65b (sequential chain) + T-61-steps, T-62-steps, T-63-steps (parallel, no code deps). Batch 2 (Sonnet 4.6 thinking): T-66 → T-67 → T-61-impl. Batch 3 (Sonnet 4.5): T-62-impl, T-63-impl.
 - **2026-05-12** Phase 2 decomposition started. Human confirmed ANTHROPIC_API_KEY present. Task register:
   - **pending**: T-60, T-61-steps, T-62-steps, T-63-steps

@@ -81,9 +81,8 @@ Full suite: `pytest tests/ -x`
 `git`, `python`, `pytest`, `ruff`, `manage.py`
 
 ## Result
-<!-- Worker fills in after completion -->
-- Branch pushed:
-- MR URL:
-- Checkpoint exit code:
-- Scenario count green (20):
-- Notes:
+- Branch pushed: `feature/sitrep-generate-impl`
+- MR URL: https://gitlab.com/dp2580/huginn/-/merge_requests/new?merge_request%5Bsource_branch%5D=feature%2Fsitrep-generate-impl
+- Checkpoint exit code: 0
+- Scenario count green (20): 20/20 ✓
+- Notes: 32 new tests total (SREP-01–04, GEN-01–08, all 20 scenarios). 450 passing, 1 skipped full suite.
