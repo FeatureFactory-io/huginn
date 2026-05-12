@@ -87,9 +87,12 @@ while :; do
       if [[ -n "\$task_branch" ]]; then
         git checkout "\$task_branch" 2>/dev/null || git checkout -b "\$task_branch" 2>/dev/null || true
       fi
+      COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
       $CURSOR_BIN \\
-        --system "\$(cat $REPO_ROOT/prompts/${role}.md)" \\
-        --input "\$claimed_path" \\
+        --print \\
+        --yolo \\
+        --workspace "\$wt" \\
+        "\$COMBINED_PROMPT" \\
         2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log"
     fi
   done
@@ -97,11 +100,9 @@ done
 EOF
 }
 
-# LE window always operates in the repo root on the mgmt branch
+# LE window — plain shell for the human engineer on the mgmt branch
 tmux new-session -d -s "$SESSION" -n "le" \
-  "cd \"$REPO_ROOT\" && git checkout $MGMT_BRANCH 2>/dev/null; $CURSOR_BIN --system \"\$(cat $REPO_ROOT/prompts/lead-engineer.md)\" \
-    --input factory/blackboard.md \
-    2>&1 | tee -a factory/logs/le.log; bash"
+  "cd \"$REPO_ROOT\" && git checkout $MGMT_BRANCH 2>/dev/null; exec bash"
 
 for role in "${ROLES[@]}"; do
   tmux new-window -t "$SESSION" -n "$role" \
