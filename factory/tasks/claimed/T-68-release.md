@@ -23,17 +23,15 @@ push `release/2026.05.12`, and let CI deploy to staging.
    git fetch --all
    ```
 
-2. Merge the **stacked** UI MRs first (order matters), then the umbrella MR into `main`:
+2. Merge the feature chain into `main` using `glab`:
    ```bash
-   # T-63: feature/sitrep-view-impl → feature/sitrep-list-impl
-   glab mr merge 15 --squash=false --remove-source-branch=false
-   # T-62: feature/sitrep-list-impl → feature/sitrep-generate-impl
-   glab mr merge 14 --squash=false --remove-source-branch=false
-   # Whole stack: feature/sitrep-generate-impl → main (LE pre-opened as !16)
-   glab mr merge 16 --squash=false --remove-source-branch=false
+   # Merge in dependency order — each MR must target the next
+   glab mr merge <MR-for-T-62-impl> --squash=false --remove-source-branch=false
+   glab mr merge <MR-for-T-63-impl> --squash=false --remove-source-branch=false
+   # Then merge feature/sitrep-generate-impl (T-61-impl) → main
+   glab mr merge <MR-for-T-61-impl> --squash=false --remove-source-branch=false
    ```
-   If GitLab reports conflicts after !15, refresh/rebase the source branch of !14 per GitLab UI, then continue.
-   Find other MRs with: `glab mr list --all`
+   Find MR IIDs with: `glab mr list --state=opened`
 
 3. Verify all tests pass on `main`:
    ```bash

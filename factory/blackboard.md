@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution (Batch 3: Sonnet 4.5 — UI views)
+**Phase:** 3 — Execution (release task remaining: **T-68-release** in `tasks/pending/`)
 
 **Milestone:** AI → SitRep (GitLab IID 4, internal id 7419357)
 
@@ -56,9 +56,18 @@ _None._
 
 ---
 
+# Event queue (LE)
+
+- **PENDING:** `T-68-release.md` — **unblocked** after T-62/T-63 LE verification (merge stacked MRs → `main`, then tag/branch per task / SAO).
+- **CLAIMED:** —
+- **Done worker tasks:** T-60 through T-67, T-61/62/63 steps+impl (see `tasks/done/`).
+
+---
+
 # Event log
 
 <!-- Append-only: LE and workers add dated lines -->
+- **2026-05-12 (LE)** ✅ **Batch 3 LE verification** — T-62-impl (!14 → `feature/sitrep-generate-impl`) + T-63-impl (!15 → `feature/sitrep-list-impl`): branches on origin; MRs open; list 19 + view 31 scenario tests green locally; full `pytest tests/` **500 passed, 1 skipped** on tip `feature/sitrep-view-impl`. MR `head_pipeline` null — **expected** (`.gitlab-ci.yml` workflow = `release/*` only). **T-62 scope debt:** `factory/**` + `tests/ui/conftest.py` in branch vs task file list — cleanup at integration or accept as factory bookkeeping; MR text documents only `projects/detail` + vitals test.
 - **2026-05-12 12:52** ✅ **Batch 1 COMPLETE** (Sonnet 4.5). All 7 tasks done:
   - Backend chain: T-60 (MR !5), T-64 (MR !6), T-65a (MR !7), T-65b (MR !8)
   - Step-defs: T-61-steps (MR !9, 20 RED), T-62-steps (MR !10, 19 RED), T-63-steps (MR !11, 31 RED)

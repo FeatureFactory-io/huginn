@@ -67,17 +67,14 @@ Full suite: `pytest tests/ -x`
 
 ## Result
 <!-- Worker fills in after completion -->
-- Branch pushed:
-- MR URL:
-- Checkpoint exit code:
-- Scenario count green (31):
-- Notes:
+- Branch pushed: `origin/feature/sitrep-view-impl` @ `b9ef7d1`
+- MR URL: https://gitlab.com/dp2580/huginn/-/merge_requests/15 (→ `feature/sitrep-list-impl`)
+- Checkpoint exit code: 0 (`pytest tests/ui/test_sitrep_view_scenarios.py` — 31/31)
+- Notes (LE 2026-05-12): Worker `# Result` block was blank — verified remotely. MR pipeline N/A (release-branch-only workflow). Stacked branch full suite: 500 passed, 1 skipped.
 
 # Result
 
 status: passed
-branch: ""
-mr: ""
-commit_sha: ""
-
-_(worker: fill branch, merge request IID, commit SHA; set status to failed or blocked if applicable)_
+branch: "feature/sitrep-view-impl"
+mr: "15"
+commit_sha: "b9ef7d1af7ce49d988a0017815c0fd8faf7a6fad"
