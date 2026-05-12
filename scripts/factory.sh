@@ -96,6 +96,8 @@ while :; do
         --workspace "\$wt" \\
         "\$COMBINED_PROMPT" \\
         2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+      "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
+      (cd "$REPO_ROOT" && git add factory/tasks/ && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
     fi
   done
 done
