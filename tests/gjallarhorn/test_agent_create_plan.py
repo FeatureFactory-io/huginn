@@ -48,9 +48,21 @@ class TestCreatePlan:
         assert ExecutionPlan.objects.filter(plan_id=plan.plan_id).exists()
         assert PlanStep.objects.filter(plan=plan).count() == 5
 
-    def test_enqueues_execute_plan(self, agent, conversation):
+    def test_enqueues_execute_plan(self, agent, conversation, scripted_llm_factory):
+        from gjallarhorn.llm.base import LLMResponse
+
         steps = make_step_dicts(5)
-        plan = agent.create_plan(conversation, "Generate SitRep", steps)
+        responses = [
+            LLMResponse(content="ok", stop_reason="end_turn", usage={}, tool_calls=[], model="t") for _ in steps
+        ]
+        inner_llm = scripted_llm_factory(responses)
+        inner_executor = MagicMock()
+        inner_executor.execute.return_value = {"success": True, "result": None, "error": None}
+        inner_agent = agent.__class__(llm=inner_llm, tool_executor=inner_executor)
+
+        with patch("gjallarhorn.tasks.plan_tasks._build_agent_for_plan", return_value=inner_agent):
+            plan = agent.create_plan(conversation, "Generate SitRep", steps)
+
         plan.refresh_from_db()
         assert plan.status != "pending"
 

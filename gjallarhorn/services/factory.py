@@ -9,6 +9,21 @@ from gjallarhorn.mcp_tools.sitrep_tools import (
 )
 
 
+def create_agent(plan):
+    """Build a GjallarhornAgent for the given ExecutionPlan.
+
+    Uses ClaudeLLM and a ToolExecutor scoped to the plan's project/user.
+    """
+    from gjallarhorn.agent.agent import GjallarhornAgent
+    from gjallarhorn.llm.claude import ClaudeLLM
+
+    project = plan.conversation.project
+    user = plan.conversation.user
+    executor = build_executor(user=user, project=project)
+    llm = ClaudeLLM()
+    return GjallarhornAgent(llm=llm, tool_executor=executor)
+
+
 def build_executor(user, project) -> ToolExecutor:
     """Build a ToolExecutor with all narrative-phase read tools registered.
 
