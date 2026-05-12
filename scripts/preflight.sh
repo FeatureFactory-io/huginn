@@ -73,7 +73,7 @@ if [[ "$MOCKS_FOUND" != true ]]; then
   echo "warn: no mockups under ui/templates/ui/mockups/ or repo-root mockups/"
 fi
 
-ISSUES_JSON="$(glab issue list -R "$GLAB_REPO" --milestone "$MILESTONE" -F json)" || {
+ISSUES_JSON="$(glab issue list -R "$GLAB_REPO" --milestone "$MILESTONE" -O json)" || {
   echo "error: glab issue list failed — check milestone title, remote -R ${GLAB_REPO}, and auth (glab auth login)" >&2
   exit 1
 }
