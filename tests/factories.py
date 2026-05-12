@@ -1,10 +1,10 @@
 """factory_boy factories for tests."""
 
-import factory
 from django.utils import timezone
-from factory.django import DjangoModelFactory
 
+import factory
 from accounts.models import User
+from factory.django import DjangoModelFactory
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
 from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
