@@ -102,6 +102,22 @@ while :; do
       "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
       printf '\n- **%s %s** ✅ **%s** done **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
       (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
+      if [[ "$role" == "release-engineer" ]]; then
+        for _i in \$(seq 1 40); do
+          sleep 60
+          _status="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep 'release/' | head -1 | awk '{print \$1}')"
+          printf '\n- **%s** 🔄 pipeline: %s\n' "\$(date +%H:%M:%S)" "\$_status" >> "$REPO_ROOT/factory/blackboard.md"
+          if [[ "\$_status" == "(success)" ]]; then
+            _staging="\$(grep STAGING_URL "$REPO_ROOT/staging.env" 2>/dev/null | cut -d= -f2)"
+            printf '\n- **%s** 🌐 **staging ready:** %s\n' "\$(date +%H:%M:%S)" "\${_staging:-see GitLab pipeline}" >> "$REPO_ROOT/factory/blackboard.md"
+            break
+          elif [[ "\$_status" == "(failed)" ]]; then
+            _url="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep 'release/' | head -1 | awk '{print \$NF}')"
+            printf '\n- **%s** ❌ **pipeline FAILED** — %s\n' "\$(date +%H:%M:%S)" "\$_url" >> "$REPO_ROOT/factory/blackboard.md"
+            break
+          fi
+        done
+      fi
     fi
   done
 done
@@ -130,7 +146,7 @@ DONE:     $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/done/     2>/dev/null | tr '\
 REJECTED: $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | tr '\n' ' ')
 
 OPEN GITLAB ISSUES (milestone):
-$(glab issue list --milestone "MILESTONE_PLACEHOLDER" --state=opened 2>/dev/null | head -40)
+$(glab issue list --milestone "MILESTONE_PLACEHOLDER" 2>/dev/null | head -40)
 
 RECENT DONE/REJECTED FILES:
 $(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | head -10 | while read f; do echo "=== $f ==="; cat "REPO_ROOT_PLACEHOLDER/factory/tasks/done/$f" "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/$f" 2>/dev/null | tail -20; done)"
