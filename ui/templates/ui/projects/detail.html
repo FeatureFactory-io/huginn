@@ -35,7 +35,7 @@
     {% else %}
     <button type="button" class="btn btn-link btn-sm px-0 py-0 disabled text-muted text-decoration-none" disabled aria-disabled="true" data-testid="project-sync-now-disabled">Sync now (archived)</button>
     {% endif %}
-    <a class="btn btn-primary btn-sm disabled" href="#" tabindex="-1" aria-disabled="true" data-testid="project-sitreps-placeholder" title="Latest SitRep route is not wired yet."><i class="fa-solid fa-file-waveform me-1"></i>Open Last SitRep</a>
+    <a class="btn btn-primary btn-sm" href="{% url 'sitrep-list' project.slug %}" data-testid="project-open-sitreps"><i class="fa-solid fa-file-lines me-1"></i>Open SitReps</a>
   </div>
 </section>
 
