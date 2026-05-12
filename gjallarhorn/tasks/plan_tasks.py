@@ -41,7 +41,10 @@ def execute_plan(self, plan_id: str) -> None:
 
         plan.mark_completed()
         # TODO(chat-milestone): _notify_ai_of_plan_success(plan)
-        # TODO(sitrep-generate): _persist_sitrep_from_plan(plan)
+        if plan.sitrep_from_dt is not None:
+            from gjallarhorn.services.sitrep_service import _persist_sitrep_from_plan
+
+            _persist_sitrep_from_plan(plan)
 
     except (TimeoutError, OSError) as exc:
         plan.refresh_from_db()

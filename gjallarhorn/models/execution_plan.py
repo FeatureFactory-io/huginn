@@ -26,6 +26,9 @@ class ExecutionPlan(models.Model):
     progress_current = models.IntegerField(default=0)
     progress_total = models.IntegerField(default=0)
     progress_message = models.CharField(max_length=255, blank=True)
+    sitrep_from_dt = models.DateTimeField(null=True, blank=True)
+    sitrep_to_dt = models.DateTimeField(null=True, blank=True)
+    sitrep_trigger = models.CharField(max_length=16, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def mark_started(self) -> None:

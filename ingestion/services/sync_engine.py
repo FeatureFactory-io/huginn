@@ -13,6 +13,7 @@ from django.utils import timezone
 from ingestion.adapters import adapter_classes_for
 from ingestion.domain.increments import IncrementDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
+from ingestion.signals import sync_project_completed
 
 if TYPE_CHECKING:
     from ingestion.adapters.base import DataSourceAdapter
@@ -74,9 +75,15 @@ class SyncEngine:
         run.status = IngestionRun.Status.SUCCESS
         run.finished_at = timezone.now()
         run.save(update_fields=["status", "finished_at", "cursor_to", "increments_ingested", "contributors_touched"])
+        sync_completed_at = timezone.now()
         Project.objects.filter(pk=project.pk).update(
             sync_state=Project.SyncState.ACTIVE,
-            last_sync_at=timezone.now(),
+            last_sync_at=sync_completed_at,
+        )
+        sync_project_completed.send(
+            sender=self.__class__,
+            project=project,
+            to_dt=sync_completed_at,
         )
         return run
 
