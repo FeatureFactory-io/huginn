@@ -91,6 +91,8 @@ while :; do
       $CURSOR_BIN \\
         --print \\
         --yolo \\
+        --output-format stream-json \\
+        --stream-partial-output \\
         --workspace "\$wt" \\
         "\$COMBINED_PROMPT" \\
         2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log"
