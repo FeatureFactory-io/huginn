@@ -96,7 +96,9 @@ while :; do
         --stream-partial-output \\
         --workspace "\$wt" \\
         "\$COMBINED_PROMPT" \\
-        2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+        2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.jsonl" \
+             | jq -r 'select(.type=="text") | .text' 2>/dev/null \
+             | tee -a "$REPO_ROOT/factory/logs/${role}.log"
       "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
       printf '\n- **%s %s** ✅ **%s** done **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
       (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
@@ -139,7 +141,9 @@ $(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/
     --stream-partial-output \
     --workspace "REPO_ROOT_PLACEHOLDER" \
     "$PROMPT" \
-    2>&1 | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.log"
+    2>&1 | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.jsonl" \
+         | jq -r 'select(.type=="text") | .text' 2>/dev/null \
+         | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.log"
   (cd "REPO_ROOT_PLACEHOLDER" && git pull --rebase 2>/dev/null; git add factory/ && git commit -m "factory: LE pass ($reason)" && git push) 2>/dev/null || true
 }
 
