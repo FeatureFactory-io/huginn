@@ -104,9 +104,44 @@ done
 EOF
 }
 
-# LE window — plain shell for the human engineer on the mgmt branch
-tmux new-session -d -s "$SESSION" -n "le" \
-  "cd \"$REPO_ROOT\" && git checkout $MGMT_BRANCH 2>/dev/null; exec bash"
+# LE window — autonomous agent loop on mgmt branch, reviews done/ tasks
+LE_LOOP=$(cat <<'LEEOF'
+cd "REPO_ROOT_PLACEHOLDER" && git checkout MGMT_PLACEHOLDER 2>/dev/null || true
+while :; do
+  changed="$(fswatch -1 "REPO_ROOT_PLACEHOLDER/factory/tasks/done" 2>/dev/null)"
+  [[ -f "$changed" ]] || continue
+  task_id="$(basename "$changed" .md)"
+  PROMPT="$(cat REPO_ROOT_PLACEHOLDER/prompts/lead-engineer.md)
+
+---
+
+FACTORY STATE:
+$(cat REPO_ROOT_PLACEHOLDER/factory/blackboard.md)
+
+TASK JUST COMPLETED — review per checks 1-6 in your prompt, then act:
+$(cat "$changed")
+
+PENDING:
+$(ls REPO_ROOT_PLACEHOLDER/factory/tasks/pending/ 2>/dev/null)
+
+CLAIMED:
+$(ls REPO_ROOT_PLACEHOLDER/factory/tasks/claimed/ 2>/dev/null)"
+  CURSOR_BIN_PLACEHOLDER \
+    --print \
+    --yolo \
+    --output-format stream-json \
+    --stream-partial-output \
+    --workspace "REPO_ROOT_PLACEHOLDER" \
+    "$PROMPT" \
+    2>&1 | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.log"
+  (cd "REPO_ROOT_PLACEHOLDER" && git add factory/ && git commit -m "factory: LE reviewed $task_id" && git push) 2>/dev/null || true
+done
+LEEOF
+)
+LE_LOOP="${LE_LOOP//REPO_ROOT_PLACEHOLDER/$REPO_ROOT}"
+LE_LOOP="${LE_LOOP//MGMT_PLACEHOLDER/$MGMT_BRANCH}"
+LE_LOOP="${LE_LOOP//CURSOR_BIN_PLACEHOLDER/$CURSOR_BIN}"
+tmux new-session -d -s "$SESSION" -n "le" "bash -c $(printf '%q' "$LE_LOOP"); bash"
 
 for role in "${ROLES[@]}"; do
   tmux new-window -t "$SESSION" -n "$role" \
