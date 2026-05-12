@@ -43,13 +43,13 @@ push `release/2026.05.12`, and let CI deploy to staging.
 
 4. Create and push the release tag:
    ```bash
-   git tag v2026.05.12
-   git push origin v2026.05.12
+   git tag 2026.05.12
+   git push origin 2026.05.12
    ```
 
 5. Create and push the release branch at that tag:
    ```bash
-   git checkout -b release/2026.05.12 v2026.05.12
+   git checkout -b release/2026.05.12 2026.05.12
    git push origin release/2026.05.12
    ```
    This triggers the GitLab CI pipeline (validate → lint → test → build → deploy_staging).
@@ -68,6 +68,7 @@ push `release/2026.05.12`, and let CI deploy to staging.
 ## Do not do
 - Do NOT run `make swap` or `promote_production` — that is a manual human step.
 - Do NOT squash commits — preserve history.
+- Do NOT prefix the tag with `v` — the CI gate expects `x.y.z` not `vx.y.z` (branch `release/x.y.z` strips the prefix to find the tag).
 
 ## Allowed tools
 `git`, `glab`, `make`, `pytest`
