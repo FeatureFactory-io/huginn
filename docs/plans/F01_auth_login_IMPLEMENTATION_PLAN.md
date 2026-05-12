@@ -30,7 +30,7 @@ Canonical route: **`/accounts/login/`** (`auth-login`). Feature background refer
 3. `ui.services.authentication_service.AuthenticationService` — `authenticate_user` / `logout_user` → `NotImplementedError`.
 4. `LoginScreenView` — GET render `ui/auth/login.html`; POST call service and catch `NotImplementedError` with inline message (skeleton UX).
 5. Wire `urls.py` → `accounts/login/`; template `login-email`, `login-password`, `login-submit` `data-testid` per feature.
-6. Integration checkpoint: pytest proves service raises until MIT implements.
+6. Integration checkpoint: pytest proves service raises until implementation completes.
 
 ## Checkpoint
 

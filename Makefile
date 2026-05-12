@@ -1,4 +1,5 @@
 .DEFAULT_GOAL := help
+# Local dev: project venv. CI jobs use make ci-lint / make ci-test (ephemeral .ci-venv-*).
 PYTHON        := .venv/bin/python
 PIP           := .venv/bin/pip
 PYTEST        := .venv/bin/pytest
@@ -63,6 +64,7 @@ logs: ## Tail all container logs
 export SECRET_KEY ?= ci-test-secret-key-not-used-in-prod
 
 .PHONY: test
+test: export PYTHONPATH := .
 test: ## Run all tests
 	$(PYTEST)
 
@@ -128,6 +130,68 @@ infra-deploy-cdn: ## Deploy HuginnCdn (ACM + CloudFront + Route53 CNAME) — Pha
 .PHONY: infra
 infra: ## Deploy all CDK stacks (use with caution on existing infra)
 	cd infra && $(CDK_VENV)/cdk deploy --all
+
+##@ Deploy (AWS EB)
+
+# Same scripts as GitLab CI. Requires AWS CLI, EB_* and ECR_REGISTRY (see GitLab project variables / SAO).
+# The ECR image huginn:$(CI_COMMIT_SHORT_SHA) must already exist before staging succeeds.
+#
+# Staging only — which *revision* to deploy to the inactive EB:
+#   (1) CI_COMMIT_SHORT_SHA if set (CI), else (2) BRANCH=… (any git ref), else (3) HEAD.
+# GNU Make: use `make staging BRANCH=release/0.0.6` (not `--branch=`).
+#
+# swap / promote: **no BRANCH**. Promotes **whatever EB VersionLabel is on the inactive env now**
+# (after you tested on staging; bugfix loop = redeploy staging, then swap). Optional CI_COMMIT_SHORT_SHA
+# must match that label or the script aborts (GitLab sets it to the pipeline SHA).
+
+.PHONY: staging
+staging: ## Deploy chosen revision to inactive EB (staging smoke). Optional BRANCH=git-ref; default HEAD. CI sets CI_COMMIT_SHORT_SHA.
+	@set -e; \
+	if [ -n "$$CI_COMMIT_SHORT_SHA" ]; then sha="$$CI_COMMIT_SHORT_SHA"; \
+	elif [ -n "$(BRANCH)" ]; then sha=$$(git rev-parse --short "$(BRANCH)"); \
+	else sha=$$(git rev-parse --short HEAD); fi; \
+	if [ -n "$(BRANCH)" ]; then echo "Using ECR/huginn:$$sha (from ref $(BRANCH))"; else echo "Using ECR/huginn:$$sha (HEAD)"; fi; \
+	CI_COMMIT_SHORT_SHA="$$sha" bash scripts/deploy-staging.sh
+
+.PHONY: swap
+swap: ## Promote **current staging** (inactive EB) to prod — not HEAD/BRANCH. Same SHA as inactive VersionLabel (or CI_COMMIT_SHORT_SHA must match it).
+	bash scripts/promote-prod.sh
+
+##@ CI glue (GitLab)
+
+# .gitlab-ci.yml is thin glue: install `make`, then call these targets. Kaniko and GitLab
+# release-cli images have no Make — those jobs invoke the same scripts as `make ci-build`
+# / `make gitlab-release` (see comments in .gitlab-ci.yml).
+
+.PHONY: verify-release
+verify-release: ## Validate release/x.y.z matches pushed tag x.y.z (CI validate stage)
+	bash scripts/ci-verify-release-branch.sh
+
+.PHONY: ci-lint
+ci-lint: ## [CI] Ruff check + format via ephemeral venv (same rules as make lint)
+	bash scripts/ci-lint.sh
+
+.PHONY: ci-test
+ci-test: ## [CI] pytest with Node.js for CDK/jsii (same suite as make test)
+	bash scripts/ci-test.sh
+
+.PHONY: ci-prepare-aws
+ci-prepare-aws: ## [CI] Install AWS CLI v2 for EB deploy/promote jobs
+	bash scripts/ci-prepare-aws.sh
+
+.PHONY: ci-build
+ci-build: ## [CI] Kaniko → ECR (requires /kaniko/executor; GitLab build job)
+	bash scripts/ci-kaniko-build.sh
+
+.PHONY: gitlab-release
+gitlab-release: ## [CI] GitLab Release via release-cli (GitLab release stage)
+	bash scripts/ci-create-gitlab-release.sh
+
+.PHONY: ci-staging-deploy
+ci-staging-deploy: ci-prepare-aws staging ## [CI] AWS CLI + deploy to inactive EB (staging smoke)
+
+.PHONY: ci-promote
+ci-promote: ci-prepare-aws swap ## [CI] AWS CLI + swap prod CNAME + smoke prod
 
 ##@ Cleanup
 

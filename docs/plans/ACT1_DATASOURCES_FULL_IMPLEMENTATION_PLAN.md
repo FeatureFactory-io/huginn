@@ -8,7 +8,7 @@
 
 ## Codebase State at Planning Time
 
-What already exists (skeletons from the prior MIT sprint):
+What already exists (skeletons from the prior iteration):
 
 | Layer | File | State |
 |---|---|---|

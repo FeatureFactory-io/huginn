@@ -1,10 +1,10 @@
-# Orient Summary — 2026-05-05 (ITER-2026-W19)
+# Iteration orient summary — 2026-05-05 (ITER-2026-W19)
 
 ## Input Scope
 
 **Iteration goal**
 
-> Ship Acts 0–2 (inclusive) on real Django code: **AUTH-LOGIN-1**, full **DataSources** management surface (list/create/view/edit/delete), and **Projects** (list, import, view, edit, archive) as **skeleton-first** vertical slices, each with BPE-01 plan + checkpoint test, ready for MIT execution from a GitLab milestone manifest.
+> Ship Acts 0–2 (inclusive) on real Django code: **AUTH-LOGIN-1**, full **DataSources** management surface (list/create/view/edit/delete), and **Projects** (list, import, view, edit, archive) as **skeleton-first** vertical slices, each with BPE-01 plan + checkpoint test, ready for **dark-factory / Lead Engineer** execution from a GitLab milestone manifest.
 
 **Scenarios (one feature file each — 11 total)**
 
@@ -22,7 +22,7 @@
 | F10 | 2 | `PROJECTS-EDIT_PROJECT-1` | `docs/features/act-2-projects/projects-edit.feature` |
 | F11 | 2 | `PROJECTS-ARCHIVE_PROJECT-1` | `docs/features/act-2-projects/projects-archive.feature` |
 
-**Deferred / scope cuts for this skeleton iteration** (scenarios remain in `.feature`; MIT may annotate `(deferred)`)
+**Deferred / scope cuts for this skeleton iteration** (scenarios remain in `.feature`; a later factory pass may annotate `(deferred)`)
 
 - Heavy GitLab failure-path UX (401/404/network live handling) → stub messaging only until real client hardened.
 - Project detail **recent activity** populated rows → empty state unless pipeline exists.
@@ -44,9 +44,9 @@ n/a — baseline.
 
 - **F03 / F08** share a thin **GitLab client** abstraction — sequence footprint so import (F08) commits after client exists (F03).
 - **Model landings**: **`DataSource`** with F02 list; **`Project`** introduced when first needed for projects list (**F07**).
-- Parallel execution during MIT expect **overlap within Act 1 and Act 2 clusters** until conflict map assigns groups.
+- Parallel execution during implementation expect **overlap within Act 1 and Act 2 clusters** until conflict map assigns groups.
 
 ## Watch For
 
-- **Footprint creep** across F02–F06 and F07–F11 — keep each **`chore(pit): skeleton F{NN}`** commit bounded to that feature only.
+- **Footprint creep** across F02–F06 and F07–F11 — keep each **`chore(skeleton): F{NN}`** commit bounded to that feature only.
 - **GitLab vs GitHub** in reference docs — milestone/issues use **`glab`** and **GitLab IID** (`gitlab_issue` in manifest YAML).

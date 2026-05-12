@@ -17,7 +17,7 @@
 
 ## Implementation Steps (skeleton)
 
-1. `ProjectsEditView` GET pre-populates display name; POST calls `update_project_configuration` (raises until MIT).
+1. `ProjectsEditView` GET pre-populates display name; POST calls `update_project_configuration` (raises until implementation).
 2. Detail surface links to edit route.
 
 ## Checkpoint

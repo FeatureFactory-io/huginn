@@ -4,7 +4,7 @@
 
 | File | Lines | Note |
 | --- | --- | --- |
-| [ingestion/models/__init__.py](../../../ingestion/models/__init__.py) | Project.status | ARCHIVED wired in MIT; service stub only here |
+| [ingestion/models/__init__.py](../../../ingestion/models/__init__.py) | Project.status | ARCHIVED wired in implementation; service stub only here |
 | [ui/services/projects_service.py](../../../ui/services/projects_service.py) | `archive_project` | POST → `NotImplementedError` |
 | [ui/views/projects.py](../../../ui/views/projects.py) | ProjectsArchiveView | GET confirm + POST |
 | [ui/templates/ui/projects/archive.html](../../../ui/templates/ui/projects/archive.html) | full | |
@@ -14,11 +14,11 @@
 
 ## Do Not Do
 
-- Do NOT implement modal focus-trap (feature accessibility) until MIT UI passes.
+- Do NOT implement modal focus-trap (feature accessibility) until UI passes acceptance for this screen.
 
 ## Implementation Steps (skeleton)
 
-1. `ProjectsArchiveView` confirmation GET; POST → `archive_project` (raises until MIT).
+1. `ProjectsArchiveView` confirmation GET; POST → `archive_project` (raises until implementation).
 2. Detail links to archive route.
 
 ## Checkpoint

@@ -1,4 +1,4 @@
-# Orient Summary — 2026-05-07 (Playbooks + FRAGOs + Awareness)
+# Iteration orient summary — 2026-05-07 (Playbooks + FRAGOs + Awareness)
 
 ## Input Scope
 
@@ -45,10 +45,10 @@ Latest **`footprint_accuracy`**: **0.92** — treat as **stable** until this ite
 ## Scope Validation
 
 - **FG01** then **SA01** likely share **`sitrep/` package surface** (models/admin/migrations). Prefer **merge FG01 before SA01** or split modules early to reduce churn (see manifest conflict map).
-- **FG02–FG04** share operational FRAGO UI footprint (`ui/urls.py`, views, templates). Prefer **FG02 → FG03 → FG04** ordering unless PIT-02 footprints prove disjoint files.
+- **FG02–FG04** share operational FRAGO UI footprint (`ui/urls.py`, views, templates). Prefer **FG02 → FG03 → FG04** ordering unless manifest footprint analysis shows disjoint files.
 - **PB08** (project playbook FK) intersects FG03 variable picklists — confirm **`assigned_playbook` / active version** semantics before FRAGO “Affected Variable” QA depth.
 
 ## Watch For
 
-- **Footprint creep** outside issue bodies + SAO do-not-do lists (`footprint_violation` in PIT drift thresholds).
+- **Footprint creep** outside issue bodies + SAO do-not-do lists (`footprint_violation` in iteration drift thresholds).
 - **Milestone naming drift**: canonical title on GitLab is **Playbooks + FRAGOs + Awareness**; local docs must not resurrect **Playbooks et al** as the milestone label.

@@ -38,7 +38,7 @@ class AppStack(Stack):
 
     EB environments are *infrastructure-only* — CDK owns platform, VPC placement,
     instance type, and static env properties. Application version deployment
-    (Docker image SHA) continues to be managed by scripts/deploy.sh.
+    (Docker image SHA) continues to be managed by scripts/deploy-staging.sh and promote-prod.sh.
 
     Resource names match existing AWS resources exactly for cdk import (Phase 2/4):
       ECR repo       huginn

@@ -4,7 +4,7 @@
 
 | File | Lines | Note |
 | --- | --- | --- |
-| [ingestion/models/__init__.py](../../ingestion/models/__init__.py) | Project | Rows listable in MIT; skeleton keeps `projects=[]` in view |
+| [ingestion/models/__init__.py](../../ingestion/models/__init__.py) | Project | Rows listable after implementation; skeleton keeps `projects=[]` in view |
 | [ingestion/admin.py](../../../ingestion/admin.py) | ProjectAdmin | Register for ops visibility |
 | [ingestion/migrations/0002_project_model.py](../../../ingestion/migrations/0002_project_model.py) | full | Depends on DataSource FK |
 | [ui/views/projects.py](../../../ui/views/projects.py) | ProjectsListView | `login_required`, empty shell context |
@@ -14,7 +14,7 @@
 
 ## Do Not Do
 
-- Do NOT populate list from ORM in the skeleton slice (MIT wires `ProjectsService` + queryset rules).
+- Do NOT populate list from ORM in the skeleton slice (implementation wires `ProjectsService` + queryset rules).
 - Do NOT add `FOB-*` identifiers.
 - Do NOT edit `ui/templates/ui/mockups/**` for this footprint.
 

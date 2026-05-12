@@ -1,97 +1,106 @@
+# App release pipeline: workflow + runner images only. Work lives in Makefile + scripts/.
+# Flow: tag x.y.z on main → push branch release/x.y.z at same commit → pipeline runs
+# validate → lint → test → (optional infra child) → build → staging → GitLab Release → manual promote.
+#
+# Targets: make verify-release | ci-lint | ci-test | ci-staging-deploy | gitlab-release | ci-promote
+# Kaniko / release-cli images omit GNU make — build + create_release call the same bash scripts as
+# `make ci-build` and `make gitlab-release`.
+
 stages:
+  - validate
   - lint
   - test
   - infra
   - build
   - deploy
+  - release
+  - promote
 
 variables:
   PYTHON_IMAGE: python:3.12-slim
+  GIT_DEPTH: "0"
 
-# Only create pipelines for release/* branches (saves shared runner minutes).
 workflow:
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
+    - if: $CI_COMMIT_BRANCH =~ /^release\/[0-9]+\.[0-9]+\.[0-9]+$/
 
-# ──────────────────────────────────────────────────────────────
-# LINT  — release/* branches only (see workflow:)
-# ──────────────────────────────────────────────────────────────
-lint:
-  stage: lint
+.verify-job: &verify-job
+  stage: validate
+  image: alpine:3.19
+  before_script:
+    - apk add --no-cache git bash grep make
+  script:
+    - make verify-release
+
+verify_release_branch:
+  <<: *verify-job
+
+.python-with-make: &python-with-make
   image: $PYTHON_IMAGE
   before_script:
-    - pip install ruff --quiet
-  script:
-    - ruff check .
-    - ruff format --check .
+    - apt-get update -qq && apt-get install -y -qq make
 
-# ──────────────────────────────────────────────────────────────
-# TEST  — release/* branches only (see workflow:)
-# ──────────────────────────────────────────────────────────────
+lint:
+  stage: lint
+  <<: *python-with-make
+  script:
+    - make ci-lint
+
 test:
   stage: test
-  image: $PYTHON_IMAGE
+  <<: *python-with-make
   variables:
     SECRET_KEY: ci-test-secret-key-not-used-in-prod
     PYTHONPATH: "."
-  before_script:
-    # aws-cdk / jsii synth tests need a Node.js runtime during pytest collection
-    - apt-get update -qq && apt-get install -y -qq nodejs
-    - pip install -r requirements.txt --quiet
   script:
-    - pytest --tb=short -q
+    - make ci-test
 
-# ──────────────────────────────────────────────────────────────
-# INFRA — trigger child pipeline when infra/ changes (release/* only)
-# The child pipeline (infra/gitlab-ci.yml) runs CDK test/diff/deploy.
-# Remove `strategy: depend` until the infra pipeline is stable, then
-# re-enable so infra failures block the app pipeline.
-# ──────────────────────────────────────────────────────────────
 infra-pipeline:
   stage: infra
   trigger:
     include: infra/gitlab-ci.yml
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
+    - if: $CI_COMMIT_BRANCH =~ /^release\/[0-9]+\.[0-9]+\.[0-9]+$/
       changes:
         - infra/**/*
 
-# ──────────────────────────────────────────────────────────────
-# BUILD — release/* branches only
-# Uses kaniko (no Docker daemon, no DinD, ECR auth via AWS env vars)
-# ──────────────────────────────────────────────────────────────
 build:
   stage: build
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
   script:
-    - /kaniko/executor
-        --context "${CI_PROJECT_DIR}"
-        --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
-        --build-arg "GIT_REVISION=${CI_COMMIT_SHORT_SHA}"
-        --destination "${ECR_REGISTRY}/huginn:${CI_COMMIT_SHORT_SHA}"
-        --destination "${ECR_REGISTRY}/huginn:latest"
+    - bash scripts/ci-kaniko-build.sh
 
-# ──────────────────────────────────────────────────────────────
-# DEPLOY — release/* branches only, after build
-# Deploys to the inactive EB env, then smoke-tests it.
-# The 'swap' job below is the manual gate to promote to prod.
-# ──────────────────────────────────────────────────────────────
-deploy:
+deploy_staging:
   stage: deploy
-  image: $PYTHON_IMAGE
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
+  <<: *python-with-make
   needs: [build]
-  before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip gettext-base zip python3
-    - curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-    - unzip -q /tmp/awscliv2.zip -d /tmp && /tmp/aws/install
   script:
-    - bash scripts/deploy.sh
+    - make ci-staging-deploy
+  artifacts:
+    reports:
+      dotenv: staging.env
+  environment:
+    name: staging
+    url: $STAGING_URL
+
+create_release:
+  stage: release
+  image:
+    name: registry.gitlab.com/gitlab-org/release-cli:latest
+    entrypoint: [""]
+  needs: [deploy_staging]
+  script:
+    - bash scripts/ci-create-gitlab-release.sh
+
+promote_production:
+  stage: promote
+  <<: *python-with-make
+  when: manual
+  needs: [create_release]
+  script:
+    - make ci-promote
   environment:
     name: production
     url: https://huginn.featurefactory.io

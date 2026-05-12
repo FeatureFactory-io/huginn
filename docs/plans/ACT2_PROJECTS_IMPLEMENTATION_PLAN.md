@@ -2,7 +2,7 @@
 
 ## BPE-01 (Plan) vs later steps
 
-**BPE-01 — Plan** (this document) should be the agreed roadmap plus **GitLab tracking issues** (drafts below). Coding and merge requests follow your BPE/MIT cadence after sign-off.
+**BPE-01 — Plan** (this document) should be the agreed roadmap plus **GitLab tracking issues** (drafts below). Coding and merge requests follow your **BPE** cadence and the **dark-factory** skill after sign-off.
 
 If your team already merged implementation work against this plan, treat the **Implementation record** section as a sync point with the repo; the phased checklist and issue list remain valid for backlog hygiene and audits.
 
