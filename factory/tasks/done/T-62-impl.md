@@ -65,8 +65,14 @@ Full suite: `pytest tests/ -x`
 
 ## Result
 <!-- Worker fills in after completion -->
-- Branch pushed:
-- MR URL:
-- Checkpoint exit code:
-- Scenario count green (22):
-- Notes:
+- Branch pushed: `origin/feature/sitrep-list-impl` @ `b5b0c30`
+- MR URL: https://gitlab.com/dp2580/huginn/-/merge_requests/14 (→ `feature/sitrep-generate-impl`)
+- Checkpoint exit code: 0 (`pytest tests/ui/test_sitrep_list_scenarios.py` — 19 passed; matches Gherkin rows 01, 02, 06–22)
+- Notes (LE 2026-05-12): Worker `# Result` block was blank — verified remotely. GitLab MR pipeline N/A (release-branch-only workflow). `pytest tests/` on stacked `feature/sitrep-view-impl`: 500 passed, 1 skipped. **Scope debt:** commit also touches `factory/**`, `tests/ui/conftest.py`; only `projects/detail.html` + vitals test called out in MR.
+
+# Result
+
+status: passed
+branch: "feature/sitrep-list-impl"
+mr: "14"
+commit_sha: "b5b0c30ff4ae3cbf764dbe2c58b9d97abe9527df"

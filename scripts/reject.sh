@@ -25,6 +25,9 @@ for src in "factory/tasks/done/${TASK_ID}.md" "factory/tasks/claimed/${TASK_ID}.
     } >"$LOG"
     rm -f "$src"
     echo "Archived to ${LOG}"
+    printf '\n- **%s %s** ❌ **LE** rejected **%s** — %s\n' \
+      "$(date +%Y-%m-%d)" "$(date +%H:%M:%S)" "$TASK_ID" "$REASON" \
+      >> factory/blackboard.md
     echo "Next: copy or recreate factory/tasks/pending/${TASK_ID}.md from the archive," >&2
     echo "      bump attempt: in frontmatter, then git commit per factory convention." >&2
     exit 0
