@@ -13,11 +13,13 @@ DEBUG = False
 # SECURE_SSL_REDIRECT would loop on every non-/health/ path. Cookies are still
 # marked Secure because viewers always speak HTTPS at the edge.
 SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
+CSRF_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
 
 # Explicitly trust the public domain for CSRF on HTMX POST requests.
-CSRF_TRUSTED_ORIGINS = ["https://huginn.featurefactory.io"]
+# EXTRA_CSRF_ORIGINS may be set as a comma-separated EB env var for staging.
+_extra_csrf = [o for o in os.environ.get("EXTRA_CSRF_ORIGINS", "").split(",") if o]
+CSRF_TRUSTED_ORIGINS = ["https://huginn.featurefactory.io"] + _extra_csrf
 
 # HSTS — start at 1 hour; bump SECURE_HSTS_SECONDS to 31536000 after a week
 # of stable HTTPS operation.
