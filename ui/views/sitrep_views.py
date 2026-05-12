@@ -1,4 +1,4 @@
-"""SitRep list and generation (SITREP-LIST+FIND-1)."""
+"""SitRep UI views — list, generation (SITREP-LIST+FIND-1), and narrative detail (SITREP-VIEW_SITREP-1)."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ from sitrep.models import SitRep
 logger = logging.getLogger(__name__)
 
 _TRIGGER_LABELS = {"automatic": "Auto", "manual": "Manual"}
+_MODE_LABELS = {"semi_auto": "Semi-Auto", "auto": "Auto"}
 _TOAST_MESSAGE = "SitRep generation started — this may take a moment."
 
 
@@ -70,6 +71,28 @@ def _since_last_label(*, project: Project, now: timezone.datetime) -> str:
     if prior is None:
         return "Since last SitRep"
     return f"Since last SitRep ({_short_ago_reference(now, prior.generated_at)})"
+
+
+def _since_last_from_viewed_sitrep_label(*, sitrep: SitRep, now: timezone.datetime) -> str:
+    return f"Since last SitRep ({_short_ago_reference(now, sitrep.generated_at)})"
+
+
+def _notable_activity_rows(raw: list | None) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for entry in raw or []:
+        if isinstance(entry, dict):
+            contributor = entry.get("contributor") or entry.get("email") or entry.get("who") or ""
+            detail = entry.get("detail") or entry.get("summary") or entry.get("what") or ""
+            rows.append(
+                {
+                    "contributor": str(contributor),
+                    "detail": str(detail),
+                    "line": "",
+                }
+            )
+            continue
+        rows.append({"contributor": "", "detail": "", "line": str(entry)})
+    return rows
 
 
 def _resolve_generate_window(
@@ -217,15 +240,27 @@ def sitrep_generate(request: HttpRequest, project_slug: str) -> HttpResponse:
 
 
 @login_required
-def sitrep_detail_stub(request: HttpRequest, project_slug: str, pk: int) -> HttpResponse:
-    """Minimal marker response for list→view navigation until SITREP-VIEW full page (T-63)."""
-    get_object_or_404(Project, slug=project_slug)
-    get_object_or_404(SitRep, pk=pk, project__slug=project_slug)
-    html = (
-        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>SitRep</title></head><body>'
-        "<!-- Screen: SITREP-VIEW_SITREP-1 -->"
-        '<div id="SITREP-VIEW_SITREP-1" data-testid="sitrep-view-sitrep-loaded" '
-        'aria-hidden="true">SITREP-VIEW_SITREP-1</div>'
-        "</body></html>"
+def sitrep_detail(request: HttpRequest, project_slug: str, pk: int) -> HttpResponse:
+    project = get_object_or_404(
+        Project.objects.select_related("assigned_playbook", "pinned_playbook_version", "datasource"),
+        slug=project_slug,
     )
-    return HttpResponse(html)
+    sitrep = get_object_or_404(SitRep.objects.select_related("project"), pk=pk, project=project)
+    fragos = sitrep.fragos_applied.filter(enabled=True).order_by("title", "pk")
+    now = timezone.now()
+
+    notable_items = _notable_activity_rows(sitrep.notable_activity)
+
+    return render(
+        request,
+        "ui/sitrep/view.html",
+        {
+            "active_nav": "projects",
+            "project": project,
+            "sitrep": sitrep,
+            "fragos": fragos,
+            "mode_display": _MODE_LABELS.get(sitrep.mode_at_generation, sitrep.mode_at_generation),
+            "since_this_generate_label": _since_last_from_viewed_sitrep_label(sitrep=sitrep, now=now),
+            "notable_activity_items": notable_items,
+        },
+    )
