@@ -69,6 +69,9 @@ build:
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
+  before_script:
+    # Debug image shells with busybox only — script uses bash (/usr/bin/env bash).
+    - apk add --no-cache bash
   script:
     - bash scripts/ci-kaniko-build.sh
 
