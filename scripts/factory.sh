@@ -41,10 +41,10 @@ else
   exit 1
 fi
 
-# Tmux session already exists? Refuse to clobber.
+# Kill any existing session for this milestone so re-runs are idempotent.
 if tmux has-session -t "$SESSION" 2>/dev/null; then
-  echo "session $SESSION already exists — attach with: tmux a -t $SESSION" >&2
-  exit 1
+  echo "session $SESSION exists — killing and restarting" >&2
+  tmux kill-session -t "$SESSION"
 fi
 
 mkdir -p factory/{blueprints,tasks/{pending,claimed,blocked,done,rejected},logs}
@@ -107,25 +107,29 @@ EOF
 # LE window — autonomous agent loop on mgmt branch, reviews done/ tasks
 LE_LOOP=$(cat <<'LEEOF'
 cd "REPO_ROOT_PLACEHOLDER" && git checkout MGMT_PLACEHOLDER 2>/dev/null || true
-while :; do
-  changed="$(fswatch -1 "REPO_ROOT_PLACEHOLDER/factory/tasks/done" 2>/dev/null)"
-  [[ -f "$changed" ]] || continue
-  task_id="$(basename "$changed" .md)"
+
+le_run() {
+  local reason="$1"
   PROMPT="$(cat REPO_ROOT_PLACEHOLDER/prompts/lead-engineer.md)
 
 ---
 
+WAKE REASON: $reason
+MILESTONE: MILESTONE_PLACEHOLDER
+
 FACTORY STATE:
 $(cat REPO_ROOT_PLACEHOLDER/factory/blackboard.md)
 
-TASK JUST COMPLETED — review per checks 1-6 in your prompt, then act:
-$(cat "$changed")
+PENDING:  $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/pending/  2>/dev/null | tr '\n' ' ')
+CLAIMED:  $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/claimed/  2>/dev/null | tr '\n' ' ')
+DONE:     $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/done/     2>/dev/null | tr '\n' ' ')
+REJECTED: $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | tr '\n' ' ')
 
-PENDING:
-$(ls REPO_ROOT_PLACEHOLDER/factory/tasks/pending/ 2>/dev/null)
+OPEN GITLAB ISSUES (milestone):
+$(glab issue list --milestone "MILESTONE_PLACEHOLDER" --state=opened 2>/dev/null | head -40)
 
-CLAIMED:
-$(ls REPO_ROOT_PLACEHOLDER/factory/tasks/claimed/ 2>/dev/null)"
+RECENT DONE/REJECTED FILES:
+$(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | head -10 | while read f; do echo "=== $f ==="; cat "REPO_ROOT_PLACEHOLDER/factory/tasks/done/$f" "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/$f" 2>/dev/null | tail -20; done)"
   CURSOR_BIN_PLACEHOLDER \
     --print \
     --yolo \
@@ -134,13 +138,32 @@ $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/claimed/ 2>/dev/null)"
     --workspace "REPO_ROOT_PLACEHOLDER" \
     "$PROMPT" \
     2>&1 | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.log"
-  (cd "REPO_ROOT_PLACEHOLDER" && git add factory/ && git commit -m "factory: LE reviewed $task_id" && git push) 2>/dev/null || true
+  (cd "REPO_ROOT_PLACEHOLDER" && git pull --rebase 2>/dev/null; git add factory/ && git commit -m "factory: LE pass ($reason)" && git push) 2>/dev/null || true
+}
+
+# Startup scan — ingest new issues, review any existing done/ tasks
+le_run "startup"
+
+# Event-driven: wake on done/ or rejected/ changes; also poll every 5 min
+while :; do
+  fswatch -1 -r \
+    "REPO_ROOT_PLACEHOLDER/factory/tasks/done" \
+    "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected" \
+    2>/dev/null &
+  FSWATCH_PID=$!
+  # Also set a 5-minute timeout so we poll GitLab periodically
+  ( sleep 300 && kill $FSWATCH_PID 2>/dev/null ) &
+  TIMER_PID=$!
+  wait $FSWATCH_PID 2>/dev/null
+  kill $TIMER_PID 2>/dev/null
+  le_run "done/rejected change or 5-min poll"
 done
 LEEOF
 )
 LE_LOOP="${LE_LOOP//REPO_ROOT_PLACEHOLDER/$REPO_ROOT}"
 LE_LOOP="${LE_LOOP//MGMT_PLACEHOLDER/$MGMT_BRANCH}"
 LE_LOOP="${LE_LOOP//CURSOR_BIN_PLACEHOLDER/$CURSOR_BIN}"
+LE_LOOP="${LE_LOOP//MILESTONE_PLACEHOLDER/$MILESTONE}"
 tmux new-session -d -s "$SESSION" -n "le" "bash -c $(printf '%q' "$LE_LOOP"); bash"
 
 for role in "${ROLES[@]}"; do
