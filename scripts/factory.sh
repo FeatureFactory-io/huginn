@@ -88,17 +88,32 @@ while :; do
       if [[ -n "\$task_branch" ]]; then
         git checkout "\$task_branch" 2>/dev/null || git checkout -b "\$task_branch" 2>/dev/null || true
       fi
-      COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
-      $CURSOR_BIN \\
-        --print \\
-        --yolo \\
-        --output-format stream-json \\
-        --stream-partial-output \\
-        --workspace "\$wt" \\
-        "\$COMBINED_PROMPT" \\
-        2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.jsonl" \
-             | jq -r 'select(.type=="text") | .text' 2>/dev/null \
-             | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+      # release-engineer guard: skip cursor-agent if release branch pipeline already exists
+      _skip_agent=0
+      if [[ "$role" == "release-engineer" ]]; then
+        _rel_branch="\$(rg -m1 '^branch:[[:space:]]*' "\$claimed_path" 2>/dev/null | sed 's/^branch:[[:space:]]*//')"
+        if [[ -n "\$_rel_branch" ]]; then
+          _existing="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep "\$_rel_branch" | awk '{print \$1}' | head -1)"
+          if [[ "\$_existing" == "(running)" || "\$_existing" == "(success)" || "\$_existing" == "(pending)" ]]; then
+            echo "[\$(date +%H:%M:%S)] release-engineer: pipeline already \$_existing for \$_rel_branch — skipping agent"
+            printf '\n- **%s** ⏭ release-engineer skipped (pipeline already %s)\n' "\$(date +%H:%M:%S)" "\$_existing" >> "$REPO_ROOT/factory/blackboard.md"
+            _skip_agent=1
+          fi
+        fi
+      fi
+      if [[ \$_skip_agent -eq 0 ]]; then
+        COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
+        $CURSOR_BIN \\
+          --print \\
+          --yolo \\
+          --output-format stream-json \\
+          --stream-partial-output \\
+          --workspace "\$wt" \\
+          "\$COMBINED_PROMPT" \\
+          2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.jsonl" \
+               | jq -r 'select(.type=="text") | .text' 2>/dev/null \
+               | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+      fi
       "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
       printf '\n- **%s %s** ✅ **%s** done **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
       (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
