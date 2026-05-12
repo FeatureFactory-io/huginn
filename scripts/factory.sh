@@ -82,6 +82,7 @@ while :; do
     # claim.sh runs in the REPO ROOT (mgmt branch) so factory state commits land there
     if claimed_path="\$($REPO_ROOT/scripts/claim.sh "\$id" "$role" 2>/dev/null)"; then
       echo "[\$(date +%H:%M:%S)] $role claimed \$id"
+      printf '\n- **%s %s** 🔧 **%s** claimed **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
       # Switch this worktree to the task's feature branch
       task_branch="\$(rg -m1 '^branch:[[:space:]]*' "\$claimed_path" 2>/dev/null | sed 's/^branch:[[:space:]]*//')"
       if [[ -n "\$task_branch" ]]; then
@@ -97,7 +98,8 @@ while :; do
         "\$COMBINED_PROMPT" \\
         2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log"
       "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
-      (cd "$REPO_ROOT" && git add factory/tasks/ && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
+      printf '\n- **%s %s** ✅ **%s** done **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
+      (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
     fi
   done
 done
