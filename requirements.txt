@@ -12,6 +12,7 @@ psycopg[binary]>=3.2
 
 # AI interface
 fastmcp>=2.0
+anthropic>=0.101,<0.102
 
 # Connectors — v1
 python-gitlab>=8.0
