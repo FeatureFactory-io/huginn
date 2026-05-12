@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 2 — Decomposition in progress.
+**Phase:** 3 — Execution (Batch 1: Sonnet 4.5 — backend foundation + step-defs)
 
 **Milestone:** AI → SitRep (GitLab IID 4, internal id 7419357)
 
@@ -59,6 +59,7 @@ _None._
 # Event log
 
 <!-- Append-only: LE and workers add dated lines -->
+- **2026-05-12** Phase 3 Batch 1 started (Sonnet 4.5). Executing: T-60 → T-64 → T-65a → T-65b (sequential chain) + T-61-steps, T-62-steps, T-63-steps (parallel, no code deps). Batch 2 (Sonnet 4.6 thinking): T-66 → T-67 → T-61-impl. Batch 3 (Sonnet 4.5): T-62-impl, T-63-impl.
 - **2026-05-12** Phase 2 decomposition started. Human confirmed ANTHROPIC_API_KEY present. Task register:
   - **pending**: T-60, T-61-steps, T-62-steps, T-63-steps
   - **blocked**: T-64 (→T-60), T-65a (→T-64), T-65b (→T-65a), T-66 (→T-65b), T-67 (→T-66), T-61-impl (→T-67+T-61-steps), T-62-impl (→T-61-impl+T-62-steps), T-63-impl (→T-61-impl+T-63-steps)
