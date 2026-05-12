@@ -87,7 +87,7 @@ All tokens are CSS custom properties on `:root`. Bootstrap's own vars are overri
 
 ### 2.2 RYG Semantic Tokens (locked)
 
-Status colours are fixed — they drive the Projects Dashboard health system and must not be repurposed for decoration.
+Status colours are fixed — they drive the Tactical Plot health system and must not be repurposed for decoration.
 
 ```css
 :root {
@@ -203,8 +203,8 @@ Every page follows this structure:
 
 | Pattern | Used by | Bootstrap classes |
 |---|---|---|
-| **3-column card grid** | Projects Dashboard | `row g-3` / `col-md-6 col-xl-4` |
-| **9+3 split** (cards + rail) | Projects Dashboard | `col-lg-9` / `col-lg-3` |
+| **3-column card grid** | Tactical Plot | `row g-3` / `col-md-6 col-xl-4` |
+| **9+3 split** (cards + rail) | Tactical Plot | `col-lg-9` / `col-lg-3` |
 | **Detail tabs card** | Playbook VIEW, SitAwareness VIEW | `hg-detail-tabs-card` + `nav-tabs` |
 | **2-pane chat** (conversation + context) | Gjallarhorn Chat | custom flex, fixed height |
 | **Single-column form** | Create / Edit screens | `col-md-8 col-lg-6`, centred |
@@ -490,7 +490,7 @@ Primary entity lists use one **visual system** so scanning columns and row actio
 </div>
 ```
 
-#### Project Card (Dashboard)
+#### Project Card (Tactical Plot)
 
 ```html
 <article class="hg-card" data-testid="project-card">
@@ -503,7 +503,7 @@ Primary entity lists use one **visual system** so scanning columns and row actio
       <span class="hg-badge-frago ms-auto">FRAGO</span>
     </h3>
     <p class="hg-headline">{headline-from-sitrep}</p>
-    <!-- 7 variable dots: Transparency · Throughput · Cycle · Rework · Quality · Complexity · Contribution -->
+    <!-- SitRep micro-subcard (`.hg-sitrep-subcard*` in `static/css/huginn.css`): left accent, icon tile, linked headline (2-line clamp), meta row “Last SitRep · {time}”. See `ui/templates/ui/mockups/dashboard/projects.html`. -->
     <div class="hg-var-strip" aria-label="Master Variables">
       <span class="hg-var-dot {color}" title="Transparency"></span>
       <!-- × 7 -->
@@ -701,7 +701,7 @@ Use **`rounded-2`** on the header panel where the shell matches Projects / Playb
 }
 ```
 
-#### Summary Strip (Dashboard)
+#### Summary Strip (Tactical Plot)
 
 ```html
 <div class="hg-summary-strip" role="status" aria-label="Project health summary">
@@ -839,7 +839,7 @@ Every list and data section must handle all three:
 | Filter | `fa-filter` | |
 | Refresh / Sync | `fa-arrows-rotate` | |
 | Import | `fa-file-import` | |
-| Dashboard | `fa-grip-vertical` | |
+| Tactical Plot | `fa-grip-vertical` | |
 | Project | `fa-folder-open` | |
 | Playbook | `fa-book` | |
 | Data Source | `fa-plug` | |

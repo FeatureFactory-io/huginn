@@ -58,15 +58,12 @@ def sitrep_list(request):
     if filter_pb_version:
         rows = [r for r in rows if str(r["pb_version"]) == filter_pb_version]
 
-    pinned = _ALL_ROWS[0]
-
     return render(
         request,
         "ui/mockups/sitrep/list.html",
         {
-            "active_nav": "sitrep-placeholder",
+            "active_nav": "sitrep",
             "project_slug": proj,
-            "pinned": pinned,
             "rows": rows,
             "filter_trigger": filter_trigger,
             "filter_pb_version": filter_pb_version,
@@ -80,7 +77,7 @@ def sitrep_list(request):
 def sitrep_view(request, pk: int):  # noqa: ARG001
     row = next((r for r in _ALL_ROWS if r["id"] == pk), _ALL_ROWS[0])
     ctx = {
-        "active_nav": "sitrep-placeholder",
+        "active_nav": "sitrep",
         "sitrep_pk": pk,
         "project": "atlas-backend",
         "generated_at": row["generated_at"],

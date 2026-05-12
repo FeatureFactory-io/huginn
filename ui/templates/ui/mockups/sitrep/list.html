@@ -126,37 +126,6 @@
   </div>
 </form>
 
-{# ── Latest SitRep — pinned card ──────────────────────────────────────────── #}
-<div class="card border-0 shadow-sm rounded-3 mb-4" data-testid="sitrep-pinned-card">
-  <div class="card-body row g-4 py-3">
-    <div class="col-md-9">
-      <div class="d-flex align-items-center gap-3 mb-2">
-        <span class="hg-label-caps text-muted">Latest</span>
-        <span class="badge bg-secondary" data-testid="sitrep-pinned-status-badge">No Variables</span>
-        <span class="badge {% if pinned.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}" data-testid="sitrep-pinned-trigger-badge">
-          {{ pinned.trigger_label }}
-        </span>
-      </div>
-      <h2 class="h5 fw-semibold mb-1" data-testid="sitrep-pinned-headline">{{ pinned.headline }}</h2>
-      <p class="small text-muted mb-1">
-        <i class="fa-solid fa-calendar-clock me-1" aria-hidden="true"></i>{{ pinned.generated_at }}
-        &nbsp;·&nbsp;
-        <i class="fa-solid fa-clock me-1" aria-hidden="true"></i>Assessed: {{ pinned.assessed_period }}
-      </p>
-      <p class="small text-muted mb-0" data-testid="sitrep-pinned-decisions">
-        Pending Decisions: <strong>{{ pinned.decisions_proposed }}</strong>
-      </p>
-    </div>
-    <div class="col-md-3 d-flex align-items-center justify-content-end">
-      <a class="btn btn-primary btn-sm"
-         href="{% url 'mockup-sitrep-view' pinned.id %}"
-         data-testid="sitrep-open-latest">
-        <i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i> Open SitRep
-      </a>
-    </div>
-  </div>
-</div>
-
 {# ── History table ────────────────────────────────────────────────────────── #}
 <div class="card border-0 shadow-sm rounded-3">
   <div class="card-body p-0">
@@ -171,7 +140,7 @@
             <th scope="col">Headline</th>
             <th scope="col" class="text-center">Proposed</th>
             <th scope="col" class="text-center">Accepted</th>
-            <th scope="col">Playbook</th>
+            <th scope="col">Playbook version</th>
             <th class="text-end ps-3" scope="col" style="width:3.25rem;">
               <span class="visually-hidden">Row actions</span>
             </th>

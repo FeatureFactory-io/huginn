@@ -105,6 +105,17 @@ def _connected_gitlab_datasources() -> list[DataSource]:
     return out
 
 
+def _annotate_projects_last_sitrep(projects: list[Project]) -> None:
+    """Attach latest SitRep summary for list rows (href, headline, generated display).
+
+    Placeholders until SitRep persistence exposes a per-project latest row.
+    """
+    for p in projects:
+        setattr(p, "last_sitrep_href", None)
+        setattr(p, "last_sitrep_headline", None)
+        setattr(p, "last_sitrep_at_display", None)
+
+
 @method_decorator(login_required, name="dispatch")
 class ProjectsListView(View):
     template_name = "ui/projects/list.html"
@@ -127,6 +138,7 @@ class ProjectsListView(View):
             )
 
         projects = list(qs.order_by("name"))
+        _annotate_projects_last_sitrep(projects)
         return render(
             request,
             self.template_name,

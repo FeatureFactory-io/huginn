@@ -54,7 +54,7 @@
 **Role**: Project Manager / Commander. Bears the consequences of every Decision.
 
 **Typical day**:
-- 09:00 — opens Huginn, scans the **Projects Dashboard** for red/orange health indicators
+- 09:00 — opens Huginn, scans the **Tactical Plot** for red/orange health indicators
 - For any red Project — reads the SitRep, calibrates expectations via FRAGOs, drills into Variables, queries Gjallarhorn
 - Makes Decisions. Each Decision branches into one of three concrete outcomes: a new FRAGO, an extension of SituationalAwareness, or a `HUGINN`-tagged Jira issue
 - Reviews Contributors' day-by-day activity
@@ -79,7 +79,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 
 | Act | Surface | Pattern | Primary Screen |
 |-----|---------|---------|----------------|
-| 4 | Projects Dashboard | Landing — color-coded health | `DASHBOARD-PROJECTS-1` |
+| 4 | Projects Dashboard (Tactical Plot) | Landing — color-coded health | `DASHBOARD-PROJECTS-1` |
 | 5 | SitRep / Status Report | LIST+FIND + VIEW (per Project) | `SITREP-LIST+FIND-1` |
 | 6 | FRAGO | CRUDLF (Playbook adjustment) | `FRAGOS-LIST+FIND-1` |
 | 7 | Variables Deep-Dive | VIEW with filters | `VARIABLES-VIEW-1` |
@@ -104,7 +104,7 @@ The one-time setup: connect a data source, import the projects you care about, w
 
 ## Act 0: Authentication
 
-**Context**: Donland opens Huginn at `/`. He has an account (created by admin; self-signup is out of scope for MVP). After login he lands on the Projects Dashboard (Act 4) — empty on first run.
+**Context**: Donland opens Huginn at `/`. He has an account (created by admin; self-signup is out of scope for MVP). After login he lands on the **Tactical Plot** (`DASHBOARD-PROJECTS-1`, Act 4) — empty on first run.
 
 #### Screen: AUTH-LOGIN-1
 
@@ -117,7 +117,7 @@ The one-time setup: connect a data source, import the projects you care about, w
 - **Footer**: "Forgot password?" — disabled with tooltip "Contact your admin" (out of MVP scope)
 
 **Flow**:
-- Valid credentials → `DASHBOARD-PROJECTS-1` (Act 4)
+- Valid credentials → **Tactical Plot** `DASHBOARD-PROJECTS-1` (Act 4)
 - Invalid → inline error "Invalid email or password"
 - Network error → "Unable to reach Huginn. Check your connection."
 
@@ -202,27 +202,30 @@ Confirmation modal:
 
 #### Screen: PROJECTS-LIST+FIND-1
 
-This is the **Huginn-side** Project list (different from the Projects Dashboard in Act 4 — that's the daily landing). This screen is for management: assign Playbook, archive, view sync status.
+This is the **Huginn-side** Project list (different from the Tactical Plot in Act 4 — that is the daily landing). This screen is for management: assign Playbook, archive, view sync status, and **see the latest SitRep headline + generated time** per row.
 
 **Layout**:
 - **Header**: "Projects" with count badge
 - **Top Actions**:
-  - [+ Import Projects] button (primary) → `PROJECTS-IMPORT-1`
-- **Filter**: DataSource | Status (Active / Archived / Orphaned) | Playbook
+  - **[Import Projects]** button (primary; download icon + label text `Import Projects`, no leading `+`) → `PROJECTS-IMPORT-1`
+- **Filters**:
+  - **Operational** list (`ui/templates/ui/projects/list.html`): Data source | Row status (Active / Archived / Orphaned) | Playbook (search).
+  - **HTML mock** (`ui/templates/ui/mockups/projects/list.html`): DataSource | Status — Playbook filter is omitted in the stub; columns still include Playbook assignment per row.
 - **Table** with columns:
-  - Name | DataSource | Playbook (name + version) | Last sync | Status
+  - Name | DataSource | Playbook (name + version) | Last sync | **Last SitRep** (latest headline → link to `SITREP-VIEW_SITREP-1` when known) | **Last SitRep generated** (timestamp; **`—`** when none yet) | Status
   - No visible **Actions** column; each row ends with a single overflow menu (⋯) for secondary commands (see `docs/ux/IA_guidelines.md` §5.2 — LIST+FIND Table).
 - **Row navigation**:
   - **Name** links to `PROJECTS-VIEW_PROJECT-1`
+  - **Last SitRep** (when present) links to `SITREP-VIEW_SITREP-1` for the latest SitRep on that Project
   - Overflow menu: **Edit project** → `PROJECTS-EDIT_PROJECT-1` | **Archive** → `PROJECTS-ARCHIVE_PROJECT-1`
 - **Empty State**:
   - "No projects imported yet"
   - "Import projects from a connected data source."
-  - [+ Import Projects]
+  - **[Import Projects]** (same label as toolbar)
 
 #### Screen: PROJECTS-IMPORT-1
 
-Donland clicks [+ Import Projects] (from this screen, Act 1's shortcut, or Act 0's empty-state CTA).
+Donland clicks **[Import Projects]** (from this screen, Act 1's shortcut, or Act 0's empty-state CTA).
 
 **Layout**:
 - **Header**: "Import Projects from Data Source"
@@ -286,7 +289,7 @@ Editable fields:
 
 Confirmation modal:
 - "Archive 'company-gitlab/atlas-backend'?"
-- "Syncs will stop. Ingested history is retained and can be browsed. Project will not appear on the Projects Dashboard."
+- "Syncs will stop. Ingested history is retained and can be browsed. Project will not appear on the Tactical Plot."
 - [Archive] (warning) | [Cancel]
 
 ---
@@ -396,41 +399,54 @@ After Inception:
 
 # CALIBRATION
 
-The daily loop. Donland opens Huginn, scans the Projects Dashboard, drills into anything red or orange. He reads the SitRep, adjusts expectations via FRAGOs when reality and Playbook diverge for legitimate reasons, browses Variables to understand the trend, and questions Gjallarhorn directly when he needs an answer the SitRep didn't provide.
+The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into anything red or orange. He reads the SitRep, adjusts expectations via FRAGOs when reality and Playbook diverge for legitimate reasons, browses Variables to understand the trend, and questions Gjallarhorn directly when he needs an answer the SitRep didn't provide.
 
 ---
 
-## Act 4: Projects Dashboard
+## Act 4: Projects Dashboard (Tactical Plot)
 
-**Context**: This is the **daily landing screen**. After login, Donland sees every active Project as a status card with a single dominant color (red / orange / yellow / green). He scans for trouble in seconds, then clicks into the worst Project.
+**Context**: This is the **daily landing screen** after login. Donland sees every active Project at a glance: dominant **health** colour, latest **SitRep** access, variable strip, and sync/playbook footers. **Two presentations exist today:**
+- **HTML mock** (`ui/templates/ui/mockups/dashboard/projects.html`): title **Tactical Plot**; **card grid** (main) + **right sidebar** (Situational Awareness list, FRAGOs in effect, **Manage projects →**). Specified in `docs/features/act-4-dashboard/dashboard-projects.feature`.
+- **Operational Tactical Plot** (`ui/templates/ui/dashboard/projects.html`): **four-column** xl layout (Situational Awareness | FRAGOs | compact **Projects** list | Decisions/Tasks stubs). Card-grid affordances below are the **target** for per-project richness on the shipped plot as parity improves.
 
 **Pattern**: Single-screen dashboard. Read-only aggregate view; all detail lives one click away.
 
 #### Screen: DASHBOARD-PROJECTS-1
 
-**Layout**:
-- **Header**: "Projects" + last refresh timestamp + [Refresh] button
-- **Summary strip** (top): counts by color + mode — "2 red · 1 orange · 4 yellow · 6 green | 8 semi-auto · 5 auto"
-- **Project cards grid** (sorted by health: worst first):
-  - Each card contains:
-    - **Color bar** (top edge, full-width): red / orange / yellow / green
-    - **Project name** + DataSource icon + **mode badge** (subtle pill: `Semi-Auto` or `Auto`)
-    - **Last SitRep**: timestamp + "View SitRep →" link → `SITREP-VIEW_SITREP-1` (Act 5) for the latest SitRep. Distinct from Last sync below — shown as "No SitRep yet" when none exists.
-    - **Headline assessment** (1 line, from latest SitRep): e.g., "Milestone v1.21 at risk: 3 critical bugs open"
-    - **Variables mini-strip**: N dots, one per PlaybookVariable on the active Playbook (worst color first, then declared order). Hover a dot for `name (abbrev): value`.
-    - **Last sync**: timestamp + sync status icon (OK / syncing / error — token expired etc.)
-    - **Playbook**: name + version (auto-tracking ⟳ or pinned 📌 indicator)
-- **Color semantics**:
-  - **Red**: ≥1 PlaybookVariable's `interpreting` rule yielded red at the latest SitRep (with active FRAGOs applied), OR Project has no SitRep yet (initial sync incomplete or no Playbook assigned)
-  - **Orange**: ≥1 PlaybookVariable's `interpreting` yielded orange at the latest SitRep, no red
-  - **Yellow**: ≥1 PlaybookVariable's `interpreting` yielded yellow at the latest SitRep, no orange/red
-  - **Green**: all monitored expectations met
-- **Card click** → `SITREP-VIEW_SITREP-1` for that Project's latest SitRep
-- **Empty state** (no Projects imported): big CTA → "Import projects to start" → links to Act 2
+**Layout — Tactical Plot header (mock + intent)**:
+- **Title**: **Tactical Plot** (not "Projects"; that name is reserved for Act 2 management list).
+- **Subcopy**: last refreshed / sync freshness (mock uses static example copy; operational uses `naturaltime` on latest sync).
+- **Summary strip**: counts by **health** colour (red / orange / yellow / green), e.g. `N red · N orange · …` (mock renders from `summary_strip`; semi-auto vs auto mode counts are **not** on the mock cards today).
+- **Toolbar**: refresh control (icon button; may be disabled stub on operational).
 
-**Side panel** (collapsible right rail):
-- **Data connection issues** — list of DataSources with errors or expiring tokens (links to Act 1 to fix)
-- **Triggered FRAGOs since last visit** — quick visibility (links to Act 6)
+**Layout — project cards (HTML mock; target for rich plot cells)**:
+- **Colour bar** (top edge, full-width): same hue as dominant health.
+- **Title row**: **Project name** + DataSource icon(s) + **health badge** pill (capitalised label: Red / Orange / Yellow / Green — dominant assessment from latest SitRep / variables). *(Gjallarhorn **Semi-Auto / Auto** mode pill is not shown on the current mock card.)*
+- **Headline**: one line under the title (latest SitRep narrative summary, e.g. "All monitored expectations met").
+- **SitRep micro-subcard** (`data-testid="project-card-{id}-sitrep-pill"`): compact **list-item style** block — left **primary accent** bar, soft **icon tile** (`fa-file-lines`), stacked **title** (latest SitRep headline as link → `SITREP-VIEW_SITREP-1`) and **meta row** (“Last SitRep” kicker + generation time). `z-2` above the card stretched link so the title link stays clickable. When none: muted icon tile + **No SitRep yet** (no link).
+- **Variables mini-strip**: abbreviations + coloured dots (tooltips); mock uses master-variable keys Tr, Tp, C, R, Q, X, Co.
+- **Footer**: last sync line (icon OK/warn) + playbook name + auto-track ⟳ vs pinned 📌 icon.
+
+**Navigation**:
+- **Card stretched link** (mock): opens `PROJECTS-VIEW_PROJECT-1` for that project (whole card except intractable inner controls).
+- **SitRep headline link** (inside the subcard): opens `SITREP-VIEW_SITREP-1` for that SitRep (overrides card link).
+
+**Right column (mock only)**:
+- **Situational Awareness** — short global event list (links to SA view).
+- **FRAGOs** — in-effect list with scope labels.
+- **Manage projects →** → `PROJECTS-LIST+FIND-1`.
+
+**Future / operational rails** (not in the HTML card mock): aggregated **DataSource connection issues** and **FRAGOs triggered since last visit** may appear on the shipped Tactical Plot or global workspace chrome as those surfaces land.
+
+**Colour semantics** (unchanged intent):
+- **Red**: ≥1 PlaybookVariable's `interpreting` rule yielded red at the latest SitRep (with active FRAGOs applied), OR Project has no SitRep yet (initial sync incomplete or no Playbook assigned)
+- **Orange**: ≥1 PlaybookVariable's `interpreting` yielded orange at the latest SitRep, no red
+- **Yellow**: ≥1 PlaybookVariable's `interpreting` yielded yellow at the latest SitRep, no orange/red
+- **Green**: all monitored expectations met
+
+**Empty state** (no Projects imported): CTA toward Act 2 import (wording may differ mock vs operational).
+
+**Operational-only note**: the shipped Tactical Plot **Projects** column is currently a **list-group** of rows (name, path, sync badge, GitLab description), not the rich `hg-card` grid — reconcile UX by evolving the list toward the mock card contract above.
 
 ---
 
@@ -453,22 +469,15 @@ Donland clicks a Project card on the Dashboard, or **SitReps** from the Project 
 **Layout**:
 - **Header**: "SitReps — atlas-backend"
 - **Top Actions**: **[Generate SitRep ▾]** — same period-picker dropdown as on `PROJECTS-VIEW_PROJECT-1` (see Act 2). Provides a shortcut so the Commander can trigger generation without navigating away from the SitRep list.
-- **Latest SitRep card** (pinned, prominent):
-  - Date + time generated | **Assessed period** (e.g., "09:00 → 13:15" or "2026-04-19 09:00 → 2026-04-20 09:00")
-  - Overall status badge (red / orange / yellow / green)
-  - Headline assessment (1–2 lines)
-  - Pending Decisions count
-  - [Open SitRep] (primary) → `SITREP-VIEW_SITREP-1`
-- **History table** below:
+- **History table** (newest first by default; there is **no** separate pinned "latest SitRep" card — the first row is the latest):
   - Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
-  - Sort by date (default: newest first)
   - Filter: status, date range, Playbook version, trigger type
 - **Row Actions**: [View]
 - **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Playbook is assigned. You can also generate one manually using [Generate SitRep ▾] above."
 
 #### Screen: SITREP-VIEW_SITREP-1
 
-Donland clicks [Open SitRep] or a row.
+Donland opens a SitRep from the list (headline link or row **View**), or follows **Open SitRep** from another screen (for example the Project view).
 
 **Layout** (read-only document, multi-section):
 

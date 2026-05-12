@@ -8,8 +8,13 @@ stages:
 variables:
   PYTHON_IMAGE: python:3.12-slim
 
+# Only create pipelines for release/* branches (saves shared runner minutes).
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
+
 # ──────────────────────────────────────────────────────────────
-# LINT  — every push, every branch
+# LINT  — release/* branches only (see workflow:)
 # ──────────────────────────────────────────────────────────────
 lint:
   stage: lint
@@ -21,7 +26,7 @@ lint:
     - ruff format --check .
 
 # ──────────────────────────────────────────────────────────────
-# TEST  — every push, every branch
+# TEST  — release/* branches only (see workflow:)
 # ──────────────────────────────────────────────────────────────
 test:
   stage: test
@@ -37,7 +42,7 @@ test:
     - pytest --tb=short -q
 
 # ──────────────────────────────────────────────────────────────
-# INFRA — trigger child pipeline when infra/ changes (main only)
+# INFRA — trigger child pipeline when infra/ changes (release/* only)
 # The child pipeline (infra/gitlab-ci.yml) runs CDK test/diff/deploy.
 # Remove `strategy: depend` until the infra pipeline is stable, then
 # re-enable so infra failures block the app pipeline.
@@ -47,12 +52,12 @@ infra-pipeline:
   trigger:
     include: infra/gitlab-ci.yml
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
       changes:
         - infra/**/*
 
 # ──────────────────────────────────────────────────────────────
-# BUILD — main branch only
+# BUILD — release/* branches only
 # Uses kaniko (no Docker daemon, no DinD, ECR auth via AWS env vars)
 # ──────────────────────────────────────────────────────────────
 build:
@@ -61,7 +66,7 @@ build:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
   script:
     - /kaniko/executor
         --context "${CI_PROJECT_DIR}"
@@ -71,7 +76,7 @@ build:
         --destination "${ECR_REGISTRY}/huginn:latest"
 
 # ──────────────────────────────────────────────────────────────
-# DEPLOY — main branch only, after build
+# DEPLOY — release/* branches only, after build
 # Deploys to the inactive EB env, then smoke-tests it.
 # The 'swap' job below is the manual gate to promote to prod.
 # ──────────────────────────────────────────────────────────────
@@ -79,7 +84,7 @@ deploy:
   stage: deploy
   image: $PYTHON_IMAGE
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH =~ /^release\/.+/
   needs: [build]
   before_script:
     - apt-get update -qq && apt-get install -y --no-install-recommends curl unzip gettext-base zip python3

@@ -1,7 +1,7 @@
 Feature: SITREP-LIST+FIND-1 Browse and trigger SitReps for a Project
   As Commander Donland
-  I want to see a list of all SitReps for a Project with the latest pinned prominently
-  So that I can quickly open the most recent assessment and browse historical ones
+  I want to see a sortable, filterable list of all SitReps for a Project
+  So that I can find an assessment by time or trigger and open it from the table
 
   Background:
     Given I am authenticated as "donland@example.com"
@@ -19,31 +19,6 @@ Feature: SITREP-LIST+FIND-1 Browse and trigger SitReps for a Project
     Given I am on the screen "PROJECTS-VIEW_PROJECT-1" for "atlas-backend"
     When I click "Open SitReps"
     Then I am on the screen "SITREP-LIST+FIND-1" for Project "atlas-backend"
-
-  # ---------------------------------------------------------------------------
-  # Latest SitRep pinned card
-  # ---------------------------------------------------------------------------
-
-  Scenario: SITREP-LIST+FIND-03 Latest SitRep card is pinned and shows key metadata
-    Given a SitRep for "atlas-backend" exists generated at "2026-05-11 13:15" covering period "09:00 → 13:15" with trigger "automatic"
-    And that SitRep has headline "Delivery pace steady — no blockers detected"
-    When I view the SitRep list
-    Then I see a pinned card labelled as the latest SitRep
-    And the card shows the generation time "2026-05-11 13:15"
-    And the card shows assessed period "09:00 → 13:15"
-    And the card shows headline "Delivery pace steady — no blockers detected"
-    And the card shows a grey status badge labelled "No Variables"
-    And the card shows trigger type "Auto"
-
-  Scenario: SITREP-LIST+FIND-04 Latest SitRep card Open SitRep button navigates to view screen
-    Given a SitRep for "atlas-backend" exists
-    When I click "Open SitRep" on the pinned card
-    Then I am on the screen "SITREP-VIEW_SITREP-1" for that SitRep
-
-  Scenario: SITREP-LIST+FIND-05 Pending Decisions count badge shown on pinned card
-    Given a SitRep for "atlas-backend" exists with 2 Decisions in Proposed status
-    When I view the SitRep list
-    Then the pinned card shows a pending Decisions count of 2
 
   # ---------------------------------------------------------------------------
   # History table

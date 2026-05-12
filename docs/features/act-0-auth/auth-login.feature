@@ -10,12 +10,12 @@ Feature: AUTH-LOGIN-1 Login to Huginn
   # Happy path
   # ---------------------------------------------------------------------------
 
-  Scenario: AUTH-LOGIN-01 Successful login redirects to Projects Dashboard
+  Scenario: AUTH-LOGIN-01 Successful login redirects to Tactical Plot
     Given a valid account exists with email "donland@example.com" and password "s3cr3t"
     When I fill in "login-email" with "donland@example.com"
     And I fill in "login-password" with "s3cr3t"
     And I click the "Sign In" button
-    Then I am redirected to the Projects Dashboard "DASHBOARD-PROJECTS-1"
+    Then I am redirected to the Tactical Plot "DASHBOARD-PROJECTS-1"
     And I am authenticated as "donland@example.com"
 
   # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ Feature: AUTH-LOGIN-1 Login to Huginn
   Scenario: AUTH-LOGIN-10 Already-authenticated user is redirected away from login
     Given I am already authenticated as "donland@example.com"
     When I navigate to the login page at "/"
-    Then I am redirected to the Projects Dashboard "DASHBOARD-PROJECTS-1"
+    Then I am redirected to the Tactical Plot "DASHBOARD-PROJECTS-1"
 
   Scenario: AUTH-LOGIN-11 Logging out clears session and returns to login page
     Given I am authenticated as "donland@example.com"

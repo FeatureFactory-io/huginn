@@ -18,7 +18,7 @@ Feature: PROJECTS-ARCHIVE_PROJECT-1 Archive a Project
   Scenario: PROJECTS-ARCHIVE_PROJECT-02 Confirmation modal explains consequences
     Given a Project "atlas-backend" exists
     And I have triggered the archive action for "atlas-backend"
-    Then I see the text "Syncs will stop. Ingested history is retained and can be browsed. Project will not appear on the Projects Dashboard."
+    Then I see the text "Syncs will stop. Ingested history is retained and can be browsed. Project will not appear on the Tactical Plot."
     And I see an "Archive" button styled as warning
     And I see a "Cancel" button
 
@@ -38,9 +38,9 @@ Feature: PROJECTS-ARCHIVE_PROJECT-1 Archive a Project
     Given a Project "atlas-backend" has been archived
     Then no scheduled sync jobs run for "atlas-backend"
 
-  Scenario: PROJECTS-ARCHIVE_PROJECT-05 Archived project does not appear on Projects Dashboard
+  Scenario: PROJECTS-ARCHIVE_PROJECT-05 Archived project does not appear on Tactical Plot
     Given a Project "atlas-backend" has been archived
-    When I navigate to the Projects Dashboard "DASHBOARD-PROJECTS-1"
+    When I navigate to the Tactical Plot "DASHBOARD-PROJECTS-1"
     Then "atlas-backend" is not shown on the dashboard
 
   Scenario: PROJECTS-ARCHIVE_PROJECT-06 Archived project is visible in Projects list with Archived filter
