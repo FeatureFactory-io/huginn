@@ -2,7 +2,7 @@ iteration: ITER-2026-W19-acts-0-2
 branch: iteration/2026-W19-acts-0-2
 goal: >-
   Ship Acts 0–2 as skeleton-first vertical slices with BPE-derived plans +
-  propagated NotImplementedError boundaries, ready for GitLab milestone + MIT execution.
+  propagated NotImplementedError boundaries, ready for GitLab milestone + dark-factory (Lead Engineer) execution.
 
 semantic_refinement:
   summary: >-

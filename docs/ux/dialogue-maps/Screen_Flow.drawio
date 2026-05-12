@@ -388,11 +388,11 @@
           </mxGeometry>
         </mxCell>
 
-        <!-- ════════ ACT 4 — Projects Dashboard ════════ -->
-        <mxCell id="a4" value="ACT 4 — Projects Dashboard  (daily landing)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+        <!-- ════════ ACT 4 — Tactical Plot ════════ -->
+        <mxCell id="a4" value="ACT 4 — Tactical Plot  (daily landing)" style="swimlane;startSize=30;fillColor=#fffaec;strokeColor=#1f3a5f;fontSize=11;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="30" y="410" width="2800" height="80" as="geometry"/>
         </mxCell>
-        <mxCell id="s_dash" value="DASHBOARD-PROJECTS-1&#xa;Projects Dashboard" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a4">
+        <mxCell id="s_dash" value="DASHBOARD-PROJECTS-1&#xa;Tactical Plot" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;strokeWidth=3;fillColor=#fff2cc;strokeColor=#1f3a5f;fontStyle=1;" vertex="1" parent="a4">
           <mxGeometry x="20" y="15" width="210" height="44" as="geometry"/>
         </mxCell>
 
@@ -532,7 +532,7 @@
         </mxCell>
 
         <!-- ════════ CROSS-LANE NAVIGATION ARROWS ════════ -->
-        <!-- AUTH → DASHBOARD (success) -->
+        <!-- AUTH → Tactical Plot (success) -->
         <mxCell id="cl01" value="success" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#198754;strokeWidth=2;exitX=1;exitY=0.5;" edge="1" source="s_login" target="s_dash" parent="1">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
@@ -540,11 +540,11 @@
         <mxCell id="cl02" value="post-save" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#1f3a5f;strokeWidth=2;dashed=1;" edge="1" source="s_ds_create" target="s_p_import" parent="1">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <!-- DASHBOARD → SITREP-LIST (click project card) -->
+        <!-- Tactical Plot → SITREP-LIST (click project card) -->
         <mxCell id="cl03" value="click card" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;strokeColor=#1f3a5f;strokeWidth=2;" edge="1" source="s_dash" target="s_sr_list" parent="1">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>
-        <!-- DASHBOARD → PROJECTS-LIST (manage / empty state) -->
+        <!-- Tactical Plot → PROJECTS-LIST (manage / empty state) -->
         <mxCell id="cl04" value="manage" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=9;dashed=1;" edge="1" source="s_dash" target="s_p_list" parent="1">
           <mxGeometry relative="1" as="geometry"/>
         </mxCell>

@@ -38,7 +38,10 @@
         <thead class="table-light">
           <tr>
             <th scope="col">Name</th><th scope="col">DataSource</th><th scope="col">Playbook</th>
-            <th scope="col">Last sync</th><th scope="col">Status</th>
+            <th scope="col">Last sync</th>
+            <th scope="col">Last SitRep</th>
+            <th scope="col">Last SitRep generated</th>
+            <th scope="col">Status</th>
             <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
           </tr>
         </thead>
@@ -50,7 +53,19 @@
                    class="hg-list-name-link fw-semibold d-inline-block"
                    data-testid="projects-row-name-{{ r.id }}">{{ r.name }}</a>
               </td><td>{{ r.datasource }}</td><td>{{ r.playbook }}</td>
-              <td>{{ r.last_sync }}</td><td><span class="badge bg-secondary-subtle border">{{ r.sync_status }}</span></td>
+              <td>{{ r.last_sync }}</td>
+              <td data-testid="projects-row-last-sitrep-{{ r.id }}">
+                {% if r.last_sitrep_pk %}
+                  <a href="{% url 'mockup-sitrep-view' r.last_sitrep_pk %}"
+                     class="hg-list-name-link fw-medium d-inline-block">{{ r.last_sitrep_headline }}</a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-nowrap small" data-testid="projects-row-last-sitrep-at-{{ r.id }}">
+                {% if r.last_sitrep_generated_at %}{{ r.last_sitrep_generated_at }}{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td><span class="badge bg-secondary-subtle border">{{ r.sync_status }}</span></td>
               <td class="text-end ps-3 align-middle">
                 <div class="dropdown d-inline-block">
                   <button type="button"

@@ -51,7 +51,34 @@
                       style="background:var(--hg-{{ p.health }}); color:#fff;">{{ p.health }}</span>
               </div>
               <p class="hg-headline small">{{ p.headline }}</p>
-              <p class="small text-muted mb-3">SitRep {{ p.last_sitrep }}</p>
+              <div class="hg-sitrep-subcard mb-3 position-relative z-2" data-testid="project-card-{{ p.id }}-sitrep-pill">
+                {% if p.last_sitrep_pk %}
+                  <div class="hg-sitrep-subcard-inner">
+                    <div class="hg-sitrep-subcard-icon" aria-hidden="true">
+                      <i class="fa-solid fa-file-lines"></i>
+                    </div>
+                    <div class="hg-sitrep-subcard-body">
+                      <a href="{% url 'mockup-sitrep-view' p.last_sitrep_pk %}"
+                         class="hg-sitrep-subcard-title"
+                         data-testid="project-card-{{ p.id }}-sitrep-link">{{ p.last_sitrep_headline }}</a>
+                      <div class="hg-sitrep-subcard-meta" data-testid="project-card-{{ p.id }}-sitrep-at">
+                        <span class="hg-sitrep-subcard-kicker">Last SitRep</span>
+                        <span class="text-muted" aria-hidden="true">·</span>
+                        <span class="text-muted">{{ p.last_sitrep_at }}</span>
+                      </div>
+                    </div>
+                  </div>
+                {% else %}
+                  <div class="hg-sitrep-subcard-inner hg-sitrep-subcard-inner--empty">
+                    <div class="hg-sitrep-subcard-icon hg-sitrep-subcard-icon--muted" aria-hidden="true">
+                      <i class="fa-solid fa-file-lines"></i>
+                    </div>
+                    <div class="hg-sitrep-subcard-body">
+                      <span class="hg-sitrep-subcard-title is-static text-muted" data-testid="project-card-{{ p.id }}-sitrep-empty">No SitRep yet</span>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
               <div class="hg-var-strip d-flex flex-wrap align-items-center mt-1 gap-2" aria-label="Master Variables preview">
                 {% for cell in p.var_cells %}
                   <span class="hg-var-chip d-inline-flex align-items-center gap-1 lh-1 position-relative z-2"
@@ -86,7 +113,7 @@
                 {% if p.playbook_track == 'pin' %}<i class="fa-solid fa-thumbtack text-warning" title="Pinned"></i>{% else %}<i class="fa-solid fa-arrows-rotate text-muted" title="Auto-track"></i>{% endif %}
               </span>
             </div>
-            <a class="stretched-link" href="{% url 'mockup-sitrep-list' %}?project={{ p.name|urlencode }}" aria-label="Open latest SitRep for {{ p.name }}"></a>
+            <a class="stretched-link" href="{% url 'mockup-projects-view' p.id %}" aria-label="Open project {{ p.name }}"></a>
           </article>
         </div>
       {% endfor %}

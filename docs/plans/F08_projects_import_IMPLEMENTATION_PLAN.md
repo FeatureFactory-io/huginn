@@ -18,12 +18,12 @@
 
 ## SAO.md Sections That Apply
 
-- ingestion vs ui separation — remote fetching belongs behind service + integrations in MIT.
+- ingestion vs ui separation — remote fetching belongs behind service + integrations in implementation.
 
 ## Implementation Steps (skeleton)
 
 1. `ProjectsService.load_remote_projects_snapshot` / `persist_imported_project_selection` → `NotImplementedError`.
-2. `ProjectsImportView` — GET informational shell; POST calls `persist_imported_project_selection` (raises until MIT).
+2. `ProjectsImportView` — GET informational shell; POST calls `persist_imported_project_selection` (raises until implementation).
 3. Link from projects list to import route.
 4. Integration tests: GET 200; POST propagates `NotImplementedError`.
 

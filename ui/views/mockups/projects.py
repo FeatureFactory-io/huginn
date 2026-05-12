@@ -16,6 +16,9 @@ MOCK_LIST = [
         "last_sync": "8 min ago",
         "sync_status": "Active",
         "row_status": "Active",
+        "last_sitrep_pk": 2001,
+        "last_sitrep_headline": "Delivery pace steady — no blockers detected",
+        "last_sitrep_generated_at": "2026-05-11 13:15",
     },
     {
         "id": 2,
@@ -26,6 +29,9 @@ MOCK_LIST = [
         "last_sync": "never",
         "sync_status": "Initial sync queued",
         "row_status": "Active",
+        "last_sitrep_pk": None,
+        "last_sitrep_headline": None,
+        "last_sitrep_generated_at": None,
     },
 ]
 

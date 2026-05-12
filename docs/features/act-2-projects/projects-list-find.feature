@@ -18,7 +18,7 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
 
   Scenario: PROJECTS-LIST+FIND-02 List shows required columns
     Given a Project "atlas-backend" exists
-    Then the table has columns: Name, DataSource, Playbook, Last sync, Status
+    Then the table has columns: Name, DataSource, Playbook, Last sync, Last SitRep, Last SitRep generated, Status
     And each row exposes a single overflow menu for secondary actions (no visible "Actions" column header)
 
   Scenario: PROJECTS-LIST+FIND-03 Project row shows name, DataSource, and sync status
@@ -60,7 +60,7 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
   # ---------------------------------------------------------------------------
 
   Scenario: PROJECTS-LIST+FIND-09 Import Projects button navigates to import screen
-    When I click the "+ Import Projects" button
+    When I click the "Import Projects" button
     Then I am on the screen "PROJECTS-IMPORT-1"
 
   # ---------------------------------------------------------------------------
@@ -87,6 +87,8 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
     When I filter by Status "Orphaned"
     Then "lost-service" is shown in the list
 
+  # Playbook filter: present on operational UI; HTML mock list may omit until stubbed.
+
   Scenario: PROJECTS-LIST+FIND-14 Filter by Playbook shows only projects assigned that Playbook
     Given some projects have Playbook "FeatureFactory Playbook" assigned
     When I filter by Playbook "FeatureFactory Playbook"
@@ -100,11 +102,11 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
     Given no Projects have been imported
     Then I see the message "No projects imported yet"
     And I see the message "Import projects from a connected data source."
-    And I see the "+ Import Projects" button
+    And I see the "Import Projects" button
 
   Scenario: PROJECTS-LIST+FIND-16 Empty state CTA navigates to import screen
     Given no Projects have been imported
-    When I click "+ Import Projects" in the empty state
+    When I click "Import Projects" in the empty state
     Then I am on the screen "PROJECTS-IMPORT-1"
 
   # ---------------------------------------------------------------------------
@@ -119,5 +121,21 @@ Feature: PROJECTS-LIST+FIND-1 Browse and manage imported Projects
   # ---------------------------------------------------------------------------
 
   Scenario: PROJECTS-LIST+FIND-18 Table has accessible column headers
-    Then the Projects table has a header row with scope="col" on each header
+    Then the Projects table has a header row with scope="col" on each header including "Last SitRep" and "Last SitRep generated"
     And each row action button has an accessible label
+
+  # ---------------------------------------------------------------------------
+  # Last SitRep (cross-link to Act 5)
+  # ---------------------------------------------------------------------------
+
+  Scenario: PROJECTS-LIST+FIND-19 Row shows last SitRep headline as link and generation timestamp when a SitRep exists
+    Given Project "atlas-backend" has a latest SitRep generated at "2026-05-11 13:15" with headline "Delivery pace steady — no blockers detected"
+    When I view the Projects list
+    Then the "Last SitRep" cell for "atlas-backend" links to "SITREP-VIEW_SITREP-1" for that SitRep using the headline "Delivery pace steady — no blockers detected"
+    And the "Last SitRep generated" cell for "atlas-backend" shows "2026-05-11 13:15"
+
+  Scenario: PROJECTS-LIST+FIND-20 Row shows em dash placeholders when no SitRep exists yet
+    Given Project "billing-service" exists and has no SitReps yet
+    When I view the Projects list
+    Then the "Last SitRep" cell for "billing-service" shows "—"
+    And the "Last SitRep generated" cell for "billing-service" shows "—"

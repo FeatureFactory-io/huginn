@@ -1,6 +1,6 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`)*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven `release/x.y.z` pipelines (staging deploy, then manual prod promote) — see §9*
 
 ---
 
@@ -13,8 +13,8 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - PostgreSQL + Django ORM — relational model sufficient, no graph DB needed
 - Docker Compose everywhere — dev/prod parity, no K8s complexity
 - HTMX partial updates + Apache ECharts — server-rendered, testable UI
-- AWS Elastic Beanstalk + GitLab CI — simple managed deploy for Docker Compose, Kaniko for daemonless image builds
-- Blue/green deployment via `eb swap` — two EB environments (`huginn-blue` / `huginn-green`); `huginn-prod` EB CNAME rotates between them. Public DNS `huginn.featurefactory.io` → **CloudFront** (origin = `huginn-prod` EB CNAME); swap does not require Route53 or CloudFront changes
+- AWS Elastic Beanstalk + GitLab CI — release pipelines on `release/x.y.z` branches; **Makefile** + **`scripts/`** define build/deploy; GitLab wires `make` targets into jobs. Kaniko for daemonless image builds
+- Blue/green deployment via `swap-environment-cnames` — two EB environments (`huginn-blue` / `huginn-green`); **staging** deploys to the inactive env first; **production** promotion is a **manual** GitLab job after review. Public DNS `huginn.featurefactory.io` → **CloudFront** (origin = `huginn-prod` EB CNAME); swap does not require Route53 or CloudFront changes
 - AWS RDS (PostgreSQL) in production — no containerised DB on EB; local dev retains the `db` Compose service
 
 ---
@@ -351,9 +351,9 @@ location /chat/stream/ {
 | Platform | AWS Elastic Beanstalk — *Docker running on 64bit Amazon Linux 2023* |
 | EB application | `huginn` |
 | EB environments | `huginn-blue`, `huginn-green` (blue/green pair) |
-| CNAME for prod | `huginn-prod.us-east-1.elasticbeanstalk.com` — rotates between envs via `eb swap` |
+| CNAME for prod | `huginn-prod.us-east-1.elasticbeanstalk.com` — rotates between envs via **`swap-environment-cnames`** (see §9–§10) |
 | CNAME for staging | `huginn-staging.us-east-1.elasticbeanstalk.com` — always the inactive env |
-| DNS | Route53 CNAME `huginn.featurefactory.io` → **CloudFront** distribution domain. **Origin** (in CDK): `huginn-prod.us-east-1.elasticbeanstalk.com` — stable; `eb swap` rotates which EB env backs that name. CNAME record is applied by CDK (`HuginnCdn` stack) via a **Lambda-backed custom resource**: if the record already matches the CloudFront domain it no-ops; otherwise it UPSERTs (avoids duplicate-record failures when migrating from a direct EB CNAME) |
+| DNS | Route53 CNAME `huginn.featurefactory.io` → **CloudFront** distribution domain. **Origin** (in CDK): `huginn-prod.us-east-1.elasticbeanstalk.com` — stable; **CNAME swap** between blue/green EB envs rotates which env backs that name. CNAME record is applied by CDK (`HuginnCdn` stack) via a **Lambda-backed custom resource**: if the record already matches the CloudFront domain it no-ops; otherwise it UPSERTs (avoids duplicate-record failures when migrating from a direct EB CNAME) |
 | Container registry | AWS ECR — `411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn` — tagged by short SHA and `:latest` |
 | Database | AWS RDS — PostgreSQL 16, credentials injected as EB environment properties |
 | Secrets | AWS SSM Parameter Store — `SECRET_KEY`, DB credentials fetched and promoted to EB env properties |
@@ -382,34 +382,60 @@ Existing resources (ECR, RDS, EB, IAM) will be brought under CDK management via 
 
 **Platform:** GitLab CI (`.gitlab-ci.yml`). Repository: `gitlab.com/dp2580/huginn`.
 
+**Design:** The **Makefile** and **`scripts/`** own commands and sequencing. **`.gitlab-ci.yml`** only selects runner images, installs **GNU make** where available, and runs **`make <target>`** (or the same shell script the Make target wraps, for images that do not ship `make` — Kaniko and `release-cli`).
+
+**Workflow rule:** Pipelines run **only** for branches matching `release/x.y.z` (semver, e.g. `release/1.2.3`). There is **no** app pipeline on every `main` push.
+
+**Release branch gate (validate stage):** `make verify-release` runs `scripts/ci-verify-release-branch.sh` — the Git tag `x.y.z` must already exist on `origin`, and the branch tip must equal `refs/tags/x.y.z` (same commit as the tag you intend to ship).
+
 **Pipeline stages (app):**
 ```
-lint (ruff) → test (pytest + CDK stack tests) → infra (child pipeline, main + infra/** only) → build (kaniko→ECR) → deploy (scripts/deploy.sh) → swap (manual)
+validate (make verify-release)
+  → lint (make ci-lint)
+  → test (make ci-test)
+  → infra (child pipeline, only if infra/** changed)
+  → build (bash scripts/ci-kaniko-build.sh — same as make ci-build)
+  → deploy (make ci-staging-deploy = ci-prepare-aws + staging)
+  → release (bash scripts/ci-create-gitlab-release.sh — same as make gitlab-release)
+  → promote_production (manual: make ci-promote = ci-prepare-aws + swap)
 ```
 
-**Infra pipeline:** `infra/gitlab-ci.yml` — triggered as a **child pipeline** when `infra/**` changes on `main`. Stages: CDK assertion tests (`tests/infra/`), `cdk diff` (non-blocking), manual `cdk deploy` (stack selectable via `CDK_STACK`). Requires same AWS GitLab CI variables as deploy.
+**Infra pipeline:** `infra/gitlab-ci.yml` — triggered as a **child pipeline** from the parent when **`infra/**` changes** on a matching `release/x.y.z` branch. Stages: CDK assertion tests (`tests/infra/`), `cdk diff` (non-blocking), manual `cdk deploy` (stack selectable via `CDK_STACK`). Requires the same AWS GitLab CI variables as EB deploy jobs.
 
 **Stage details:**
 
-| Stage | Image | Triggers | What it does |
-|---|---|---|---|
-| `lint` | `python:3.12-slim` | every push, every branch | `ruff check` + `ruff format --check` |
-| `test` | `python:3.12-slim` | every push, every branch | `pip install -r requirements.txt` (includes CDK libs); Node.js for jsii/CDK during collection; `pytest --tb=short -q` uses `huginn.settings.test` (SQLite in-memory, locmem cache, eager Celery per `pyproject.toml` — no Postgres/Redis service containers) |
-| `build` | `gcr.io/kaniko-project/executor:v1.23.2-debug` | `main` only | builds Docker image without daemon; pushes `:<sha>` and `:latest` to ECR |
-| `deploy` | `python:3.12-slim` + AWS CLI v2 | `main` only, after build | runs `scripts/deploy.sh` — deploys to inactive EB env, waits, smoke-tests `/health/` |
-| `swap` | `python:3.12-slim` + AWS CLI v2 | `main`, **manual click** | calls `eb swap` to rotate `huginn-prod` CNAME to the freshly deployed env |
+| Stage / job | Runner image | What runs |
+|---|---|---|
+| `verify_release_branch` | `alpine:3.19` (+ git, bash, grep, make) | `make verify-release` |
+| `lint` | `python:3.12-slim` (+ make) | `make ci-lint` → `scripts/ci-lint.sh` (ephemeral venv + ruff) |
+| `test` | `python:3.12-slim` (+ make) | `make ci-test` → `scripts/ci-test.sh` (Node.js for jsii/CDK during pytest collection; `huginn.settings.test`, SQLite, etc.) |
+| `infra-pipeline` | (child) | See `infra/gitlab-ci.yml` |
+| `build` | `gcr.io/kaniko-project/executor:v1.23.2-debug` | `bash scripts/ci-kaniko-build.sh` — Kaniko pushes `huginn:${CI_COMMIT_SHORT_SHA}`, `huginn:${RELEASE_SEMVER}` (from branch name), and `huginn:latest` to ECR |
+| `deploy_staging` | `python:3.12-slim` (+ make) | `make ci-staging-deploy` → AWS CLI install + `make staging` → `scripts/deploy-staging.sh` |
+| `create_release` | `registry.gitlab.com/gitlab-org/release-cli:latest` | `bash scripts/ci-create-gitlab-release.sh` — GitLab Release for tag `x.y.z` (requires **Job token** permission to create releases, if restricted in project settings) |
+| `promote_production` | `python:3.12-slim` (+ make), **manual** | `make ci-promote` → `scripts/promote-prod.sh` after human acceptance |
 
-**Why Kaniko:** GitLab shared runners are Alpine-based and lack a Docker daemon. Kaniko builds without DinD, resolves `aws-cli` Alpine incompatibilities.
+**Why Kaniko:** GitLab shared runners are Alpine-based and lack a Docker daemon. Kaniko builds without DinD and avoids `glibc` issues with `aws-cli` v2 on Alpine.
 
-**`scripts/deploy.sh` — deploy logic:**
-1. Determine which EB env holds `huginn-prod` CNAME → that is `LIVE_ENV`, the other is `INACTIVE_ENV`.
-2. `envsubst '${ECR_IMAGE}'` bakes the commit SHA image tag into `docker-compose.prod.yml` → `docker-compose.yml`.
-3. Bundle `docker-compose.yml` + `.ebextensions/` into `deploy.zip`.
-4. Upload zip to EB S3 bucket via `create-storage-location`.
-5. Create idempotent EB application version (skip if SHA already exists).
-6. `update-environment` on `INACTIVE_ENV`, wait until stable.
-7. Smoke-test `http://<inactive-cname>/health/` — 10 retries × 10 s, `--retry-connrefused` (nginx startup lag).
-8. Print prompt to manually trigger the `swap` job.
+**`scripts/deploy-staging.sh` (staging only):**
+1. Resolve `LIVE_ENV` / `INACTIVE_ENV` from which EB env currently holds the `huginn-prod` CNAME.
+2. Bake `ECR_IMAGE` (`huginn:${CI_COMMIT_SHORT_SHA}`) into Compose, bundle `deploy.zip`, upload, create EB application version, `update-environment` on **inactive** env, wait.
+3. Smoke-test `http://<inactive-cname>/health/` (revision must match `CI_COMMIT_SHORT_SHA`).
+4. Clear `HUGINN_RESET_DB` on the inactive env if set.
+5. Write `staging.env` with `STAGING_URL` for the GitLab **staging** environment URL. **Does not** swap prod CNAME.
+
+**`scripts/promote-prod.sh` (production promotion):**
+1. Re-resolve live/inactive; read inactive env’s **VersionLabel** (the revision **currently on staging**).
+2. If **`CI_COMMIT_SHORT_SHA`** is set (GitLab), it **must** equal that label — otherwise abort (avoids promoting a pipeline commit that was never deployed to staging). If unset (e.g. local `make swap`), use the inactive label as the expected revision for prod smoke.
+3. `swap-environment-cnames` between inactive and live; smoke `https://huginn.featurefactory.io/health/` for that revision.
+
+**Local / operator commands (same scripts, AWS credentials required):**
+
+| Make target | Role |
+|---|---|
+| `make staging` | Deploy a chosen revision **to** inactive EB: **`CI_COMMIT_SHORT_SHA`**, or **`BRANCH=`** ref, or **HEAD**. Image must exist in ECR. |
+| `make swap`    | Promote **whatever is on staging now** (inactive env `VersionLabel`) to prod — **no `BRANCH=`**. Optional `CI_COMMIT_SHORT_SHA` must match staging or the script aborts (CI uses this guard). |
+| `make ci-build` | Runs `scripts/ci-kaniko-build.sh` (expects `/kaniko/executor` — use from CI or a matching environment). |
 
 **GitLab CI variables (project-level secrets):**
 
@@ -425,31 +451,23 @@ lint (ruff) → test (pytest + CDK stack tests) → infra (child pipeline, main 
 
 **Artifact registry:** AWS ECR — `411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn`.
 
-**Promotion flow:**
-```
-push to main
-  → lint + test (automated gate)
-  → infra (child pipeline, only if infra/** changed)
-  → build (Kaniko → ECR)
-  → deploy (→ inactive EB env, smoke test)
-  → swap (manual click → eb swap → huginn-prod EB CNAME rotates; CloudFront origin unchanged)
-```
+**Branch strategy:** Trunk development on `main` (MRs, tests in development). **Shipping** a version: tag `x.y.z` on the release commit on `main`, push branch `release/x.y.z` at that same commit → pipeline above. After staging sign-off, run **`promote_production`** in GitLab.
 
-**Branch strategy:** trunk-based — short-lived feature branches, merge to `main` via MR.
+**Cursor / agents (optional):** A **dark-factory** Cursor skill (personal skill: `dark-factory`, see `SKILL.md` in that skill folder) describes milestone → integration → **BPE-06/07** → tag → `release/x.y.z` → staging → manual promote in LE language. It is **subordinate** to this SAO and the **Makefile** in this repository — reconcile there first.
 
 ---
 
 ## 10. Release & Rollback
 
-**Deployment strategy:** Blue/green via `eb swap`. Two EB environments (`huginn-blue`, `huginn-green`) are always running. Each deploy targets the *inactive* env; the `swap` job rotates the `huginn-prod` CNAME. **Application deploys do not change Route53** — the public hostname stays on CloudFront; only CDK infra changes (e.g. `HuginnCdn`) alter DNS.
+**Deployment strategy:** Blue/green via **`aws elasticbeanstalk swap-environment-cnames`**. Two EB environments (`huginn-blue`, `huginn-green`) are always running. **Staging:** new bits land on the *inactive* env first; smoke and review use that env’s EB CNAME (`STAGING_URL` from the deploy job). **Production:** the manual **`promote_production`** job swaps the `huginn-prod` CNAME to the env that **currently holds the staging deployment** (inactive), then smoke-tests `https://huginn.featurefactory.io` — i.e. you promote **the staging payload you already validated**, not a freshly chosen git ref. **Application deploys do not change Route53** for the public hostname — CloudFront origin remains the `huginn-prod` EB CNAME; only CDK-driven DNS work (e.g. `HuginnCdn`) changes Route53.
 
-**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) is the version label for EB application versions and the Docker image tag. Calendar versioning for human-facing releases if needed.
+**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) labels EB application versions and the primary ECR tag. The branch-derived semver (`release/x.y.z` → `x.y.z`) is an additional ECR tag. A **Git tag** `x.y.z` must exist and match the pipeline commit before the pipeline runs. **GitLab Release** is created in the pipeline after a successful staging deploy.
 
-**Rollback:** trigger one more `eb swap` in GitLab CI (or manually via AWS console) to flip the CNAME back. The previously live environment is always running and ready. Target: < 2 minutes.
+**Rollback:** Run **`promote_production` again** only after the *other* env holds the desired bits, or swap CNAMEs again from AWS / EB so traffic returns to the previously live environment (same mechanism as forward promotion). Target: on the order of minutes.
 
-**Release cadence:** continuous — every merge to `main` auto-deploys to the inactive env and pauses at the manual `swap` gate.
+**Release cadence:** **Semver release branches**, not continuous deploy-on-every-merge to production. Merge work to `main` as usual; cut **`release/x.y.z`** when ready to build, stage, and (after review) promote.
 
-**Hotfix:** direct merge to `main` with `[hotfix]` prefix in commit message; same pipeline applies.
+**Hotfix:** Merge fix to `main`, tag a new patch (or move tag per team policy), push the corresponding `release/x.y.z` branch at that commit, run the pipeline, review staging, promote.
 
 ---
 
@@ -1232,9 +1250,9 @@ sequenceDiagram
 | Test data | factory_boy | latest | `pip install factory_boy` | `pip install factory_boy` | `pip show factory_boy` |
 | Linter | ruff | 0.6+ | `pip install ruff` | `pip install ruff` | `ruff --version` |
 | Container | Docker Compose | 2.x | `brew install docker` | `apt install docker-compose` | `docker compose version` |
-| CI/CD | GitLab CI | — | — | — | pipeline at `gitlab.com/dp2580/huginn` |
-| Build (CI) | Kaniko | v1.23.2 | — | — | daemonless Docker build in CI |
-| Deploy | AWS EB CLI | latest | `pip install awsebcli` | `pip install awsebcli` | `eb --version` |
+| CI/CD | GitLab CI + GNU make | — | — | — | `release/x.y.z` pipelines; see §9 |
+| Build (CI) | Kaniko | v1.23.2 | — | — | `scripts/ci-kaniko-build.sh` |
+| Deploy | AWS CLI + EB | — | `pip install awscli` (optional) | same | `make staging` / `make swap`; see §9 |
 | VCS | git | 2.x | `brew install git` | `apt install git` | `git --version` |
 | Build | make | 4+ | bundled on macOS | `apt install make` | `make --version` |
 | IaC | AWS CDK (Python) | 2.x | `pip install aws-cdk-lib` | `pip install aws-cdk-lib` | `cdk --version` |
@@ -1261,7 +1279,7 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | DB (prod) | AWS RDS PostgreSQL | Data survives EB instance replacement; managed backups |
 | UI | Django + HTMX + ECharts | Server-rendered = testable; no SPA complexity; ECharts handles scatter/quadrant |
 | Infra | Docker Compose on EB AL2023 | Internal tool; K8s overhead not justified; EB manages EC2 |
-| Deploy strategy | Blue/green via `eb swap` | Zero-downtime; measurable cycle time; instant rollback by re-swapping |
+| Deploy strategy | Blue/green via **`swap-environment-cnames`** | Zero-downtime; staging on inactive env first; manual promote job; instant rollback by re-swapping |
 | DNS | Route53 `huginn.featurefactory.io` → CloudFront; origin `huginn-prod.*` | Public name stable; EB prod CNAME is CloudFront origin and rotates via swap; no Route53 edit per deploy |
 | CI platform | GitLab CI | Repo is on GitLab; native integration |
 | CI builds | Kaniko | Shared runners are Alpine; Kaniko is daemonless, no glibc needed |
@@ -1313,11 +1331,11 @@ A second CNAME for `huginn.featurefactory.io` conflicts with the existing record
 **EB in default VPC (Phase 3 gap).**
 Current infrastructure (EB, RDS) lives in the default AWS VPC (`vpc-a2af05df`, `172.31.0.0/16`). `HuginnNetworkStack` creates a dedicated VPC. RDS migration requires a snapshot restore; EB environment recreation requires a maintenance window. Tracked as Phase 3/4 of the CDK migration.
 
-**Kaniko is required for ECR builds on GitLab shared runners.**
-GitLab's shared runners are Alpine-based; `aws-cli` v2 binary is not compatible with Alpine (`glibc` missing). Switching the `build` stage to Kaniko (`gcr.io/kaniko-project/executor:v1.23.2-debug`) eliminates the Docker daemon requirement and the Alpine incompatibility.
+**Kaniko is required for ECR builds on GitLab shared runners** (see §9).
+GitLab's shared runners are Alpine-based; `aws-cli` v2 binary is not compatible with Alpine (`glibc` missing). The `build` job uses Kaniko (`gcr.io/kaniko-project/executor:v1.23.2-debug`) via `scripts/ci-kaniko-build.sh` — no Docker daemon and no glibc on the builder.
 
 **Blue/green swap direction must be verified before executing.**
-`eb swap` is directional: swapping twice in the same direction returns to the original state, not the desired one. Always check which env holds the `huginn-prod` CNAME (`aws elasticbeanstalk describe-environments ... --query CNAME`) before triggering a swap.
+`swap-environment-cnames` is directional: swapping twice in the same direction returns to the original state, not the desired one. Always check which env holds the `huginn-prod` CNAME (`aws elasticbeanstalk describe-environments ... --query CNAME`) before running **`promote_production`** or `make swap`.
 
 **Font Awesome Pro Kit uses domain allowlisting.**
 Icons loaded via `https://kit.fontawesome.com/<kit-id>.js` are silently blocked if the serving domain is not in the kit's allowed-domains list on fontawesome.com. Domains to add: `huginn.featurefactory.io`, `huginn-prod.us-east-1.elasticbeanstalk.com`, `huginn-staging.us-east-1.elasticbeanstalk.com`.
@@ -1358,4 +1376,4 @@ Also: use `inspect.iscoroutinefunction(func)` in `ToolExecutor` to detect whethe
 
 - **CI platform pivoted from GitHub Actions → GitLab CI** during execution; SAO initially specified GitHub Actions / GHCR.
 - **Database pivoted from containerised Postgres → RDS** during execution; removes data loss risk on EB instance replacement.
-- **Rolling → blue/green** adopted for zero-downtime deploys and measurable cycle time (deploy completes on inactive env; swap is the single atomic promotion event).
+- **Rolling → blue/green** adopted for zero-downtime deploys: new revision lands on the **inactive** EB env and is smoke-tested (**staging**); **`promote_production`** / `make swap` performs the **CNAME swap** to production after review (see §9–§10).

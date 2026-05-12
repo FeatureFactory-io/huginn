@@ -18,7 +18,7 @@
 ## Implementation Steps (skeleton)
 
 1. `ProjectsDetailView` GET renders `project` resolved with `select_related('datasource')`.
-2. `ProjectsSyncNowView` POST validates row exists → `enqueue_immediate_project_sync` (raises until MIT).
+2. `ProjectsSyncNowView` POST validates row exists → `enqueue_immediate_project_sync` (raises until implementation).
 3. Detail template: Edit / Archive links; POST form for sync (CSRF).
 
 ## Checkpoint

@@ -9,7 +9,7 @@
 #   footprint_accuracy:  <0.0..1.0>
 #   pip_candidates:      ["<process improvement proposals>"]
 #
-# This log is read by PIT-Orient & Validate Scope to compute trends.
+# Optional input for iteration retrospectives (milestone / LE reviews).
 
 entries:
   - milestone: "ITER-2026-W19 | Acts 0-2 backbone"

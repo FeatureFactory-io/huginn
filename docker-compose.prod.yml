@@ -1,5 +1,5 @@
 # Production Docker Compose — consumed by AWS Elastic Beanstalk.
-# ECR_IMAGE is substituted by scripts/deploy.sh (envsubst) before bundling.
+# ECR_IMAGE is substituted by scripts/deploy-staging.sh (envsubst) before bundling.
 #
 # NOTE: No 'db' service — production uses RDS PostgreSQL.
 # EB exports all environment properties as shell env vars before running docker

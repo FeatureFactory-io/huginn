@@ -18,7 +18,7 @@ def test_list_02_table_has_required_columns(commander_client, db):
     r = commander_client.get(reverse("projects-list"))
     assert r.status_code == 200
     body = r.content.decode()
-    for label in ("Name", "Data source", "Playbook", "Last sync", "Status"):
+    for label in ("Name", "Data source", "Playbook", "Last sync", "Last SitRep", "Last SitRep generated", "Status"):
         assert label in body
 
 
