@@ -55,8 +55,7 @@ Must pass (no regressions in existing tests).
 `git`, `python`, `pytest`
 
 ## Result
-<!-- Worker fills in after completion -->
-- Branch pushed:
-- MR URL:
-- Test count confirmed (20):
-- Notes:
+- Branch pushed: feature/sitrep-generate-steps
+- MR URL: https://gitlab.com/dp2580/huginn/-/merge_requests/9
+- Checkpoint exit code: 0 (20 tests collected, all FAIL)
+- Notes: Establishes RED baseline for T-61-impl

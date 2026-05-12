@@ -122,7 +122,7 @@ def test_project_detail_renders(commander_client):
     assert "atlas-backend" in body
     assert "gitlab-co" in body
     assert "project-sync-state" in body
-    assert "project-sitreps-placeholder" in body
+    assert "project-open-sitreps" in body
     assert "project-widget-variables" in body
     assert "project-tab-vitals" in body
     assert "project-tab-variables" in body
