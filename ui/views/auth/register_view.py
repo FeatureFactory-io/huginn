@@ -18,7 +18,7 @@ class RegisterView(View):
         if not settings.DEBUG:
             messages.info(
                 request,
-                "Registration is disabled on this Huginn install. " "Contact your admin to request an account.",
+                "Registration is disabled on this Huginn install. Contact your admin to request an account.",
             )
             return redirect("auth-login")
         return super().dispatch(request, *args, **kwargs)
