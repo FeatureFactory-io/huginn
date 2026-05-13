@@ -57,6 +57,51 @@ Rules:
 - Phase 4.5 DoD + `make lint` + `make test` still runs — it just doesn't block on human.
 - Phase 6 production promote is still manual (human explicitly runs `make swap`).
 
+## Known bugs to fix in next version
+
+### `fswatch -1` is edge-triggered — misses pre-existing tasks on restart
+When a factory session is restarted (e.g., after worker pane crashes), tasks already
+sitting in `pending/` are invisible to workers. `fswatch -1` blocks until the *next*
+filesystem event; it does not fire for files that existed before it started watching.
+
+**Fix:** in `factory.sh` worker loop, do an initial scan of `pending/` *before* entering
+the fswatch wait. Pseudocode:
+```bash
+# Scan once at startup, then event-loop
+scan_and_claim   # run the for-loop over pending/*.md immediately
+while :; do
+  fswatch -1 "$pending_dir" && scan_and_claim
+done
+```
+
+### Workers consistently submit empty `# Result` blocks → `verify-result.sh` blocks every task
+Workers run inside a git worktree (`.worktrees/<role>/`). The task file they received
+is at `factory/tasks/claimed/T-NNN.md` in the **repo root**, but the worker's `cwd` is
+the worktree. When the worker edits "the task file" it edits the worktree's own copy
+(which may not be the same path), so the Result block the LE sees remains empty.
+
+**Fix options (pick one):**
+1. Pass the absolute path to the claimed task file as an env var (`TASK_FILE`) in the
+   worker loop so the worker knows exactly which file to update.
+2. Have `done.sh` accept a `--result-file <path>` arg and let the worker call it with
+   the path it actually edited.
+3. Simplest: in the worker loop, after `cursor-agent` exits, run
+   `scripts/verify-result.sh` and if it fails, auto-fill a minimal Result block from
+   the git state (last commit SHA, branch name, open MR number via `glab mr list`).
+
+**Interim LE workaround (current run):** after each `blocked/` event with
+`reason: status field is empty`, LE fills in `status/branch/mr/commit_sha` from
+`git ls-remote` + `glab mr list`, moves `blocked/ → done/`, and touches the next
+pending task to wake the downstream worker.
+
+### Worker panes crash silently when worktrees aren't ready
+Windows 2–4 (feature-builder, release-engineer, manual-tester) can exit if the
+worktree `git checkout --detach` fails during factory.sh startup. The `; bash` at the
+end of the window command keeps the shell open but the worker loop is gone.
+
+**Fix:** in `factory.sh`, wait for all worktrees to be confirmed before spawning worker
+panes, or add `set +e` around the worktree creation and retry logic.
+
 ## Implementation note
 
 The simplest implementation: in `prompts/lead-engineer.md`, replace every instance of
