@@ -81,20 +81,23 @@ fi
 echo "=== integrate merge: ${TASK_ID} ==="
 echo "MR !${MR}  branch ${BRANCH}"
 
-# Assert MR can be merged
+# Assert MR can be merged.
+# GitLab is deprecating `merge_status` in favor of `detailed_merge_status`.
+# Accept either: legacy `merge_status == can_be_merged` OR new `detailed_merge_status == mergeable`.
 mr_json="$(glab mr view "$MR" --output json 2>/dev/null)"
 merge_status="$(printf '%s\n' "$mr_json" | jq -r '.merge_status // empty')"
+detailed_merge_status="$(printf '%s\n' "$mr_json" | jq -r '.detailed_merge_status // empty')"
 mr_state="$(printf '%s\n' "$mr_json" | jq -r '.state // empty')"
 
 if [[ "$mr_state" == "merged" ]]; then
   echo "MR !${MR} is already merged — updating task status only."
 else
-  if [[ "$merge_status" != "can_be_merged" ]]; then
-    echo "error: MR !${MR} merge_status is '${merge_status}' (expected 'can_be_merged')" >&2
+  if [[ "$merge_status" != "can_be_merged" && "$detailed_merge_status" != "mergeable" ]]; then
+    echo "error: MR !${MR} not mergeable (merge_status='${merge_status}', detailed_merge_status='${detailed_merge_status}')" >&2
     echo "       Rebase the branch onto the target and push, then retry." >&2
     exit 1
   fi
-  echo "Merging MR !${MR} (squash, remove source branch) …"
+  echo "Merging MR !${MR} (squash, remove source branch) — merge_status='${merge_status}' detailed_merge_status='${detailed_merge_status}' …"
   glab mr merge "$MR" --squash --remove-source-branch --yes
   echo "Merged."
 fi

@@ -1,9 +1,3 @@
-# Blocked
-
-reason: reason:status: field 'status' is empty
-
----
-
 ---
 id: T-REG-01
 role: step-def-writer
@@ -157,7 +151,39 @@ ruff check tests/integration/test_auth_reg_login_debug_gate.py
 
 # Result
 
-status:
-branch: ""
-mr: ""
-commit_sha: ""
+status: integrated
+branch: factory/T-REG-01-debug-gate-steps
+mr: 19
+commit_sha: 6ff49710e073f37c6d4fd1402e1449d02c0c58bf
+
+## Summary
+
+3 RED pytest integration tests for AUTH-REG-LOGIN-01/02/03 added in
+`tests/integration/test_auth_reg_login_debug_gate.py` (67 lines, single new file).
+
+## Verification (LE smoke, in worktree)
+
+- `pytest tests/integration/test_auth_reg_login_debug_gate.py -v` → **3 failed**, each
+  for the contracted reason:
+  - 01: `login-register-link` testid absent from rendered login body (DEBUG=True).
+  - 02: helper text `"Need an account? Contact your admin."` absent from rendered login
+    body (DEBUG=False).
+  - 03: `GET /accounts/register/` returns **404** (route not yet registered) — expected
+    **302** to login.
+- MR !19 open at `https://gitlab.com/dp2580/huginn/-/merge_requests/19`.
+- Branch `factory/T-REG-01-debug-gate-steps` present on origin at `6ff4971`.
+- Diff vs `main`: 1 file, 67 insertions, 0 deletions — fully within `files_in_scope`.
+- CI: no pipeline. **Expected** on Huginn — `.gitlab-ci.yml` workflow rule restricts
+  the app pipeline to `release/x.y.z` branches (per SAO §9). Local `make lint` /
+  `make test` will gate at Phase 4.5.
+
+## LE note (rescue)
+
+Worker correctly pushed the branch, opened MR !19, and completed the engineering
+deliverable, but submitted with an **empty `# Result` block**. The verifier routed the
+task to `blocked/` (reason: `status` field empty). The deliverable itself is sound:
+all 7 LE acceptance checks pass (branch, MR, CI N/A, step defs verbatim, scope clean,
+RED smoke confirmed, Dr. Dobbs quality bar met). Fields filled in by LE under the
+factory/** minor-fix carve-out — no worker code was modified.
+
+ready_for: T-REG-01-impl (DEBUG gate on login screen + register route guard).

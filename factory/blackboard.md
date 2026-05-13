@@ -111,3 +111,9 @@ until T-REG-01 lands in done/. No `blocked/` placement needed.)
 - **2026-05-13 14:32:16** 🔧 **step-def-writer** claimed **T-REG-01**
 
 - **2026-05-13 14:38:26** 🔴 blocked **T-REG-01**: reason:status: field 'status' is empty
+
+- **2026-05-13 14:41:30** 🔀 (LE) merged **T-REG-01** via !19 → integrated
+
+- **2026-05-13 (LE) Rescue T-REG-01:** Worker shipped sound deliverable (branch factory/T-REG-01-debug-gate-steps, MR !19, 1 file +67 LoC, all 7 LE checks pass incl. 3 RED tests reproducing locally for the right reasons) but submitted an empty # Result block. Validator routed to blocked/ per spec. LE filled fields under factory/** carve-out (status=passed, branch, mr=19, commit_sha=6ff4971), moved blocked/→claimed/, ran scripts/done.sh, then merged MR !19 to main via integrate.sh.
+
+- **2026-05-13 (LE) integrate.sh patch:** GitLab now returns merge_status=null and uses detailed_merge_status="mergeable" instead. Patched scripts/integrate.sh to accept either field so the next 3 merges (T-REG-01-impl, T-REG-02, T-REG-02-impl) do not hit the same wall.
