@@ -75,7 +75,9 @@ Feature: Act 0 — Registration, verification, approval, moderation
   # AUTH-REGISTER-1 — form and flows
   # ---------------------------------------------------------------------------
 
-  Scenario: AUTH-REGISTER-01 Successful submit redirects to awaiting verification screen
+  # Sprint "Registration" (milestone): simplified flow — no email verification, no admin approval.
+  # Account is created with is_active=True and the user is immediately signed in.
+  Scenario: AUTH-REGISTER-01 Successful submit creates active account and redirects to Tactical Plot
     Given settings DEBUG is enabled
     And no user exists with email "fresh@example.com"
     And I am on screen "AUTH-REGISTER-1"
@@ -84,11 +86,9 @@ Feature: Act 0 — Registration, verification, approval, moderation
     And I fill in "register-password" with "Abcd-valid-987"
     And I fill in "register-password-confirm" with "Abcd-valid-987"
     And I click the button with data-testid "register-submit"
-    Then I am on screen "AUTH-AWAIT_VERIFICATION-1"
-    And I see the title "Check your email"
-    And I see body text mentioning "fresh@example.com"
-    And I see body text mentioning "24 hours"
-    And an outbound SES email was sent with subject "Verify your email for Huginn"
+    Then a User exists with email "fresh@example.com" and is_active true
+    And I am authenticated as "fresh@example.com"
+    And I am redirected to the Tactical Plot "DASHBOARD-PROJECTS-1"
 
   Scenario: AUTH-REGISTER-02 Create account stays disabled until all fields valid client-side
     Given settings DEBUG is enabled
