@@ -1,7 +1,25 @@
-# System Blueprint — Huginn / AI → SitRep sprint
+# System Blueprint — Huginn / Registration sprint
 
-> **Canonical source:** `docs/architecture/SAO.md` (esp. §3, §17).
-> This file is a worker-readable digest. When in doubt, SAO.md wins.
+> **Canonical source:** `docs/architecture/SAO.md` (esp. §Authentication, §accounts/ app, §Services Layer).
+> **Sprint plan:** `docs/plans/ACT0-REG-01_registration_debug_only.md`.
+> **Feature file:** `docs/features/act-0-auth/registration.feature`.
+> This file is a worker-readable digest. When in doubt, SAO.md and the plan win.
+
+---
+
+## Sprint scope (in / out)
+
+| In scope (this sprint) | Out of scope (explicitly NOT this sprint) |
+|---|---|
+| AUTH-REG-LOGIN-01/02/03 (DEBUG gate on login + register guard) | AUTH-REG-LOGIN-04/05/06/07 (states `pending_email_verification`, `pending_admin_approval`, `rejected`) |
+| AUTH-REGISTER-01/02/03/04/05/08 (form, mismatch, weak pw, sign-in link, enumeration protection) | AUTH-REGISTER-06/07 (verification re-send, transient backend) |
+| ACCESS-REG-01 (keyboard tab order — assert by template) | AUTH-AWAIT_VERIFICATION-*, AUTH-VERIFY_EMAIL-*, AUTH-AWAIT_APPROVAL-* |
+| | ADMIN-APPROVE-01, ADMIN-REJECT-01 |
+| | Any email sending (no `django.core.mail`, no SES) |
+| | Any new model or field on `accounts.User` |
+| | Forgot-password flow |
+
+`is_active=True` (Django default) **is** the entire approval state for this sprint. Other account states ship in a later milestone.
 
 ---
 
@@ -9,174 +27,172 @@
 
 ```
 huginn/
-├── ingestion/
-│   ├── models/          # Project, DataSource, Increment (commits/MRs), Contributor, IngestionRun
-│   ├── adapters/        # DataSourceAdapter ABC + per-source extractors
-│   ├── services/        # SyncEngine — orchestrates extraction; fires sync_project_completed signal
-│   └── tasks.py         # sync_project Celery task → calls SyncEngine
-├── analytics/
-│   ├── models/          # Playbook, PlaybookVersion, Variable, Threshold
-│   └── services/        # Master Variable computation (NOT touched this sprint)
-├── sitrep/
-│   ├── models/          # SitRep ← NEW (this sprint #60)
-│   │                    # Also: Frago, SituationalAwareness, SituationalAwarenessVersion (pre-existing)
-│   └── services/        # SitRep / Frago / SA CRUD helpers (pre-existing; extend as needed)
-├── gjallarhorn/         # NEW — entire app created this sprint
-│   ├── llm/
-│   │   ├── base.py      # LLM ABC + LLMResponse dataclass (#64)
-│   │   ├── claude.py    # ClaudeLLM — claude-sonnet-4-6, thinking enabled (#64)
-│   │   └── retry.py     # retry_on_rate_limit decorator (#64)
-│   ├── agent/
-│   │   ├── agent.py     # GjallarhornAgent(llm, tool_executor) (#66)
-│   │   ├── tool_executor.py  # Permission-aware dispatcher → {success,result,error} (#65)
-│   │   ├── prompts.py   # SITREP_NARRATIVE_SYSTEM_PROMPT (#64)
-│   │   └── exceptions.py    # ToolExecutionError, InvalidStateTransitionError (#65, #67)
-│   ├── mcp_tools/
-│   │   ├── data_tools.py     # list_commits, get_contributor_activity (#65)
-│   │   ├── playbook_tools.py # get_active_playbook (#65)
-│   │   └── sitrep_tools.py   # get_active_situational_awareness, list_active_fragos (#65)
-│   ├── models/
-│   │   ├── conversation.py   # Conversation, Message (#60)
-│   │   ├── execution_plan.py # ExecutionPlan + state-machine helpers (#60 fields; #67 helpers)
-│   │   └── plan_step.py      # PlanStep (#60)
-│   ├── services/
-│   │   ├── sitrep_service.py # build_narrative_plan_steps, _persist_sitrep_from_plan (#66, #61)
-│   │   └── factory.py        # build_executor(user,project), create_agent() (#65, #67)
-│   └── tasks/
-│       ├── plan_tasks.py     # execute_plan Celery task (#67)
-│       └── sitrep_tasks.py   # generate_sitrep_for_project Celery task (#61)
+├── accounts/                          # custom AUTH_USER_MODEL
+│   ├── models.py                      # User: AbstractBaseUser+PermissionsMixin, USERNAME_FIELD='email'
+│   ├── managers.py                    # UserManager.create_user(email, password, **extra) — is_active=True default
+│   ├── admin.py                       # EmailUserCreationForm pattern reference (do NOT subclass this)
+│   └── migrations/                    # NO new migration this sprint
 ├── ui/
-│   ├── views/           # SitRep list + view production views (#62, #63)
-│   └── templates/ui/
-│       ├── sitrep/list.html  # Production list template (#62)
-│       └── sitrep/view.html  # Production view template (#63)
-│       └── mockups/sitrep/   # Existing mockups — source of truth for UI layout
-└── huginn/
-    ├── settings/test.py # CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True
-    └── celery.py        # Celery app — broker=Redis
+│   ├── views/auth/
+│   │   ├── login_view.py              # MODIFY: add debug_mode=settings.DEBUG to _context()
+│   │   ├── register_view.py           # NEW (T-REG-01-impl: skeleton + DEBUG guard; T-REG-02-impl: full POST)
+│   │   └── logout_view.py             # untouched
+│   ├── services/
+│   │   ├── authentication_service.py  # PATTERN to follow for RegistrationService (thin, ORM-direct)
+│   │   └── registration_service.py    # NEW (T-REG-02-impl)
+│   ├── templates/ui/auth/
+│   │   ├── login.html                 # MODIFY: conditional create-account link
+│   │   └── register.html              # NEW: stub in T-REG-01-impl, full port in T-REG-02-impl
+│   └── urls.py                        # MODIFY: add path('accounts/register/', name='auth-register')
+├── ui/templates/ui/mockups/auth/
+│   └── register.html                  # SOURCE OF TRUTH for production register.html layout & data-testids
+└── tests/integration/
+    ├── conftest.py                    # commander_user / commander_client fixtures
+    ├── test_auth_login_credentials.py # PATTERN to follow for new tests
+    ├── test_auth_reg_login_debug_gate.py  # NEW (T-REG-01)
+    └── test_auth_register.py          # NEW (T-REG-02)
 ```
 
 ---
 
 ## Key interfaces (normative — do not deviate)
 
-### `LLM` ABC (`gjallarhorn/llm/base.py`)
+### `RegistrationService` (`ui/services/registration_service.py`) — T-REG-02-impl
+
 ```python
-class LLM(ABC):
-    @abstractmethod
-    def generate_with_tools(
-        self,
-        messages: list[dict],
-        tools: list[dict],
-        system_blocks: list[dict],    # 4 cache-control blocks
-    ) -> LLMResponse: ...
-
-@dataclass
-class LLMResponse:
-    content: str
-    stop_reason: str          # 'end_turn' | 'tool_use'
-    usage: dict               # input_tokens, output_tokens, cache_read_input_tokens
-    tool_calls: list[dict] = field(default_factory=list)
-    model: str = ''
+class RegistrationService:
+    def register(
+        self, email: str, full_name: str, password: str, request
+    ) -> tuple[object | None, str | None]:
+        """
+        Returns (user, None)        on successful create + login.
+        Returns (None, error_msg)   on password-validator failure.
+        Returns (None, None)        on duplicate email — enumeration protection,
+                                    caller must show the SAME success UI / redirect.
+        """
 ```
 
-### `ToolExecutor.execute()` envelope (always returns, never raises)
+Implementation rules:
+- Normalize email: `(email or "").strip().lower()`.
+- `validate_password(password)` from `django.contrib.auth.password_validation` — return `(None, exc.messages[0])` on failure.
+- `User.objects.filter(email__iexact=email).exists()` → if True, return `(None, None)` silently (no log, no row).
+- `User.objects.create_user(email=..., password=..., full_name=...)` — `is_active=True` by default.
+- `login(request, user)` to bind session.
+
+### `RegisterView` (`ui/views/auth/register_view.py`)
+
 ```python
-{"success": True,  "result": <any>,  "error": None}
-{"success": False, "result": None,   "error": "<message>"}
+@method_decorator(never_cache, name="dispatch")
+class RegisterView(View):
+    template_name = "ui/auth/register.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not settings.DEBUG:
+            messages.warning(request, "Registration is disabled on this Huginn install. "
+                                      "Contact your admin to request an account.")
+            return redirect(reverse("auth-login"))
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {})
+
+    def post(self, request, *args, **kwargs):
+        # T-REG-01-impl: raise NotImplementedError
+        # T-REG-02-impl: full body — see blueprint T-REG-02-impl
+        ...
 ```
 
-### `GjallarhornAgent` public surface (`gjallarhorn/agent/agent.py`)
+### URL
+
 ```python
-class GjallarhornAgent:
-    def create_plan(self, conversation, goal, steps) -> ExecutionPlan: ...
-    def execute_single_step(self, plan, step) -> None: ...
-    def process_user_message(self, ...) -> None:
-        raise NotImplementedError   # Chat milestone — DO NOT implement
-```
-
-### `execute_plan` Celery task — resilience matrix
-| Exception type | Action |
-|---|---|
-| `anthropic.RateLimitError`, `TimeoutError`, `OSError` | `mark_paused_for_retry` → `self.retry(countdown=…)` |
-| Any other `Exception` | `mark_failed(exc)` — no retry |
-| All steps completed | `mark_completed()` → `_persist_sitrep_from_plan(plan)` |
-
-Completed steps (`status='completed'`) are **never re-executed** on retry — `get_next_pending_step()` filters them out.
-
----
-
-## Data flow — Flow A (ingestion sync → SitRep)
-
-```
-Celery Beat
-  └─ sync_project (ingestion/tasks.py)
-       └─ SyncEngine.run() → upserts Increments
-            └─ sync_project_completed.send(project_id, completed_at)   ← Django signal
-                 └─ signal receiver (gjallarhorn/tasks/sitrep_tasks.py)
-                      └─ generate_sitrep_for_project.delay(project_id, from_dt, to_dt, 'automatic')
-                           └─ resolve from_dt (last SitRep.to_dt OR earliest commit dt)
-                           └─ idempotency guard: (project, to_dt) already in DB → return
-                           └─ no Playbook assigned → WARNING + return
-                           └─ create Conversation(type='sitrep_generation')
-                           └─ agent.create_plan(conversation, goal, 5 steps)
-                                └─ ExecutionPlan + PlanStep × 5 persisted
-                                └─ execute_plan.delay(plan_id)
-                                     └─ loop: get_next_pending_step()
-                                          └─ agent.execute_single_step(plan, step)
-                                               └─ build 4 system_blocks (Prompt+Playbook+FRAGOs+SA)
-                                               └─ llm.generate_with_tools(messages, tools, blocks)
-                                               └─ dispatch tool calls via ToolExecutor
-                                               └─ step.status = 'completed'; step.result saved
-                                     └─ all done → mark_completed()
-                                     └─ _persist_sitrep_from_plan(plan) → SitRep row created
+# ui/urls.py
+from .views.auth.register_view import RegisterView
+path("accounts/register/", RegisterView.as_view(), name="auth-register"),
 ```
 
 ---
 
-## Scope constraints for this sprint
+## Template contract — `ui/templates/ui/auth/register.html` (T-REG-02-impl)
 
-| **In scope** | **Explicitly out of scope** |
-|---|---|
-| `gjallarhorn/` app (models, LLM, tools, agent, tasks) | SSE / Redis publish calls (all `# TODO(chat-milestone)`) |
-| `sitrep/models/sitrep.py` (new `SitRep` model) | Write tools: `create_frago`, `extend_sitawareness`, `create_jira_issue` |
-| Production list + view UI (#62, #63) | `process_user_message` on agent (Chat milestone) |
-| Signal wiring (`sync_project_completed`) | VariableDatapoint writes |
-| Integration tests (all 8 blocks, no mock) | `execute_decision_outcome` |
-| | `gjallarhorn/views/` (chat views — Chat milestone) |
+Port the mockup at `ui/templates/ui/mockups/auth/register.html` to production:
+
+1. `{% extends "base.html" %}` (not `base_mockups.html`).
+2. `<form method="post" ...>` + `{% csrf_token %}`.
+3. Input `name` attributes: `name="name"`, `name="email"`, `name="password"`, `name="password_confirm"`.
+4. **Keep every `data-testid` from the mockup verbatim** — these are the scenario hooks.
+5. Repopulate `value="{{ field_name|default:'' }}"` on name + email. **Never repopulate passwords.**
+6. Above the form, render `password_error` (or other inline errors) as `alert alert-danger` with `data-testid="register-error"`.
+7. "Sign in" link points to `{% url 'auth-login' %}` and keeps `data-testid="register-sign-in-link"`.
+8. Screen anchor at top: `{% include "ui/mockups/_screen_anchor.html" with screen_id="AUTH-REGISTER-1" screen_testid="auth-register-loaded" %}`.
 
 ---
 
-## Dependency rule (from SAO §17.1 — normative)
+## Template contract — `ui/templates/ui/auth/login.html` (T-REG-01-impl)
 
-`gjallarhorn/` **reads from**: `sitrep/`, `analytics/`, `ingestion/`
-`gjallarhorn/` **writes to**: `sitrep/` models (SitRep, Decision, VariableDatapoint)
+Inside `.card-body` below the form, insert (replace the existing Forgot password block):
 
-No other app imports from `gjallarhorn/`. Django signal is the only coupling point from `ingestion/` → `gjallarhorn/`.
+```html
+<div class="d-flex justify-content-between align-items-center mt-3">
+  {% if debug_mode %}
+    <a href="{% url 'auth-register' %}" class="btn btn-link btn-sm px-0"
+       data-testid="login-create-account">Create an account</a>
+  {% else %}
+    <span class="text-muted small" data-testid="login-signup-disabled">
+      Need an account? Contact your admin.
+    </span>
+  {% endif %}
+  <a href="#" class="btn btn-link btn-sm px-0" data-testid="forgot-password">Forgot password?</a>
+</div>
+```
+
+Forgot password stays `href="#"` (out of scope) but loses the `disabled` attribute so it's still rendered & discoverable.
+
+`LoginScreenView._context()` must include `"debug_mode": settings.DEBUG`.
 
 ---
 
 ## Test conventions (apply in every task)
 
-- `ScriptedLLM` (from `tests/gjallarhorn/conftest.py`) — never `ClaudeLLM` in tests.
-- `CELERY_TASK_ALWAYS_EAGER = True` — tasks run synchronously in test process.
-- Seed data via ORM inside each test function or `@pytest.fixture`; no YAML fixtures.
-- Real-API tests marked `@pytest.mark.requires_llm_api`; excluded from default CI run.
-- Every test file lives in `tests/<app>/test_<module>.py`.
-- Checkpoint command per issue runs the specific test files for that issue; full suite with `pytest tests/ -x`.
+- **Framework:** `pytest` + `pytest-django` (no `pytest-bdd`; tests are imperative integration tests against `django.test.Client`).
+- **DEBUG toggle:** `@override_settings(DEBUG=True)` or `@override_settings(DEBUG=False)` per test. Do not rely on settings file default.
+- **DB:** `@pytest.mark.django_db` (or seeded via existing fixtures).
+- **User creation:** `User.objects.create_user(email=..., password=..., full_name=...)` — never bypass the manager.
+- **Session check:** `assert "_auth_user_id" in client.session` to prove auto-login.
+- **Redirect target:** `reverse("tactical-plot")` for the post-register destination.
+- **RED → GREEN protocol:**
+  - step-def-writer task: tests must collect and FAIL (or `NoReverseMatch`-skip) — `expected_exit_code: 1`.
+  - feature-builder task: tests must PASS plus `pytest tests/ -x` no regression — `expected_exit_code: 0`.
 
 ---
 
 ## Existing code workers must read before touching
 
-| File | Why |
-|---|---|
-| `ingestion/tasks.py` | `sync_project` task — signal fires here on success; do not break it |
-| `ingestion/services/sync_engine.py` | Where to call `.send()` — check existing pattern first |
-| `sitrep/models/frago.py` | `Frago` fields `is_active`, `effective_from`, `effective_to` — used by `list_active_fragos` tool |
-| `sitrep/models/situational_awareness.py` | SA + SAVersion fields — used by `get_active_situational_awareness` tool |
-| `analytics/models/` | `Playbook`, `PlaybookVersion` — used by `get_active_playbook` tool |
-| `ui/templates/ui/mockups/sitrep/list.html` | Source of truth for #62 list template |
-| `ui/templates/ui/mockups/sitrep/view.html` | Source of truth for #63 view template |
-| `docs/architecture/SAO.md §17.5` | Exact `ExecutionPlan` + `PlanStep` field list — copy verbatim |
-| `docs/architecture/SAO.md §17.11` | Exact `Conversation` + `Message` field list — copy verbatim |
+| File | Lines | Why |
+|---|---|---|
+| `ui/views/auth/login_view.py` | 1–66 | Class-based view pattern; where `debug_mode` lands |
+| `ui/services/authentication_service.py` | 1–46 | Thin-service pattern — `RegistrationService` mirrors this exactly |
+| `ui/templates/ui/auth/login.html` | 1–57 | Production login template; where to splice the conditional |
+| `ui/templates/ui/mockups/auth/register.html` | 1–65 | Source-of-truth for register form layout + every `data-testid` |
+| `tests/integration/test_auth_login_credentials.py` | 1–86 | Integration-test pattern (Client + reverse + override_settings) |
+| `tests/integration/conftest.py` | 1–20 | Fixture pattern (`commander_user`, `commander_client`) |
+| `accounts/models.py` | 1–44 | `User` model — is_active default True; no fields to add |
+| `accounts/managers.py` | 1–46 | `UserManager.create_user` — canonical user creation path |
+| `accounts/admin.py` | 17–40 | `EmailUserCreationForm` is **reference only** — do NOT subclass it in `RegistrationService` |
+| `ui/urls.py` | 44–84 | Where to register the new path; URL name `auth-register` |
+| `docs/plans/ACT0-REG-01_registration_debug_only.md` | full | Sprint plan — the contract |
+| `docs/features/act-0-auth/registration.feature` | full | Scenarios — source of truth for acceptance |
+
+---
+
+## Hard prohibitions (apply across ALL tasks)
+
+- Do NOT send any email, import `django.core.mail`, or stub SES.
+- Do NOT create any new model, migration, or field. The `accounts.User` schema is frozen for this sprint.
+- Do NOT add `account_status`, `is_approved`, `EmailVerificationToken`, or any token model.
+- Do NOT add a new Django app.
+- Do NOT use `django.contrib.auth.forms.UserCreationForm`.
+- Do NOT add a repository/manager layer above ORM — service calls ORM directly.
+- Do NOT add async or Celery tasks.
+- Do NOT implement Forgot Password.
+- Do NOT show the Create-account link when `DEBUG = False`.
+- Do NOT distinguish duplicate-email failures from successful submits at the UI level (enumeration protection — both return the same redirect).
