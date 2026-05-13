@@ -155,7 +155,7 @@ ruff check ui/
 
 # Result
 
-status:
-branch: ""
-mr: ""
-commit_sha: ""
+status: passed
+branch: "factory/T-REG-01-impl-debug-gate"
+mr: "20"
+commit_sha: "c4ad47e"

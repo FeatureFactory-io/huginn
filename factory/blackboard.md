@@ -129,3 +129,11 @@ T-REG-01-impl claimable by feature-builder. The remaining chain is strictly line
 - **2026-05-13 14:54 (LE) Phase 3 poll — no action.** 5-min poll wake. Worker `feature-builder` (pid 67501) still active on T-REG-01-impl, ~9 min into the task. Worktree `.worktrees/feature-builder` shows uncommitted changes on `factory/T-REG-01-impl-debug-gate`: `M ui/views/auth/login_view.py`, `M ui/templates/ui/auth/login.html`, untracked `tests/integration/test_auth_reg_login_debug_gate.py` (copied from T-REG-01 merge). Still missing per task scope: `ui/views/auth/register_view.py` (new), `ui/templates/ui/auth/register.html` (new), `ui/urls.py` (modify). No branch pushed to origin yet; no MR. Worker chatter (log) indicates it's mid-edit on the login template's conditional Create-account block — healthy progress, not stuck. **Decision:** do not interrupt. Next wake: done/rejected/blocked fswatch event or next 5-min poll.
 
 - **2026-05-13 14:57:27** 🔴 blocked **T-REG-01-impl**: reason:status: field 'status' is empty
+
+- **2026-05-13 14:57 (LE rescue)** T-REG-01-impl: worker delivered sound work (MR !20, 3/3 GREEN, branch factory/T-REG-01-impl-debug-gate @ c4ad47e) but empty Result block again. Fields patched under factory/** carve-out. Moved blocked/ → done/. Touching pending/T-REG-02.md to wake step-def-writer per operating note.
+
+- **2026-05-13 14:58:00** 🔧 **step-def-writer** claimed **T-REG-02**
+
+- **2026-05-13 (LE ACTION REQUIRED)** Both workers (step-def-writer, feature-builder) consistently submit empty `# Result` blocks — `verify-result.sh` blocks them every time. Root cause: workers run in worktrees where the task file path is different; they likely write to the wrong copy. LE must: (1) merge MR !20 (T-REG-01-impl) to main via `scripts/integrate.sh merge T-REG-01-impl`; (2) after T-REG-02 lands in blocked/, rescue it the same way as T-01 and T-01-impl (fill status/branch/mr/commit_sha, mv blocked→done, touch next pending).
+
+- **2026-05-13 15:04:07** 🔴 blocked **T-REG-02**: reason:status: field 'status' is empty
