@@ -66,3 +66,6 @@ celerybeat.pid
 # CDK
 cdk.out/
 infra/.venv/
+
+# git worktrees
+.worktrees/
