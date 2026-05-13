@@ -1,0 +1,66 @@
+---
+description: Dark-factory redesign goals captured after first Registration sprint run
+globs: ["scripts/factory.sh", "scripts/preflight.sh", "prompts/lead-engineer.md", ".cursor/skills/dark-factory/**"]
+alwaysApply: false
+---
+
+# Dark-factory redesign: run dark from activation to staging
+
+## The problem (observed on Registration sprint, 2026-05-13)
+
+The current factory has **four human checkpoints** (Phase 1, Phase 2, Phase 4.5, Phase 5).
+The human has no visibility that a checkpoint was reached — the LE stops in a tmux pane
+the user isn't watching. From the user's perspective, the factory silently stalled.
+
+## Target behaviour for the next version
+
+The factory must run **completely dark** from `./scripts/factory.sh <milestone>` to
+staging URL, with **zero mid-flight waits for human input**.
+
+Rules:
+
+1. **No blocking checkpoints.** The LE proceeds through Phase 1 → 2 → 3 → 4 → 4.5 → 5
+   without pausing to ask for review. All decisions and assumptions are logged to the
+   blackboard event log so the human can audit after the fact.
+
+2. **Assumptions are loggable, not blocking.** When the LE is uncertain, it logs its
+   assumption to `factory/blackboard.md` event log (format:
+   `- **ASSUMPTION [T-NNN]:** <what was assumed and why>`) and continues. The human
+   reviews assumptions at the end, files bugs or follow-up issues if wrong.
+
+3. **Single notification mechanism.** When the sprint reaches a terminal state
+   (staging URL ready, or unrecoverable blocker), the LE writes a one-line summary to
+   `factory/RESULT.md` and optionally posts a `glab milestone comment`. The human checks
+   this file or the GitLab milestone — not tmux.
+
+4. **Preflight is the only gate.** `scripts/preflight.sh` is the sole blocking check.
+   If preflight passes, the sprint runs. If it fails, the factory exits with a clear
+   error message.
+
+5. **Unrecoverable blockers escalate by filing a GitLab issue** tagged `factory-blocker`,
+   writing `RESULT.md`, and exiting cleanly — not by waiting in tmux for the human to type.
+
+## What changes
+
+- `prompts/lead-engineer.md`: remove language about pausing for human review at Phase 1,
+  Phase 2, Phase 4.5. Replace with "log and proceed" instructions. Keep Phase 5 staging URL
+  post as a notification, not a checkpoint.
+- `scripts/factory.sh`: after LE startup, LE prompt should not contain language that
+  implies it should wait for human approval.
+- `SKILL.md` (dark-factory): update the checkpoint list — checkpoints become *notifications*,
+  not blocking waits.
+
+## What stays the same
+
+- The blackboard still records every decision and assumption (audit trail).
+- Workers still use the same claim/done/reject protocol.
+- Phase 4.5 DoD + `make lint` + `make test` still runs — it just doesn't block on human.
+- Phase 6 production promote is still manual (human explicitly runs `make swap`).
+
+## Implementation note
+
+The simplest implementation: in `prompts/lead-engineer.md`, replace every instance of
+"pause for human review" / "await human approval" with
+"log your decision to the blackboard and proceed immediately to the next phase."
+Add a final instruction: "When staging is deployed, write `factory/RESULT.md` with the
+staging URL and a one-paragraph summary, then exit the LE loop."

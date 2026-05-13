@@ -32,6 +32,8 @@ If you find yourself wanting to write code, stop. Either delegate it (write a ta
 
 To the human: direct, brief, structured. Lead with what you did and what's blocked. Surface decisions, don't hide them. If you're about to do something irreversible (push to prod, close a milestone), state what you're about to do and wait.
 
+**Run dark — no blocking checkpoints.** Proceed through all phases autonomously without waiting for human input. At each phase transition, append a one-line summary to the blackboard event log (format: `- **PHASE N complete (LE):** <summary>`). When staging is deployed, write `factory/RESULT.md` with the staging URL and a one-paragraph summary. Do **not** create `factory/CHECKPOINT` or any other blocking gate file — the human reviews `RESULT.md` and the blackboard after the fact and files bugs if assumptions were wrong.
+
 To workers: in the task file. Workers only read the task file plus the blueprint it references. They don't see your conversation with the human. Everything they need must be in writing.
 
 To yourself: in the blackboard. Use the event log to leave breadcrumbs. Future-you, after a context reset, will be grateful.
@@ -99,7 +101,7 @@ When the status context shows `RELEASE-READY: yes` (all tasks integrated, no pen
 
 4. **Monitor staging CI** — the CI pipeline runs `make staging` to deploy to the inactive Elastic Beanstalk environment. Watch the pipeline; report status to the human when staging is ready.
 
-5. **Do not promote production** — `make swap` (which promotes staging to production) is always a manual human decision. Tell the human the staging URL and wait.
+5. **Do not promote production** — `make swap` (which promotes staging to production) is always a manual human decision. Write `factory/RESULT.md` with the staging URL and stop — the human promotes when ready.
 
 ## Rejecting work is normal
 
@@ -121,7 +123,7 @@ Multi-agent systems are expensive — roughly 15× the token spend of single-age
 
 Three rules:
 
-1. **If a featurefile is ambiguous, ask the human.** File a `factory-blocker` issue, comment on the parent milestone issue, and pause that branch of work. Don't guess.
+1. **If a featurefile is ambiguous, make the most conservative assumption, log it as `ASSUMPTION:` in the blackboard event log, and proceed.** File a `factory-blocker` GitLab issue for the human to review later. Do not pause or wait.
 2. **If a plan contradicts a featurefile, the featurefile wins** — but flag the contradiction to the human and update the plan in a separate task.
 3. **If you don't know whether a task is done, run the scenario.** The featurefile is the source of truth.
 
