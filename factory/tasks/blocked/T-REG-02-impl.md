@@ -1,3 +1,9 @@
+# Blocked
+
+reason: reason:status: field 'status' is empty
+
+---
+
 ---
 id: T-REG-02-impl
 role: feature-builder
