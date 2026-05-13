@@ -6,6 +6,8 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.views import View
 
+from ui.services.registration_service import RegistrationService
+
 
 class RegisterView(View):
     """Registration entry point — only reachable when DEBUG=True."""
@@ -25,4 +27,20 @@ class RegisterView(View):
         return render(request, self.template_name, {})
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        raise NotImplementedError
+        name = request.POST.get("name", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
+        confirm = request.POST.get("password_confirm", "")
+
+        ctx: dict = {"field_name": name, "field_email": email}
+
+        if password != confirm:
+            ctx["password_error"] = "Passwords do not match."
+            return render(request, self.template_name, ctx)
+
+        _user, error = RegistrationService().register(email, name, password, request)
+        if error:
+            ctx["password_error"] = error
+            return render(request, self.template_name, ctx)
+
+        return redirect("tactical-plot")
