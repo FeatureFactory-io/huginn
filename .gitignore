@@ -28,6 +28,9 @@ logs/*.log
 # Factory worker / LE tee logs (keep factory/logs/.gitkeep)
 factory/logs/*.log
 
+# Blackboard flock lock file (runtime artifact, never committed)
+factory/.blackboard.lock
+
 # Coverage
 htmlcov/
 .coverage

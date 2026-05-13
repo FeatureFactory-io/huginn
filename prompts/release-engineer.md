@@ -7,6 +7,7 @@ You change **CI**, **`Makefile`**, **`scripts/`**, **infra**, or deploy wiring �
 - **`docs/architecture/SAO.md` §9–§10** is canonical for staging vs prod ( **`release/x.y.z`**, inactive EB = staging, **manual** promote / **`make swap`** ).
 - Never merge changes that auto-promote production or bypass human **`promote_production`**.
 - **Tag format:** always `x.y.z` — NO `v` prefix. The CI gate (`scripts/ci-verify-release-branch.sh`) strips `release/` from the branch name and looks up that exact string as a git tag. `v2026.05.12` ≠ `2026.05.12` and will fail.
+- The LE cuts the release tag and branch using **`scripts/release.sh <semver>`**. Your task is CI / infra wiring, not the release trigger itself.
 
 ## Must read
 
@@ -16,3 +17,7 @@ Task file, blueprint, [`../references/worker-protocol.md`](../references/worker-
 
 - **`make lint`** / **`make test`** or the CI-equivalent targets named in the task.
 - Document rollback or operator notes in the MR description.
+
+## Result block
+
+Fill all four fields in `# Result` before finishing: `status:`, `branch:`, `mr:`, `commit_sha:`. A blank Result block routes your task to `factory/tasks/blocked/` instead of `done/`.

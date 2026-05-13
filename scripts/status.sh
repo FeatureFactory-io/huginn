@@ -40,3 +40,22 @@ echo "done:     $(count_md factory/tasks/done)     $(sample_ids factory/tasks/do
 
 rej="$(find factory/tasks/rejected -mindepth 2 -type f 2>/dev/null | wc -l | tr -d ' ')"
 echo "rejected archive files: ${rej} (under factory/tasks/rejected/<id>/)"
+
+# RELEASE-READY: yes when pending+claimed=0 and every done/*.md has status: integrated
+_pending="$(count_md factory/tasks/pending)"
+_claimed="$(count_md factory/tasks/claimed)"
+_done_total="$(count_md factory/tasks/done)"
+_done_integrated=0
+if (( _done_total > 0 )); then
+  shopt -s nullglob
+  for _f in factory/tasks/done/*.md; do
+    _s="$(rg -m1 '^status:[[:space:]]*' "$_f" 2>/dev/null | sed 's/^status:[[:space:]]*//' | tr -d '"' || echo '')"
+    [[ "$_s" == "integrated" ]] && (( _done_integrated++ )) || true
+  done
+  shopt -u nullglob
+fi
+if (( _pending == 0 && _claimed == 0 && _done_total > 0 && _done_integrated == _done_total )); then
+  echo "RELEASE-READY: yes  (run: scripts/release.sh <semver>)"
+else
+  echo "RELEASE-READY: no   (pending=${_pending} claimed=${_claimed} integrated=${_done_integrated}/${_done_total})"
+fi

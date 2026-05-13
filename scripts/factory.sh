@@ -41,6 +41,30 @@ else
   exit 1
 fi
 
+# Per-role model defaults. Override with env vars when cost/quality tradeoffs
+# differ for a specific sprint.
+LE_MODEL="${FACTORY_LE_MODEL:-claude-opus-4-7-thinking-xhigh}"
+
+role_model_default() {
+  case "$1" in
+    feature-builder)
+      printf '%s\n' "${FACTORY_MODEL_FEATURE_BUILDER:-claude-4.6-sonnet-medium-thinking}"
+      ;;
+    step-def-writer)
+      printf '%s\n' "${FACTORY_MODEL_STEP_DEF_WRITER:-}"
+      ;;
+    release-engineer)
+      printf '%s\n' "${FACTORY_MODEL_RELEASE_ENGINEER:-}"
+      ;;
+    manual-tester)
+      printf '%s\n' "${FACTORY_MODEL_MANUAL_TESTER:-}"
+      ;;
+    *)
+      printf '%s\n' ""
+      ;;
+  esac
+}
+
 # Kill any existing session for this milestone so re-runs are idempotent.
 if tmux has-session -t "$SESSION" 2>/dev/null; then
   echo "session $SESSION exists — killing and restarting" >&2
@@ -70,8 +94,11 @@ done
 worker_loop() {
   local role="$1"
   local wt="$REPO_ROOT/.worktrees/$role"
+  local model
+  model="$(role_model_default "$role")"
   cat <<EOF
 cd "$wt" || exit 1
+WORKER_MODEL="$model"
 while :; do
   fswatch -1 "$REPO_ROOT/factory/tasks/pending" >/dev/null 2>&1 || true
   for f in "$REPO_ROOT"/factory/tasks/pending/*.md; do
@@ -82,7 +109,7 @@ while :; do
     # claim.sh runs in the REPO ROOT (mgmt branch) so factory state commits land there
     if claimed_path="\$($REPO_ROOT/scripts/claim.sh "\$id" "$role" 2>/dev/null)"; then
       echo "[\$(date +%H:%M:%S)] $role claimed \$id"
-      printf '\n- **%s %s** 🔧 **%s** claimed **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
+      "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** 🔧 **%s** claimed **%s**' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id")"
       # Switch this worktree to the task's feature branch
       task_branch="\$(rg -m1 '^branch:[[:space:]]*' "\$claimed_path" 2>/dev/null | sed 's/^branch:[[:space:]]*//')"
       if [[ -n "\$task_branch" ]]; then
@@ -96,39 +123,53 @@ while :; do
           _existing="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep "\$_rel_branch" | awk '{print \$1}' | head -1)"
           if [[ "\$_existing" == "(running)" || "\$_existing" == "(success)" || "\$_existing" == "(pending)" ]]; then
             echo "[\$(date +%H:%M:%S)] release-engineer: pipeline already \$_existing for \$_rel_branch — skipping agent"
-            printf '\n- **%s** ⏭ release-engineer skipped (pipeline already %s)\n' "\$(date +%H:%M:%S)" "\$_existing" >> "$REPO_ROOT/factory/blackboard.md"
+            "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s** ⏭ release-engineer skipped (pipeline already %s)' "\$(date +%H:%M:%S)" "\$_existing")"
             _skip_agent=1
           fi
         fi
       fi
-      if [[ \$_skip_agent -eq 0 ]]; then
+      _task_outcome="blocked"
+      if [[ \$_skip_agent -eq 1 ]]; then
+        # Pipeline already running — inject a minimal Result block so done.sh accepts
+        # the file without running verify-result.sh (no MR was created this invocation).
+        printf '\n\n# Result\n\nstatus: monitoring\nbranch: "%s"\nmr: "0"\ncommit_sha: "monitoring"\n' "\$_rel_branch" >> "\$claimed_path"
+        "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
+        "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** ✅ **release-engineer** done **%s** (pipeline already running — monitoring)' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "\$id")"
+        _task_outcome="done"
+      else
         COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
+        CURSOR_ARGS=(--print --yolo --output-format stream-json --stream-partial-output --workspace "\$wt")
+        if [[ -n "\$WORKER_MODEL" ]]; then
+          CURSOR_ARGS=(--model "\$WORKER_MODEL" "\${CURSOR_ARGS[@]}")
+        fi
         $CURSOR_BIN \\
-          --print \\
-          --yolo \\
-          --output-format stream-json \\
-          --stream-partial-output \\
-          --workspace "\$wt" \\
+          "\${CURSOR_ARGS[@]}" \\
           "\$COMBINED_PROMPT" \\
           2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.jsonl" \
                | jq -r 'select(.type=="text") | .text' 2>/dev/null \
                | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+        if _verify_reason="\$($REPO_ROOT/scripts/verify-result.sh "\$id" 2>&1 1>/dev/null)"; then
+          "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
+          "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** ✅ **%s** done **%s**' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id")"
+          _task_outcome="done"
+        else
+          "$REPO_ROOT/scripts/done.sh" "\$id" --blocked "\$_verify_reason" 2>/dev/null || true
+          # done.sh --blocked already appends to blackboard; _task_outcome stays "blocked"
+        fi
       fi
-      "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
-      printf '\n- **%s %s** ✅ **%s** done **%s**\n' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id" >> "$REPO_ROOT/factory/blackboard.md"
-      (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: done \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
-      if [[ "$role" == "release-engineer" ]]; then
+      (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: \${_task_outcome} \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
+      if [[ "$role" == "release-engineer" && "\$_task_outcome" == "done" ]]; then
         for _i in \$(seq 1 40); do
           sleep 60
           _status="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep 'release/' | head -1 | awk '{print \$1}')"
-          printf '\n- **%s** 🔄 pipeline: %s\n' "\$(date +%H:%M:%S)" "\$_status" >> "$REPO_ROOT/factory/blackboard.md"
+          "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s** 🔄 pipeline: %s' "\$(date +%H:%M:%S)" "\$_status")"
           if [[ "\$_status" == "(success)" ]]; then
             _staging="\$(grep STAGING_URL "$REPO_ROOT/staging.env" 2>/dev/null | cut -d= -f2)"
-            printf '\n- **%s** 🌐 **staging ready:** %s\n' "\$(date +%H:%M:%S)" "\${_staging:-see GitLab pipeline}" >> "$REPO_ROOT/factory/blackboard.md"
+            "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s** 🌐 **staging ready:** %s' "\$(date +%H:%M:%S)" "\${_staging:-see GitLab pipeline}")"
             break
           elif [[ "\$_status" == "(failed)" ]]; then
             _url="\$(cd "$REPO_ROOT" && glab pipeline list 2>/dev/null | grep 'release/' | head -1 | awk '{print \$NF}')"
-            printf '\n- **%s** ❌ **pipeline FAILED** — %s\n' "\$(date +%H:%M:%S)" "\$_url" >> "$REPO_ROOT/factory/blackboard.md"
+            "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s** ❌ **pipeline FAILED** — %s' "\$(date +%H:%M:%S)" "\$_url")"
             break
           fi
         done
@@ -159,13 +200,16 @@ PENDING:  $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/pending/  2>/dev/null | tr '\
 CLAIMED:  $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/claimed/  2>/dev/null | tr '\n' ' ')
 DONE:     $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/done/     2>/dev/null | tr '\n' ' ')
 REJECTED: $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | tr '\n' ' ')
+BLOCKED:  $(ls REPO_ROOT_PLACEHOLDER/factory/tasks/blocked/  2>/dev/null | tr '\n' ' ')
+WORKTREE_ROOT: REPO_ROOT_PLACEHOLDER/.worktrees
 
 OPEN GITLAB ISSUES (milestone):
 $(glab issue list --milestone "MILESTONE_PLACEHOLDER" 2>/dev/null | head -40)
 
-RECENT DONE/REJECTED FILES:
-$(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ 2>/dev/null | head -10 | while read f; do echo "=== $f ==="; cat "REPO_ROOT_PLACEHOLDER/factory/tasks/done/$f" "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/$f" 2>/dev/null | tail -20; done)"
+RECENT DONE/REJECTED/BLOCKED FILES:
+$(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/ REPO_ROOT_PLACEHOLDER/factory/tasks/blocked/ 2>/dev/null | head -10 | while read f; do echo "=== $f ==="; cat "REPO_ROOT_PLACEHOLDER/factory/tasks/done/$f" "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected/$f" "REPO_ROOT_PLACEHOLDER/factory/tasks/blocked/$f" 2>/dev/null | tail -20; done)"
   CURSOR_BIN_PLACEHOLDER \
+    --model "LE_MODEL_PLACEHOLDER" \
     --print \
     --yolo \
     --output-format stream-json \
@@ -186,6 +230,7 @@ while :; do
   fswatch -1 -r \
     "REPO_ROOT_PLACEHOLDER/factory/tasks/done" \
     "REPO_ROOT_PLACEHOLDER/factory/tasks/rejected" \
+    "REPO_ROOT_PLACEHOLDER/factory/tasks/blocked" \
     2>/dev/null &
   FSWATCH_PID=$!
   # Also set a 5-minute timeout so we poll GitLab periodically
@@ -200,6 +245,7 @@ LEEOF
 LE_LOOP="${LE_LOOP//REPO_ROOT_PLACEHOLDER/$REPO_ROOT}"
 LE_LOOP="${LE_LOOP//MGMT_PLACEHOLDER/$MGMT_BRANCH}"
 LE_LOOP="${LE_LOOP//CURSOR_BIN_PLACEHOLDER/$CURSOR_BIN}"
+LE_LOOP="${LE_LOOP//LE_MODEL_PLACEHOLDER/$LE_MODEL}"
 LE_LOOP="${LE_LOOP//MILESTONE_PLACEHOLDER/$MILESTONE}"
 tmux new-session -d -s "$SESSION" -n "le" "bash -c $(printf '%q' "$LE_LOOP"); bash"
 

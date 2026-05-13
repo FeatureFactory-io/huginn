@@ -14,8 +14,14 @@ Mechanical scaffold for the **dark-factory** Cursor skill: milestone-driven LE +
 ## Prerequisites
 
 ```bash
-brew install git glab fswatch tmux ripgrep
+brew install git glab fswatch tmux ripgrep util-linux
 ```
+
+> **`util-linux`** provides `flock(1)`, used by `scripts/bb-append.sh` to serialize concurrent blackboard writes. On Linux it is pre-installed.
+> On macOS, Homebrew installs `util-linux` as a keg-only formula. `bb-append.sh` resolves the path automatically via `brew --prefix util-linux`. Optionally add it to `PATH` for shell use:
+> ```bash
+> export PATH="$(brew --prefix util-linux)/bin:$PATH"
+> ```
 
 Plus **`cursor-agent`** or **`cursor`** on `PATH`. **`python3`** is required for **`preflight.sh`** (JSON issue validation). Optional: **`jq`**, **`watch`** (GNU watch without `-c` works on macOS Homebrew `watch`; if missing, `scripts/factory.sh` falls back to a `sleep` loop).
 
@@ -38,17 +44,41 @@ Run from the **repository root**.
 
 ## Cursor CLI in `factory.sh`
 
-Worker panes invoke `$CURSOR_BIN` with `--system` and `--input`. Flag names vary by Cursor version; adjust [`scripts/factory.sh`](../scripts/factory.sh) if your CLI differs.
+Worker panes invoke `$CURSOR_BIN` in headless mode. `scripts/factory.sh` now supports per-role model defaults via env vars:
+
+- `FACTORY_LE_MODEL` — defaults to `claude-opus-4-7-thinking-xhigh`
+- `FACTORY_MODEL_FEATURE_BUILDER` — defaults to `claude-4.6-sonnet-medium-thinking`
+- `FACTORY_MODEL_STEP_DEF_WRITER`
+- `FACTORY_MODEL_RELEASE_ENGINEER`
+- `FACTORY_MODEL_MANUAL_TESTER`
+
+Flag names vary by Cursor version; adjust [`scripts/factory.sh`](../scripts/factory.sh) if your CLI differs.
 
 ## Maintainer verification
 
 Syntax-check scripts:
 
 ```bash
-bash -n scripts/factory.sh scripts/preflight.sh scripts/claim.sh scripts/done.sh scripts/reject.sh scripts/status.sh
+bash -n scripts/factory.sh scripts/preflight.sh scripts/claim.sh scripts/done.sh \
+         scripts/reject.sh scripts/status.sh scripts/bb-append.sh \
+         scripts/verify-result.sh scripts/integrate.sh scripts/release.sh
 ```
 
 Functional **preflight** requires **`glab auth`** and a real milestone title.
+
+## Task queue lanes
+
+| Directory | Meaning |
+|-----------|---------|
+| `tasks/pending/` | Waiting to be claimed by a worker |
+| `tasks/claimed/` | Currently being worked on (atomic `mv` from pending) |
+| `tasks/done/` | Worker completed; awaiting LE review and `integrate.sh merge` |
+| `tasks/rejected/<id>/` | Archived rejection snapshots (timestamped `.txt` files) |
+| `tasks/blocked/` | Tasks that exhausted `FACTORY_MAX_ATTEMPTS` (default 3) — LE decides next action |
+
+`scripts/reject.sh <id> "<reason>"` auto-requeues to `pending/` with `attempt: N+1`.
+When `attempt+1 > FACTORY_MAX_ATTEMPTS`, it writes to `blocked/<id>.md` instead.
+Override the limit: `FACTORY_MAX_ATTEMPTS=5 scripts/reject.sh …`
 
 ## Future hardening
 
