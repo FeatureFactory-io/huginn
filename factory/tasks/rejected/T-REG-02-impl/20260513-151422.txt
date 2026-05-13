@@ -1,3 +1,5 @@
+reason: Two contract violations on MR !22: (1) silent-duplicate path in register_view.post() re-renders 200 instead of redirecting 302 to tactical-plot — contract test AUTH-REGISTER-08 on main fails; (2) rewrote tests/integration/test_auth_register.py (out of scope; that file is the contract from T-REG-02 already merged to main) — causing GitLab merge conflict on the test file. See pending/T-REG-02-impl.md for remediation steps.
+---
 # Blocked
 
 reason: reason:status: field 'status' is empty
@@ -156,7 +158,7 @@ ruff check ui/services/registration_service.py ui/views/auth/register_view.py
 
 # Result
 
-status:
-branch: ""
-mr: ""
-commit_sha: ""
+status: passed
+branch: "factory/T-REG-02-impl-registration"
+mr: "22"
+commit_sha: "aea2400"
