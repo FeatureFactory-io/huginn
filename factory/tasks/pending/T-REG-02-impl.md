@@ -1,0 +1,156 @@
+---
+id: T-REG-02-impl
+role: feature-builder
+attempt: 1
+depends_on: [T-REG-02, T-REG-01-impl]
+gitlab_issue: 71
+branch: factory/T-REG-02-impl-registration
+tools:
+  - git
+  - glab
+  - python
+  - pytest
+  - ruff
+  - python manage.py
+files_in_scope:
+  - ui/services/registration_service.py
+  - ui/views/auth/register_view.py
+  - ui/templates/ui/auth/register.html
+---
+
+# Task T-REG-02-impl — Registration service + view post() + template port
+
+## Goal
+
+Turn the 5 RED tests from T-REG-02 GREEN. Implement `RegistrationService`, fill in
+`RegisterView.post()`, and port the register form template from the mockup. After
+this task: signup → active user → auto-login → tactical plot, with enumeration
+protection on duplicate email.
+
+## Blueprint
+
+See [`factory/blueprints/T-REG-02-impl.md`](../../blueprints/T-REG-02-impl.md). It has
+the exact code for the service, the view's `post()` body, and the per-mockup-attribute
+template-port checklist.
+
+## System context
+
+[`factory/blueprints/system.md`](../../blueprints/system.md) §Key interfaces, §Template
+contract — register.html, §Existing code workers must read.
+
+## Acceptance criteria (GREEN)
+
+```
+.venv/bin/python -m pytest tests/integration/test_auth_register.py -v
+```
+
+must show **5 passed** for AUTH-REGISTER-01 / 03 / 04 / 05 / 08.
+
+```
+.venv/bin/python -m pytest tests/integration/test_auth_reg_login_debug_gate.py tests/integration/test_auth_register.py -v
+```
+
+must show **8 passed** (the T-REG-01 trio still passes).
+
+```
+.venv/bin/python -m pytest tests/ -x
+```
+
+must show **no regressions** anywhere.
+
+`ruff check ui/services/registration_service.py ui/views/auth/register_view.py` must be clean.
+
+## Files in scope
+
+```
+ui/services/registration_service.py    (NEW)
+ui/views/auth/register_view.py         (modify — implement post(), add import)
+ui/templates/ui/auth/register.html     (REWRITE — port from mockup; drop the T-REG-01-impl stub)
+```
+
+Out-of-scope changes are blockers. If you find that a test in T-REG-02 has an
+assertion that disagrees with the blueprint's contract (e.g. AUTH-REGISTER-04
+copy mismatches your validator output), fix the test rather than weaken the
+contract — and call it out in `# Result` under `out_of_scope_changes:`.
+
+## Step-by-step
+
+1. Read [`factory/blueprints/T-REG-02-impl.md`](../../blueprints/T-REG-02-impl.md) in full.
+2. Read [`ui/services/authentication_service.py`](../../../ui/services/authentication_service.py) (46 lines) — `RegistrationService` mirrors this thin-service pattern.
+3. Read [`accounts/managers.py`](../../../accounts/managers.py) (46 lines) — `create_user(email, password, **extra)` is the canonical path; do not bypass.
+4. Read [`accounts/models.py`](../../../accounts/models.py) — `is_active` defaults `True`; no schema changes.
+5. Read [`ui/templates/ui/mockups/auth/register.html`](../../../ui/templates/ui/mockups/auth/register.html) (66 lines) — the structural source of truth. Preserve every `data-testid` verbatim during the port.
+6. Read the stub [`ui/templates/ui/auth/register.html`](../../../ui/templates/ui/auth/register.html) created by T-REG-01-impl — REWRITE it; do not append.
+7. Create `ui/services/registration_service.py` per the blueprint.
+8. Edit `ui/views/auth/register_view.py`: import `RegistrationService`, replace `raise NotImplementedError` with the `post()` body from the blueprint.
+9. Port the template (mockup → production) per the blueprint's mapping table.
+10. Run the test files in turn (RED → GREEN); iterate.
+11. Run the full suite.
+12. `ruff check ui/`.
+13. Stage, commit, push, MR.
+
+## Branch & MR
+
+```bash
+cd .worktrees/feature-builder
+git fetch origin
+git checkout main && git reset --hard origin/main
+git checkout -b factory/T-REG-02-impl-registration
+
+# … create service, edit view, rewrite template …
+
+.venv/bin/python -m pytest tests/integration/test_auth_register.py -v
+.venv/bin/python -m pytest tests/ -x
+ruff check ui/
+
+git add ui/services/registration_service.py \
+        ui/views/auth/register_view.py \
+        ui/templates/ui/auth/register.html
+git commit -m "feat(auth): registration service + view + template — DEBUG-only auto-approved signup"
+git push -u origin factory/T-REG-02-impl-registration
+
+glab mr create \
+  --source-branch factory/T-REG-02-impl-registration \
+  --target-branch main \
+  --title "feat(auth): registration service + view + template" \
+  --description "$(printf 'Turns T-REG-02 RED tests (AUTH-REGISTER-01/03/04/05/08) GREEN. Completes the Registration sprint slice.\n\n- RegistrationService.register() — normalize, validate_password, duplicate-silent, create_user, login\n- RegisterView.post() — mismatch / validator-error / success branches\n- register.html ported from mockup with form method=post, csrf, name attrs, value repopulation on non-secret fields, inline error block\n- All 8 sprint tests pass; full suite unchanged.\n\nCloses #71\n')" \
+  --yes
+```
+
+## Checkpoint
+
+```bash
+.venv/bin/python -m pytest tests/integration/test_auth_register.py -v
+# expect: 5 passed.
+
+.venv/bin/python -m pytest tests/integration/test_auth_reg_login_debug_gate.py tests/integration/test_auth_register.py -v
+# expect: 8 passed.
+
+.venv/bin/python -m pytest tests/ -x
+# expect: full suite green.
+
+ruff check ui/services/registration_service.py ui/views/auth/register_view.py
+# expect: clean.
+```
+
+## Do not
+
+- Do NOT add a new model, migration, or field on `accounts.User`.
+- Do NOT import `django.core.mail` or send any email.
+- Do NOT use `django.contrib.auth.forms.UserCreationForm`.
+- Do NOT add a repository / manager layer above ORM — service calls ORM directly.
+- Do NOT log the password or full email; only `user_id` after success.
+- Do NOT call `login(request, user)` in the duplicate-email branch — attacker stays logged out.
+- Do NOT repopulate password fields on validation re-render.
+- Do NOT add `AUTH-AWAIT_VERIFICATION-1` screen, route, or template — out of sprint scope.
+
+## Result
+
+<!-- Worker fills in after completion. Required for verify-result.sh to accept. -->
+
+# Result
+
+status:
+branch: ""
+mr: ""
+commit_sha: ""

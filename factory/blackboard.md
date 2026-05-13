@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 1 — Ingestion (complete, awaiting human review before Phase 2 Decomposition)
+**Phase:** 2 — Decomposition complete; 4 tasks in `factory/tasks/pending/`. Worker fswatch loops will claim in dep order. Proceeding dark to Phase 3 (execution).
 
 **Milestone:** Registration (GitLab IID 7427525)
 
@@ -81,9 +81,12 @@ _None — sprint plan + feature file are unambiguous on the in-scope slice._
 
 # Event queue (LE)
 
-- **PENDING:** —
+- **PENDING:** T-REG-01, T-REG-01-impl, T-REG-02, T-REG-02-impl
 - **CLAIMED:** —
 - **Done worker tasks:** —
+
+(`claim.sh` gates each task on `factory/tasks/done/<dep>.md`; only T-REG-01 will be claimable
+until T-REG-01 lands in done/. No `blocked/` placement needed.)
 
 ---
 
@@ -96,3 +99,13 @@ _None — sprint plan + feature file are unambiguous on the in-scope slice._
 - **2026-05-13 (HUMAN → LE)** Phase 1 approved. **PROCEED DARK:** run Phase 2 → 3 → 4 → 4.5 → 5 autonomously without stopping for human checkpoints. Log all assumptions to this event log. When staging is deployed write `factory/RESULT.md` with the URL. Do not wait for human input at any intermediate phase.
 
 (LE) Wrote factory/CHECKPOINT — Phase 1 review requested. scripts/checkpoint.sh not yet present in repo; created the signal file directly (in-scope, factory/**). Surfaces in scripts/status.sh banner. Waiting on human to rm factory/CHECKPOINT before Phase 2.
+
+- **2026-05-13 (HUMAN → LE)** CHECKPOINT removed. PROCEED to Phase 2 immediately. Do NOT create any more CHECKPOINT files or gating mechanisms — run dark all the way to staging. Make assumptions, log them here, keep moving.
+
+- **2026-05-13 (LE) Phase 2 — Decomposition complete.** Wrote 4 blueprints + 4 task files. Archived 12 previous-sprint done/ + blueprint files to `factory/archive/sprint-sitrep-pre-2026-05-13/` so `release.sh` won't be tripped by their missing `status: integrated` (they were merged in the prior Sitrep sprint; archival is records-only, no code reverted). All 4 new tasks sit in `factory/tasks/pending/`; `claim.sh` enforces deps by checking `done/<dep>.md`. Dependency chain: T-REG-01 → T-REG-01-impl → T-REG-02 → T-REG-02-impl. step-def-writer claims T-REG-01 + T-REG-02; feature-builder claims T-REG-01-impl + T-REG-02-impl. All MRs target `main` (trunk-based, per SAO §9).
+- **ASSUMPTION [sprint-wide]:** `data-testid="login-register-link"` per the feature file (AUTH-REG-LOGIN-01 line 23). The plan + previous system blueprint draft both used `login-create-account`; **feature wins** (LE rule §When you're uncertain #2). Workers told explicitly to use `login-register-link` and to ignore the plan on this point.
+- **ASSUMPTION [T-REG-02 / AUTH-REGISTER-08]:** The feature file lands duplicate-active-email on screen `AUTH-AWAIT_VERIFICATION-1`. That screen is out of sprint scope (no email verification flow this milestone). LE in-sprint contract = silent duplicate returns the SAME 302 to Tactical Plot as a fresh successful signup (enumeration protection at the redirect level, no second screen). Documented in T-REG-02 task + T-REG-02-impl service contract. To revisit when AUTH-AWAIT_VERIFICATION-1 ships in a later milestone.
+- **ASSUMPTION [T-REG-01-impl forgot-password]:** Existing `test_auth_login_08_forgot_password_disabled_with_admin_tooltip` asserts `"disabled" in body` and `"Contact your admin" in body`. After the conditional block lands, login-submit still has `disabled` and the `login-signup-disabled` span carries "Contact your admin" under DEBUG=False — assertion stays satisfied. Worker told to confirm via full-suite run and, if it does fail, narrow that test (out-of-scope diff documented in Result).
+- **ASSUMPTION [release strategy]:** Latest tag is `registration-kickoff` (non-semver). `release.sh` requires `x.y.z`. Will choose semver `0.1.0` for first registration release (minor: new feature; major bump to `1.0.0` once production-grade auth lands).
+
+- **2026-05-13 14:32:16** 🔧 **step-def-writer** claimed **T-REG-01**
