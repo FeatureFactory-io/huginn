@@ -109,3 +109,5 @@ until T-REG-01 lands in done/. No `blocked/` placement needed.)
 - **ASSUMPTION [release strategy]:** Latest tag is `registration-kickoff` (non-semver). `release.sh` requires `x.y.z`. Will choose semver `0.1.0` for first registration release (minor: new feature; major bump to `1.0.0` once production-grade auth lands).
 
 - **2026-05-13 14:32:16** 🔧 **step-def-writer** claimed **T-REG-01**
+
+- **2026-05-13 14:38:26** 🔴 blocked **T-REG-01**: reason:status: field 'status' is empty
