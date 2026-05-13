@@ -37,11 +37,27 @@
 
 **DataSource credentials**: PATs (GitLab) are user-set and may have an expiry; Jira API tokens generally don't. Huginn tracks an `expires_at` per DataSource and surfaces a warning before expiry. No automatic refresh — the API doesn't support it for PATs.
 
+**User account lifecycle**: Huginn supports **self-signup with admin moderation**. A `User` record progresses through four logical states (exact model field names are implementation details left to the build phase):
+
+- `pending_email_verification` — account just created via registration form; `is_active = False`; cannot log in. A single-use verification link (24-hour TTL) has been issued and emailed.
+- `pending_admin_approval` — email verification succeeded; `is_active = False` still; cannot log in. Visible to staff in the Django admin moderation queue (`/admin/`).
+- `active` — admin approved; `is_active = True`; login enabled. Lands on `DASHBOARD-PROJECTS-1` after sign-in.
+- `rejected` — admin declined the application; `is_active = False` permanent. Login attempts surface the rejection message (no enumeration of details). Optional admin-supplied rejection reason stored and included in the outbound notification email; not re-attemptable without admin intervention.
+
+State transitions are one-directional except for `pending_email_verification → pending_email_verification` (resend issues a new link and invalidates the previous one).
+
+**Transactional email** (outbound, system-sent): all Act 0 notifications (verify your email, awaiting approval, account approved, account rejected, password reset link, password changed) are delivered through **Amazon SES** via Django's email framework — production deployments configure SES SMTP or API credentials (a candidate dependency is `django-ses`; final choice deferred to BSP). Local dev / test use Django's console / locmem backends. SES is a **new infrastructure dependency** introduced by Act 0 — it must be provisioned (verified sender identity + IAM credentials in EB env vars) before registration can ship to staging. See `docs/architecture/SAO.md` (to be extended) for the deployment-side specifics.
+
+**Self-signup gating (`settings.DEBUG`)**: `AUTH-REGISTER-1` and its companion routes (`AUTH-AWAIT_VERIFICATION-1`, `AUTH-VERIFY_EMAIL-1`, `AUTH-AWAIT_APPROVAL-1`) are available **only when `settings.DEBUG = True`** — i.e., on local developer machines and the sandbox. In production (`DEBUG = False`) the self-signup routes return a redirect to `AUTH-LOGIN-1` carrying a banner — *"Registration is disabled on this Huginn install. Contact your admin to request an account."* — and the **Create an account** link on `AUTH-LOGIN-1` is **not rendered**. Production accounts are provisioned by an operator via the Django admin or a management command (out-of-MVP UI; CLI flow is the operator's MVP path). Password reset (`AUTH-FORGOT_PASSWORD-1` / `AUTH-RESET_PASSWORD-1`) is **always available regardless of `DEBUG`** — operators in production still need their users to be able to recover access. This policy ties signup to the existing Django flag rather than introducing a new env variable: no toggle to forget, and the production posture is the safe default automatically.
+
+**Session mechanism**: Huginn uses Django's standard **cookie-based session authentication** (`SESSION_ENGINE = django.contrib.sessions.backends.db`). Login calls `django.contrib.auth.login()`, logout calls `django.contrib.auth.logout()`. There is no DRF token, no JWT, no custom `auth_token` field. Email verification tokens and password-reset tokens are **implementation details** left to the build phase — the journey spec intentionally does not prescribe whether they are DB rows or Django's built-in signed-HMAC generator (`PasswordResetTokenGenerator`). The `account_status` enum, `EmailVerificationToken`, and `PasswordResetToken` concepts in this spec describe **logical states and flows**, not literal model names.
+
 **Non-standard screen patterns** (extensions to CRUDLF, established here per Activity 01):
 - `IMPORT` — Project: select-from-source instead of CREATE form
 - `VIEW` only — SitRep, Variables, Contributors (generated/computed)
 - `VIEW + EDIT` only — Situational Awareness (**workspace-global**: one capsule for the Commander / installation, not scoped per Project)
 - `LIST+FIND + VIEW` only — Action Stations (Jira-owned lifecycle, read-only display)
+- `REGISTER` / `VERIFY_EMAIL` / `AWAIT_VERIFICATION` / `AWAIT_APPROVAL` — Act 0 self-signup workflow screens (anonymous-accessible; not a CRUDLF pattern)
 - `CHAT-FULLSCREEN` — Gjallarhorn full-screen conversational surface (Act 8)
 - `CHAT-SIDEBAR` — Gjallarhorn collapsible global rail (persistent across all screens)
 
@@ -60,6 +76,16 @@
 - Reviews Contributors' day-by-day activity
 - Checks Action Stations to confirm the `HUGINN`-tagged tasks landed in Jira correctly
 
+### Admin (workspace operator)
+
+**Role**: Huginn installation operator. A Django user with `is_staff = True`. May be the same person as Donland in a small team, or a separate IT/Ops contact in a larger one — Huginn assumes **at least one** active staff user exists at install time (seeded via Django management command, see SAO §0 if/when documented).
+
+**Responsibilities** (Act 0 scope):
+- Moderates new self-signups: reviews each `pending_admin_approval` account in the **Django admin** (`/admin/`) and runs the **Approve** or **Reject** admin action.
+- Receives no Huginn product email about pending applications in MVP — staff check the Django admin on cadence.
+
+Out of MVP scope: password resets on behalf of users, role / permission management, deactivating active accounts. For now the admin's only Act 0 affordance is approve/reject of pending registrations.
+
 ---
 
 ## Acts
@@ -70,7 +96,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 
 | Act | Surface | Pattern | Primary Screen |
 |-----|---------|---------|----------------|
-| 0 | Authentication | Login | `AUTH-LOGIN-1` |
+| 0 | Authentication | Register + Verify + Admin-gated Login | `AUTH-LOGIN-1` |
 | 1 | DataSource | CRUDLF | `DATASOURCES-LIST+FIND-1` |
 | 2 | Project Import | LIST+FIND + IMPORT + VIEW + ARCHIVE | `PROJECTS-LIST+FIND-1` |
 | 3 | Playbook | CRUDLF (versioned) | `PLAYBOOKS-LIST+FIND-1` |
@@ -104,7 +130,27 @@ The one-time setup: connect a data source, import the projects you care about, w
 
 ## Act 0: Authentication
 
-**Context**: Donland opens Huginn at `/`. He has an account (created by admin; self-signup is out of scope for MVP). After login he lands on the **Tactical Plot** (`DASHBOARD-PROJECTS-1`, Act 4) — empty on first run.
+**Context**: Donland opens Huginn at `/`. If this is his first visit **and** the install runs with `settings.DEBUG = True` (dev / sandbox), he **self-signs up** (Register → email verification → admin approval); in production (`DEBUG = False`) self-signup is disabled and an operator provisions his account out-of-band — he simply signs in. After a successful sign-in he lands on the **Tactical Plot** (`DASHBOARD-PROJECTS-1`, Act 4) — empty on first run. A workspace **Admin** (`is_staff = True`) uses the same login screen and, after authenticating, manages pending registrations via the **Django admin** (`/admin/`) — there is no custom moderation UI in Huginn MVP. **Forgot password** is a separate side-flow available on every install (regardless of `DEBUG`) and is specified at the end of this Act.
+
+**End-to-end registration flow** (the path a new Commander walks from cold start to a working login):
+
+1. **Register** — clicks **Create an account** on `AUTH-LOGIN-1` → fills name / email / password on `AUTH-REGISTER-1`. Submitting creates a `User` row with `is_active = False`, issues a single-use verification link (24h TTL), and sends **Email 1 — Verify your email** via SES.
+2. **Check email** — Huginn shows `AUTH-AWAIT_VERIFICATION-1` ("We sent a verification link to {email}…") with a **[Resend email]** affordance (rate-limited).
+3. **Verify** — clicks the link in Email 1 → lands on `AUTH-VERIFY_EMAIL-1`, which consumes the token, transitions the row to `pending_admin_approval`, and sends **Email 2 — Awaiting admin approval** to the user. The screen confirms verification succeeded and explains that an admin must approve next.
+4. **Wait for admin** — `AUTH-AWAIT_APPROVAL-1` is the holding state; if the user returns to `/` and tries to log in while still pending, the login form surfaces the same status inline (no enumeration leak — see AUTH-LOGIN-1 flow).
+5. **Admin moderates** — in the **Django admin** (`/admin/`), the admin filters the User list by `pending_admin_approval` status, selects the user, and runs the **Approve** or **Reject** admin action. On approve: row transitions to `active`, `is_active = True`, and **Email 3 — Account approved** is sent (with a sign-in link). On reject: row transitions to `rejected`, `is_active` stays `False`, and **Email 4 — Account not approved** is sent (with the optional reason verbatim).
+6. **Login** — the approved user clicks the link in Email 3 → `AUTH-LOGIN-1` → signs in with the credentials chosen at step 1 → `DASHBOARD-PROJECTS-1`.
+
+**Failure / edge paths** (each detailed in the relevant screen below):
+- Expired verification token (>24h) — `AUTH-VERIFY_EMAIL-1` shows an error with a [Resend email] CTA; no state transition.
+- Login while `pending_email_verification` / `pending_admin_approval` / `rejected` — message rendered on `AUTH-LOGIN-1`, **no** password-vs-status enumeration disclosed: invalid credentials always fail the same way; status messages only appear when credentials match.
+- Email already registered — `AUTH-REGISTER-1` returns a soft message and **always sends an email to that address** (either a verification re-send if pending, or a "you already have an account" note if active) to avoid leaking account existence.
+- Self-signup hit on a production install (`DEBUG = False`) — `AUTH-REGISTER-1` and its companion routes redirect to `AUTH-LOGIN-1` with a banner: *"Registration is disabled on this Huginn install. Contact your admin to request an account."* No row is created, no email is sent.
+
+**Security notes**:
+- Email verification links are single-use with a 24h TTL. Resending a new link invalidates the previous one. Token storage and signing mechanism are implementation details (see session-mechanism note above).
+- All Act 0 endpoints are rate-limited per IP and per email (e.g., 5 / hour / email for verification re-sends; 10 / hour / IP for register + login).
+- Passwords are stored using Django's default PBKDF2 hasher (no plain text, never logged).
 
 #### Screen: AUTH-LOGIN-1
 
@@ -114,12 +160,215 @@ The one-time setup: connect a data source, import the projects you care about, w
   - Email (`data-testid="login-email"`)
   - Password (`data-testid="login-password"`)
   - [Sign In] button (primary, full-width)
-- **Footer**: "Forgot password?" — disabled with tooltip "Contact your admin" (out of MVP scope)
+- **Below the form** (secondary affordances):
+  - **Create an account** link (`data-testid="login-register-link"`) → `AUTH-REGISTER-1` — rendered **only when `settings.DEBUG = True`**. In production (`DEBUG = False`) this link is **omitted entirely** and replaced by static muted copy: *"Need an account? Contact your admin."* (no link, no tooltip).
+- **Footer**:
+  - **Forgot password?** link (`data-testid="login-forgot-password-link"`) → `AUTH-FORGOT_PASSWORD-1` — always rendered, always functional, regardless of `DEBUG`.
+
+**Optional inbound banner** (above the form, dismissable):
+- When the user was redirected here from a disabled self-signup route on a production install: *"Registration is disabled on this Huginn install. Contact your admin to request an account."*
+- When the user just successfully reset their password (`AUTH-RESET_PASSWORD-1` → here): *"Password updated. Sign in with your new password."*
+- When the user just clicked the link in Email 3 (account approved): *"Your account is approved — welcome to Huginn. Sign in to get started."*
+
+**Flow** (credentials check happens first; status-based messaging only fires when credentials are valid, to prevent account-existence enumeration):
+- Credentials valid AND account `active` → **Tactical Plot** `DASHBOARD-PROJECTS-1` (Act 4)
+- Credentials valid AND account `pending_email_verification` → stays on the login page; inline notice: *"Your email isn't verified yet. We sent a verification link to {email}."* with a **[Resend verification email]** button (rate-limited)
+- Credentials valid AND account `pending_admin_approval` → stays on login; inline notice: *"Your account is verified and waiting for admin approval. You'll receive an email once it's reviewed."*
+- Credentials valid AND account `rejected` → stays on login; inline notice: *"Your account application was not approved. Please contact your admin if you believe this is an error."* (no rejection reason shown here — it was delivered in Email 4)
+- Credentials invalid → inline error "Invalid email or password" (same message for unknown email and wrong password — no enumeration)
+- Network error → "Unable to reach Huginn. Check your connection."
+
+**Already-authenticated** users navigating to `/` are redirected to `DASHBOARD-PROJECTS-1`. Logging out clears the session and returns here.
+
+---
+
+#### Screen: AUTH-REGISTER-1
+
+**Context**: The new Commander clicks **Create an account** on `AUTH-LOGIN-1` and lands here. This screen is anonymously accessible — but only on installs running with `settings.DEBUG = True`.
+
+**`DEBUG` gating** (production posture): when `settings.DEBUG = False`, every entry-point to this screen (the route, direct URL access, deep links from old emails) returns an HTTP redirect to `AUTH-LOGIN-1` with the banner *"Registration is disabled on this Huginn install. Contact your admin to request an account."* No row is created, no token is issued, no email is sent. Server-side this is enforced by a single guard at the top of the registration view + URL conf — there is no client-side toggle to bypass, and no env variable to forget to flip. Operators provision production accounts through the Django admin or a management command (e.g. `manage.py createuser_active`, to be added during BSP).
+
+The rest of this section assumes the install is in dev / sandbox mode (`DEBUG = True`).
+
+**Layout**:
+- **Header**: Huginn wordmark + tagline + sub-header "Create your Huginn account"
+- **Form** (centered, single column):
+  - Full name (`data-testid="register-name"`, required, free text)
+  - Email (`data-testid="register-email"`, required, email format)
+  - Password (`data-testid="register-password"`, required, masked, minimum strength per Django `AUTH_PASSWORD_VALIDATORS` — length, common-password block, numeric-only block)
+  - Confirm password (`data-testid="register-password-confirm"`, required, must equal Password)
+  - [Create account] button (`data-testid="register-submit"`, primary, full-width; disabled until all four fields validate)
+- **Below the form**:
+  - "Already have an account? **Sign in**" link → `AUTH-LOGIN-1`
+
+**Inline validation**:
+- Email format: client-side check + server re-check on submit
+- Password strength: live indicator (weak / acceptable / strong) as the user types
+- Password mismatch: red helper text under Confirm password
 
 **Flow**:
-- Valid credentials → **Tactical Plot** `DASHBOARD-PROJECTS-1` (Act 4)
-- Invalid → inline error "Invalid email or password"
-- Network error → "Unable to reach Huginn. Check your connection."
+- **Submit, new email** → server creates a `User` row with `is_active = False`, issues a single-use verification link (24h TTL), sends **Email 1 — Verify your email** to the address, redirects to `AUTH-AWAIT_VERIFICATION-1` carrying `{email}` for display.
+- **Submit, email already in `pending_email_verification`** → re-issues the token, re-sends Email 1, redirects to `AUTH-AWAIT_VERIFICATION-1` with the same UX (no enumeration: looks identical to a brand-new signup).
+- **Submit, email already in `pending_admin_approval` / `active` / `rejected`** → does **not** create a duplicate row; sends a context-appropriate "you already have an account" email to that address, then redirects to `AUTH-AWAIT_VERIFICATION-1` showing the same generic success copy (no enumeration). Real status is communicated only by the email Huginn just sent.
+- **Validation error** (server-side: e.g., password too weak) → re-render the form with errors inline; no email is sent.
+- **Network / server error** → top-of-form banner "Unable to create account right now. Please try again." Form retains entered values except passwords.
+
+**Post-submit screen**: `AUTH-AWAIT_VERIFICATION-1`.
+
+---
+
+#### Screen: AUTH-AWAIT_VERIFICATION-1
+
+**Context**: Immediately after `AUTH-REGISTER-1` submit succeeds (or any of its enumeration-blocking equivalents above). The User row is in `pending_email_verification`; login is not yet possible.
+
+**Layout** (centered card, single column):
+- **Header**: Huginn wordmark
+- **Icon / illustration**: an envelope or "mail sent" cue
+- **Title**: "Check your email"
+- **Body**: "We sent a verification link to **{email}**. Click the link in the email to verify your address — the link is valid for **24 hours**."
+- **Actions**:
+  - **[Resend email]** button (`data-testid="resend-verification"`) — issues a new verification link (invalidating the previous one) and re-sends Email 1; rate-limited (5 / hour / email; gentle on-screen counter after click: "Sent. You can resend in 60s.")
+  - **[Back to sign in]** secondary link → `AUTH-LOGIN-1`
+- **Footer help**: "Didn't get the email? Check spam, or contact your admin."
+
+**No automatic redirect**: this screen does not poll for verification — the user moves on by clicking the link in their inbox, which routes them to `AUTH-VERIFY_EMAIL-1`. Re-visiting this URL directly without an active pending registration redirects to `AUTH-LOGIN-1`.
+
+---
+
+#### Screen: AUTH-VERIFY_EMAIL-1
+
+**Context**: The user clicks the verification link in Email 1, which routes to `/auth/verify/?token=…`. This screen consumes the token server-side **before** rendering.
+
+**Server-side outcomes** (rendered states):
+
+- **Success** (link valid + user is in `pending_email_verification` state + not expired):
+  - Activate the account for admin review (`is_active` stays `False` until admin approves); **send Email 2 — Awaiting admin approval** to the user.
+  - Render: title "Email verified", body "Thanks — we've confirmed your email. Your account now needs to be approved by an admin. We'll email you the moment that happens." + [Back to sign in] link → `AUTH-LOGIN-1`.
+  - Optionally, after a brief delay (e.g., 2s) auto-redirect to `AUTH-AWAIT_APPROVAL-1`; manual click also goes there via the CTA.
+- **Already verified** (link matches a user who already passed verification):
+  - No state change, no second Email 2.
+  - Render: title "Already verified", body "This email has already been verified. {status-appropriate one-liner: 'It's waiting for admin approval' / 'You can sign in now' / 'Please contact your admin.'}." + [Go to sign in] CTA.
+- **Expired link** (>24h since issued):
+  - Render: title "Link expired", body "This verification link has expired. Request a new one to verify your email." + **[Resend verification email]** form (one-field: email address; submitting issues a new link and sends Email 1; the user is then sent to `AUTH-AWAIT_VERIFICATION-1`).
+- **Invalid / unknown link**:
+  - Render: title "Link not recognised", body "We couldn't verify this link. It may have been used already or copied incorrectly. You can request a new link from the sign-in page." + [Go to sign in] CTA. No state change.
+
+**No login side-effect**: verifying does **not** log the user in. They will sign in normally once admin approval lands.
+
+---
+
+#### Screen: AUTH-AWAIT_APPROVAL-1
+
+**Context**: Reached automatically (or via the CTA on `AUTH-VERIFY_EMAIL-1`) once the User row is in `pending_admin_approval`. Anonymous-accessible — no session is required; users typically arrive here once and then close the tab.
+
+**Layout** (centered card, single column):
+- **Header**: Huginn wordmark
+- **Icon / illustration**: a "stand by" or hourglass cue
+- **Title**: "Hold tight — admin approval pending"
+- **Body**: "Your email is verified. A workspace admin will review your application shortly. We'll email you (**{email}**) the moment your account is approved — you don't need to keep this page open."
+- **Actions**:
+  - **[Back to sign in]** link → `AUTH-LOGIN-1`
+- **Footer help**: "Approvals are typically handled within one business day. Contact your admin directly if it's been longer."
+
+**Behaviour**:
+- This screen is static — no polling, no live status. The user's queue position is intentionally not surfaced to avoid leaking admin workload signals.
+- Direct visits to this URL without a known pending session redirect to `AUTH-LOGIN-1`.
+
+---
+
+### Forgot password (Act 0 side-flow)
+
+A standalone two-screen flow off `AUTH-LOGIN-1`. Available on **every install** regardless of `settings.DEBUG` — production users still need to be able to recover access when they forget their password. Password-reset links are single-use with a **1-hour TTL** (shorter than the 24h verification TTL) and are invalidated by a successful password change or by issuing a new reset for the same account. Storage and signing mechanism are implementation details. Like every other Act 0 endpoint, both screens are rate-limited per IP and per email.
+
+**Build status**: screens specified here for completeness; implementation tracked as a follow-up sprint after the registration / approval flow ships. Until built, the **Forgot password?** link on `AUTH-LOGIN-1` may temporarily fall back to the legacy "Contact your admin" tooltip — but the canonical target is the spec below.
+
+#### Screen: AUTH-FORGOT_PASSWORD-1
+
+**Context**: The user clicks **Forgot password?** on `AUTH-LOGIN-1` and lands here. Anonymous-accessible.
+
+**Layout** (centered card, single column):
+- **Header**: Huginn wordmark + sub-header "Reset your password"
+- **Form**:
+  - Email (`data-testid="forgot-email"`, required, email format)
+  - **[Send reset link]** button (`data-testid="forgot-submit"`, primary, full-width; disabled until email validates)
+- **Below the form**:
+  - "Remembered it? **Sign in**" link → `AUTH-LOGIN-1`
+
+**Flow** (constant-time, enumeration-resistant — the UI behaviour is identical regardless of whether the email exists):
+- **Submit** → server looks up the email:
+  - If matched to an `active` user: issues a `PasswordResetToken`, invalidates any prior outstanding reset token for that user, sends **Email 5 — Password reset link**.
+  - If matched to a `pending_email_verification` / `pending_admin_approval` / `rejected` user: does **not** issue a reset token; instead sends a context-appropriate variant of Email 5 explaining why the account can't be reset right now (verify your email first / awaiting admin approval / contact your admin) — the user still gets an email, just not one with a reset link.
+  - If unmatched: sends **no** email; server logs the attempt for rate-limit accounting.
+- **In all three cases** the screen transitions to a success state, identical copy: title *"Check your email"*, body *"If an account exists for **{email}**, we've sent a password-reset link. It will expire in 1 hour."* + **[Resend]** button (rate-limited; 5 / hour / email) + **[Back to sign in]** link.
+
+The mismatch between "email always shown" and "real send only in some cases" is intentional — the only place a user can tell their account actually exists is the inbox of the email they just typed in. Combined with the enumeration-blocking behaviour on `AUTH-REGISTER-1` and `AUTH-LOGIN-1`, this keeps account existence opaque to bystanders.
+
+**Edge cases**:
+- Submitting the same email repeatedly within the rate-limit window: success state still renders, but no additional email is sent server-side; the rate-limit counter is decremented either way.
+- Validation error (malformed email): inline error under the field; no submission, no email.
+- Network / server error: top-of-form banner "Unable to send reset link right now. Please try again."
+
+#### Screen: AUTH-RESET_PASSWORD-1
+
+**Context**: The user clicks the link in Email 5 and lands here on `/auth/reset/?token=…`. Token validation happens server-side **before** rendering the form.
+
+**Pre-render link check**:
+- **Valid + within 1h TTL + not yet used** → render the form (below).
+- **Expired** (>1h since issue): render an error state — title *"Reset link expired"*, body *"This password-reset link has expired. Request a new one from the sign-in page."* + **[Request new link]** CTA → `AUTH-FORGOT_PASSWORD-1`.
+- **Already used**: render *"Link already used"* + same CTA.
+- **Unknown / malformed link**: render *"Link not recognised"* + same CTA.
+- **Link belongs to a non-`active` user** (account was rejected or reverted to pending after the link was issued): render *"This account can't be reset right now. Contact your admin."* — no form, no further action.
+
+**Form layout** (centered card, single column):
+- **Header**: Huginn wordmark + sub-header "Choose a new password"
+- **Context line**: the email the reset is for (so the user knows which account they're changing): *"Resetting password for **{email}**."*
+- **Fields**:
+  - New password (`data-testid="reset-password"`, required, masked, same strength rules as `AUTH-REGISTER-1` — Django `AUTH_PASSWORD_VALIDATORS`)
+  - Confirm new password (`data-testid="reset-password-confirm"`, required, must equal New password)
+- **[Set new password]** button (`data-testid="reset-submit"`, primary, full-width; disabled until both fields validate)
+
+**Flow on submit**:
+- Server re-validates the link (defence in depth; handles race between page render and submit), then:
+  - Sets the user's password to the new value (PBKDF2 hash).
+  - Invalidates the reset link (single-use).
+  - Invalidates other active sessions for that user so any previously logged-in browsers are signed out on their next request (Django's `update_session_auth_hash` keeps the resetting session intact; other sessions are revoked).
+  - Sends **Email 6 — Password changed** to the user's email (security notification — *"Your Huginn password was changed at {timestamp}. If this wasn't you, contact your admin immediately."*).
+  - Redirects to `AUTH-LOGIN-1` with the success banner: *"Password updated. Sign in with your new password."*
+- Validation error (passwords don't match, password too weak): re-render the form with errors inline; the link is **not** invalidated (the user can retry).
+- Network / server error: banner at top of form; link not invalidated.
+
+**No auto-login**: completing reset returns the user to the login screen — they sign in fresh with their new password. This keeps the post-reset flow consistent with normal session creation and avoids edge cases where the reset link itself becomes a single-use sign-in mechanism.
+
+---
+
+### Admin moderation (Act 0)
+
+The admin's role in Act 0 is narrow: approve or reject pending self-signups. There are **no custom product UI screens** for this — moderation is done entirely through the **Django admin** (`/admin/`), which is accessible only to users with `is_staff = True`.
+
+**Implementation note**: The Django admin exposes the `User` model with a `pending_admin_approval` filter and custom admin actions:
+- **Approve selected users** — transitions `account_status` to `active`, sets `is_active = True`, records `approved_by` + `approved_at`, and dispatches **Email 3 — Account approved**.
+- **Reject selected users** — transitions `account_status` to `rejected`, keeps `is_active = False`, records `rejected_by` + `rejected_at`, and dispatches **Email 4 — Account not approved**.
+
+The Django admin `User` change list is the moderation queue. No custom Huginn product navigation is added for this in MVP — the admin navigates to `/admin/` directly. Rejected rows are retained in the DB for audit; there is no DELETE in MVP.
+
+---
+
+### Transactional emails (Act 0)
+
+All six emails are sent via Amazon SES (see the User account lifecycle architecture note). MVP uses simple HTML + plain-text multipart templates; subject lines are stable strings so they're easy to filter in inboxes.
+
+| # | Trigger | Subject | Recipient | Key content |
+|---|---------|---------|-----------|-------------|
+| 1 | `AUTH-REGISTER-1` submit (new or re-send) | "Verify your email for Huginn" | Registrant | Greeting, verification link (`/auth/verify/?token=…`), TTL note (24h), small-print "if you didn't register, ignore this email" |
+| 2 | `AUTH-VERIFY_EMAIL-1` success | "Your Huginn account is awaiting admin approval" | Registrant | Confirmation that email is verified, plain-language explanation that an admin must approve next, expectation-setting ("usually within one business day") |
+| 3 | Django admin **Approve** action | "Your Huginn account is approved" | Approved user | Greeting using submitted full name, sign-in link to `/`, short "welcome to Huginn" line |
+| 4 | Django admin **Reject** action | "Your Huginn account request" | Rejected user | Polite "your application was not approved", verbatim admin-supplied reason when present, contact-your-admin fallback line; **no** sign-in link |
+| 5 | `AUTH-FORGOT_PASSWORD-1` submit (account matched) | "Reset your Huginn password" | Account holder | Reset link (`/auth/reset/?token=…`), TTL note (**1h**), security line "if you didn't request this, ignore this email and your password stays the same"; account-status variants for non-`active` rows omit the reset link and explain why (verify your email / awaiting approval / contact your admin) |
+| 6 | `AUTH-RESET_PASSWORD-1` success | "Your Huginn password was changed" | Account holder | Security notification with timestamp; "if this wasn't you, contact your admin immediately"; no link |
+
+Notes:
+- **No email is sent** when `AUTH-FORGOT_PASSWORD-1` is submitted for an email Huginn doesn't recognise — server-side logs the attempt for rate-limit accounting; the UI behaves identically (account-existence enumeration is blocked at the UI layer, not the inbox).
+- The admin **does not** receive a notification email when a new user reaches `pending_admin_approval` in MVP — they discover the queue through the **Pending users (N)** nav badge on next sign-in. (Out-of-band admin notifications are listed under Open product decisions.)
 
 ---
 
@@ -929,3 +1178,6 @@ The following are deliberately deferred — captured here so they aren't silentl
 6. **Chat sidebar keyboard shortcut.** Global keyboard shortcut to expand/collapse `CHAT-SIDEBAR-1` (e.g., `⌘+Shift+G`). Deferred — needs keybinding UX design and conflict resolution with browser shortcuts.
 7. **Auto-approved Decision reversal.** In Autonomous mode, `Auto-approved` Decisions are audit-only in MVP — no UI to reverse the outcome after the fact. Post-MVP: define a "Revert Decision" flow that creates compensating artefacts (e.g., deactivate the auto-created FRAGO, reverse the Jira issue) and records a Reversal Reasoning. Deferred.
 8. **Decisions Logic FRAGO pruning UX.** The Decisions Logic FRAGO body grows over time. Commander can edit it directly (`FRAGOS-EDIT_FRAGO-1`), but there is no structured pruning, archiving, or summarisation UI in MVP. Options: (a) manual curation in the edit form; (b) Gjallarhorn-assisted "summarise and compress" action; (c) versioned checkpoint with rollback. Deferred.
+9. **Admin notification on pending signups (Act 0).** MVP relies on the **Pending users (N)** nav badge to surface the queue; admins must visit Huginn to notice it. Out-of-band notifications (email digest, Slack/webhook, push) are deferred. Risk: a one-admin workspace where the admin is on vacation could leave a signup waiting indefinitely. Mitigation when wired: an env-configurable list of admin emails that receive a daily digest of `pending_admin_approval` rows.
+10. **Account lifecycle actions beyond approve / reject and password reset (Act 0).** Admin-initiated deactivation of `active` users, re-considering a `rejected` row from the admin UI (today it's terminal), and role / permission management are all out of MVP. Forgot-password is **specified** in this document (`AUTH-FORGOT_PASSWORD-1` / `AUTH-RESET_PASSWORD-1` + Email 5 / Email 6) and uses the same SES + single-use-hashed-token machinery as email verification; its **implementation** is sequenced as a follow-up sprint after the registration / approval flow ships — the **Forgot password?** link on `AUTH-LOGIN-1` may temporarily fall back to the legacy "Contact your admin" tooltip in the interim.
+11. ~~**Self-signup gating per install (Act 0).**~~ **Resolved**: self-signup is gated by `settings.DEBUG`. `AUTH-REGISTER-1` and companion routes are available only when `DEBUG = True` (dev / sandbox); production (`DEBUG = False`) redirects them to `AUTH-LOGIN-1` with a banner and omits the **Create an account** link. Production accounts are provisioned by an operator via Django admin or a management command. See the **Self-signup gating** architecture note.

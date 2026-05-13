@@ -31,10 +31,9 @@
             <i class="fa-solid fa-right-to-bracket me-1"></i> Sign In
           </button>
         </form>
-        <div class="text-center mt-3">
-          <span class="d-inline-block" data-bs-toggle="tooltip" title="Contact your admin">
-            <button type="button" class="btn btn-link btn-sm disabled text-muted" tabindex="-1" disabled data-testid="forgot-password">Forgot password?</button>
-          </span>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <a href="{% url 'mockup-auth-register' %}" class="btn btn-link btn-sm px-0" data-testid="login-create-account">Create an account</a>
+          <a href="{% url 'mockup-auth-forgot-password' %}" class="btn btn-link btn-sm px-0" data-testid="forgot-password">Forgot password?</a>
         </div>
       </div>
     </div>

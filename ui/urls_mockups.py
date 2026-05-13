@@ -3,7 +3,15 @@
 from django.urls import path
 
 from .views.mockups.action_stations import action_stations_list
-from .views.mockups.auth import auth_login
+from .views.mockups.auth import (
+    auth_await_approval,
+    auth_await_verification,
+    auth_forgot_password,
+    auth_login,
+    auth_register,
+    auth_reset_password,
+    auth_verify_email,
+)
 from .views.mockups.chat import chat_view
 from .views.mockups.contributors import contributors_list, contributors_view
 from .views.mockups.dashboard import dashboard_projects
@@ -43,6 +51,12 @@ from .views.mockups.variables import variables_view
 urlpatterns = [
     path("", dashboard_projects, name="mockup-dashboard"),
     path("auth/login/", auth_login, name="mockup-auth-login"),
+    path("auth/register/", auth_register, name="mockup-auth-register"),
+    path("auth/await-verification/", auth_await_verification, name="mockup-auth-await-verification"),
+    path("auth/verify-email/", auth_verify_email, name="mockup-auth-verify-email"),
+    path("auth/await-approval/", auth_await_approval, name="mockup-auth-await-approval"),
+    path("auth/forgot-password/", auth_forgot_password, name="mockup-auth-forgot-password"),
+    path("auth/reset-password/", auth_reset_password, name="mockup-auth-reset-password"),
     path("datasources/", datasources_list, name="mockup-datasources-list"),
     path("datasources/create/", datasources_create, name="mockup-datasources-create"),
     path("datasources/<int:pk>/", datasources_view, name="mockup-datasources-view"),

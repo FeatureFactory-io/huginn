@@ -100,16 +100,52 @@
           </a>
         </li>
       </ul>
-      <div class="d-flex align-items-center text-white">
-        <a class="btn btn-sm btn-outline-light me-2" href="{% url 'mockup-auth-login' %}" data-testid="nav-mock-login">
-          <i class="fa-solid fa-right-to-bracket me-1"></i> Mock login
-        </a>
+      <div class="d-flex align-items-center gap-2 text-white">
+
+        {# ── Auth screens dropdown ──────────────────────────────────────── #}
+        <div class="dropdown">
+          <button type="button"
+                  class="btn btn-sm btn-outline-light dropdown-toggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  data-testid="nav-auth-dropdown">
+            <i class="fa-solid fa-right-to-bracket me-1" aria-hidden="true"></i>
+            <span class="d-none d-md-inline">Auth screens</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <li><h6 class="dropdown-header hg-label-caps">Registration flow</h6></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-login' %}" data-testid="nav-auth-login">
+              <i class="fa-solid fa-right-to-bracket fa-fw me-2 text-muted" aria-hidden="true"></i>Sign in
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-register' %}" data-testid="nav-auth-register">
+              <i class="fa-solid fa-user-plus fa-fw me-2 text-muted" aria-hidden="true"></i>Register
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-await-verification' %}" data-testid="nav-auth-await-verification">
+              <i class="fa-solid fa-envelope fa-fw me-2 text-muted" aria-hidden="true"></i>Check your inbox
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-verify-email' %}" data-testid="nav-auth-verify-email">
+              <i class="fa-solid fa-circle-check fa-fw me-2 text-muted" aria-hidden="true"></i>Verify email
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-await-approval' %}" data-testid="nav-auth-await-approval">
+              <i class="fa-solid fa-hourglass-half fa-fw me-2 text-muted" aria-hidden="true"></i>Pending approval
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><h6 class="dropdown-header hg-label-caps">Password reset</h6></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-forgot-password' %}" data-testid="nav-auth-forgot-password">
+              <i class="fa-solid fa-key fa-fw me-2 text-muted" aria-hidden="true"></i>Forgot password
+            </a></li>
+            <li><a class="dropdown-item" href="{% url 'mockup-auth-reset-password' %}" data-testid="nav-auth-reset-password">
+              <i class="fa-solid fa-lock-open fa-fw me-2 text-muted" aria-hidden="true"></i>Reset password
+            </a></li>
+          </ul>
+        </div>
+
         <span class="navbar-text d-flex align-items-center" data-testid="nav-user">
-          <i class="fa-solid fa-circle-user me-2 fs-6"></i>
+          <i class="fa-solid fa-circle-user me-1 fs-6" aria-hidden="true"></i>
           <span class="d-none d-md-inline">Commander Donland</span>
         </span>
       {% if user.is_authenticated %}
-          <a class="nav-link text-white ms-2" href="{% url 'admin:logout' %}" data-testid="nav-logout">Logout</a>
+          <a class="nav-link text-white" href="{% url 'admin:logout' %}" data-testid="nav-logout">Logout</a>
       {% endif %}
       </div>
     </div>
