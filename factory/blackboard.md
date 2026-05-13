@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution. T-REG-01 integrated. T-REG-01-impl claimed by feature-builder and actively editing (login_view.py + login.html modified in worktree at 14:54). T-REG-02 + T-REG-02-impl pending behind dep chain.
+**Phase:** 3 — Execution. **T-REG-01 + T-REG-01-impl + T-REG-02 all integrated to main.** T-REG-02-impl claimed by feature-builder (final task). Sprint approaching Phase 4.5 (lint/test gate) → Phase 5 (release 0.1.0).
 
 **Milestone:** Registration (GitLab IID 7427525)
 
@@ -19,9 +19,9 @@
 | # | ID | Title | Role | Status | Depends on | Feature file |
 |---|---|---|---|---|---|---|
 | 68 | T-REG-01 | Step defs — AUTH-REG-LOGIN-* debug gate scenarios | step-def-writer | **integrated (MR !19)** | — | `docs/features/act-0-auth/registration.feature` |
-| 69 | T-REG-01-impl | DEBUG gate on login screen + register route guard | feature-builder | claimable | #68 ✓ | `docs/features/act-0-auth/registration.feature` |
-| 70 | T-REG-02 | Step defs — AUTH-REGISTER-* registration form scenarios | step-def-writer | open | #69 | `docs/features/act-0-auth/registration.feature` |
-| 71 | T-REG-02-impl | Registration service + view + template | feature-builder | open | #70, #69 | `docs/features/act-0-auth/registration.feature` |
+| 69 | T-REG-01-impl | DEBUG gate on login screen + register route guard | feature-builder | **integrated (MR !20)** | #68 ✓ | `docs/features/act-0-auth/registration.feature` |
+| 70 | T-REG-02 | Step defs — AUTH-REGISTER-* registration form scenarios | step-def-writer | **integrated (MR !21)** | #69 ✓ | `docs/features/act-0-auth/registration.feature` |
+| 71 | T-REG-02-impl | Registration service + view + template | feature-builder | **claimed (in flight)** | #70 ✓, #69 ✓ | `docs/features/act-0-auth/registration.feature` |
 
 **Dependency chain:** `#68 → #69 → #70 → #71`
 
@@ -81,9 +81,9 @@ _None — sprint plan + feature file are unambiguous on the in-scope slice._
 
 # Event queue (LE)
 
-- **PENDING:** T-REG-01-impl (claimable — dep T-REG-01 done), T-REG-02 (blocked on T-REG-01-impl), T-REG-02-impl (blocked on T-REG-02 + T-REG-01-impl)
-- **CLAIMED:** —
-- **Done (integrated):** T-REG-01 (MR !19, merged to main 14:41 UTC)
+- **PENDING:** —
+- **CLAIMED:** T-REG-02-impl (feature-builder, final task)
+- **Done (integrated):** T-REG-01 (MR !19), T-REG-01-impl (MR !20), T-REG-02 (MR !21)
 
 (`claim.sh` gates each task on `factory/tasks/done/<dep>.md`. T-REG-01 in done/ →
 T-REG-01-impl claimable by feature-builder. The remaining chain is strictly linear.)
@@ -137,3 +137,15 @@ T-REG-01-impl claimable by feature-builder. The remaining chain is strictly line
 - **2026-05-13 (LE ACTION REQUIRED)** Both workers (step-def-writer, feature-builder) consistently submit empty `# Result` blocks — `verify-result.sh` blocks them every time. Root cause: workers run in worktrees where the task file path is different; they likely write to the wrong copy. LE must: (1) merge MR !20 (T-REG-01-impl) to main via `scripts/integrate.sh merge T-REG-01-impl`; (2) after T-REG-02 lands in blocked/, rescue it the same way as T-01 and T-01-impl (fill status/branch/mr/commit_sha, mv blocked→done, touch next pending).
 
 - **2026-05-13 15:04:07** 🔴 blocked **T-REG-02**: reason:status: field 'status' is empty
+
+- **2026-05-13 15:04 (monitor rescue)** T-REG-02: branch=factory/T-REG-02-register-form-steps mr=!21 sha=9cb31ff → done/
+
+- **2026-05-13 15:04:21** 🔧 **feature-builder** claimed **T-REG-02-impl**
+
+- **2026-05-13 15:05:06** 🔀 (LE) merged **T-REG-01-impl** via !20 → integrated
+
+- **2026-05-13 15:06:35** 🔀 (LE) merged **T-REG-02** via !21 → integrated
+
+- **2026-05-13 (LE) Phase 3 — two merges this pass.** Read blocked T-REG-01-impl (left by prior LE in `done/` with `status: passed` but un-integrated). Verified: MR !20 mergeable, 3/3 RED tests turn GREEN, 5 in-scope files + the T-REG-01 test file (identical content → conflict-free), ruff clean. Branch was cut from stale base (b5b0c30 pre-Registration) but GitLab's 3-way merge handles the duplicate-test-file add as a no-op. **Merged MR !20 → main.** While I was working, parallel LE pass rescued T-REG-02 (third empty-Result-block in a row, same root cause as documented in `.cursor/rules/dark-factory-redesign.mdc` interim workaround) and feature-builder claimed T-REG-02-impl. Verified MR !21 mergeable (single new file `tests/integration/test_auth_register.py`, 5 RED for the right reason — `NoReverseMatch 'auth-register'`, expected since worktree base predates the new URL). **Merged MR !21 → main.** Remaining work: feature-builder finishes T-REG-02-impl → expect another empty-Result rescue → integrate → Phase 4.5 (`make lint` + `make test` on main) → Phase 5 (`scripts/release.sh 0.1.0` per LE assumption).
+
+- **OPERATING NOTE (parallel LE).** A second LE cursor-agent (session `8c06a8fc-...`) ran in parallel with this one (session `11277030-...`); both saw the same blackboard at startup. The sibling rescued T-REG-02 and pushed `factory: blocked T-REG-02` + the rescue/claim ops while this LE was inspecting T-REG-01-impl. No conflict because: (a) factory/** edits are commutative (different files: T-REG-01-impl rescue vs T-REG-02 rescue), and (b) `integrate.sh merge` is idempotent on GitLab's side (already-merged MR check). If this becomes a regular pattern, the tmux LE loop should add a `flock` to the cursor-agent invocation to serialize passes.

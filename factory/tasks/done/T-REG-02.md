@@ -134,7 +134,7 @@ ruff check tests/integration/test_auth_register.py
 
 # Result
 
-status:
-branch: ""
-mr: ""
-commit_sha: ""
+status: integrated
+branch: "factory/T-REG-02-register-form-steps"
+mr: "21"
+commit_sha: "9cb31ff"

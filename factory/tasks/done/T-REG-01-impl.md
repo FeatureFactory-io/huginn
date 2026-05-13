@@ -155,7 +155,7 @@ ruff check ui/
 
 # Result
 
-status: passed
+status: integrated
 branch: "factory/T-REG-01-impl-debug-gate"
 mr: "20"
 commit_sha: "c4ad47e"
