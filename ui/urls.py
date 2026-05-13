@@ -4,6 +4,7 @@ from django.urls import include, path
 
 from .views.auth.login_view import LoginScreenView
 from .views.auth.logout_view import LogoutScreenView
+from .views.auth.register_view import RegisterView
 from .views.dashboard import DashboardProjectsView
 from .views.datasources import (
     DataSourcesCreateView,
@@ -46,6 +47,7 @@ urlpatterns = [
     path("plot/", DashboardProjectsView.as_view(), name="tactical-plot"),
     path("accounts/login/", LoginScreenView.as_view(), name="auth-login"),
     path("accounts/logout/", LogoutScreenView.as_view(), name="auth-logout"),
+    path("accounts/register/", RegisterView.as_view(), name="auth-register"),
     path("welcome/", welcome, name="welcome"),
     path("mockups/", include("ui.urls_mockups")),
     path("datasources/", DataSourcesListView.as_view(), name="datasources-list"),
