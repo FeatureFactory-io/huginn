@@ -2,7 +2,7 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 2 — Decomposition complete; 4 tasks in `factory/tasks/pending/`. Worker fswatch loops will claim in dep order. Proceeding dark to Phase 3 (execution).
+**Phase:** 3 — Execution. T-REG-01 integrated. T-REG-01-impl claimed by feature-builder and actively editing (login_view.py + login.html modified in worktree at 14:54). T-REG-02 + T-REG-02-impl pending behind dep chain.
 
 **Milestone:** Registration (GitLab IID 7427525)
 
@@ -125,3 +125,5 @@ T-REG-01-impl claimable by feature-builder. The remaining chain is strictly line
 - **2026-05-13 14:45 (LE)** Wake-kick: fired `touch pending/T-REG-01-impl.md` to wake the freshly-restarted feature-builder fswatch (factory tmux session created 14:43; `fswatch -1` is one-shot and pending/ had no events since restart). Worker won the race, `mv` to claimed/T-REG-01-impl.md, started cursor-agent (pid 67501). Brief zero-byte pending stub appeared then was reaped within seconds (suspected concurrent-watcher race; no impact — `claim.sh` skips files without `role:` header). Next wake: fswatch on done/rejected/blocked when worker reports back, or 5-min poll.
 
 - **2026-05-13 14:46 (LE) OPERATING NOTE — wake-kick required after each integration.** Worker loops in `factory.sh` use `fswatch -1` (one-shot) on pending/ and do NOT scan pending/ on startup. After `integrate.sh merge <id>` lands done/<id>.md with `status: integrated`, the LE fswatch on done/ wakes (good), but the next pending task (whose dep just got satisfied) does NOT fire any worker fswatch — the worker stays asleep. **Action for future LE passes:** after each successful merge, `touch factory/tasks/pending/<next-task>.md` to wake the appropriate worker. Sequence for the remaining chain: after T-REG-01-impl integrated → touch pending/T-REG-02.md (wakes step-def-writer); after T-REG-02 integrated → touch pending/T-REG-02-impl.md (wakes feature-builder). Filed as a longer-term factory bug to fix in the worker loop (give each worker a startup scan + 5-min poll like the LE has).
+
+- **2026-05-13 14:54 (LE) Phase 3 poll — no action.** 5-min poll wake. Worker `feature-builder` (pid 67501) still active on T-REG-01-impl, ~9 min into the task. Worktree `.worktrees/feature-builder` shows uncommitted changes on `factory/T-REG-01-impl-debug-gate`: `M ui/views/auth/login_view.py`, `M ui/templates/ui/auth/login.html`, untracked `tests/integration/test_auth_reg_login_debug_gate.py` (copied from T-REG-01 merge). Still missing per task scope: `ui/views/auth/register_view.py` (new), `ui/templates/ui/auth/register.html` (new), `ui/urls.py` (modify). No branch pushed to origin yet; no MR. Worker chatter (log) indicates it's mid-edit on the login template's conditional Create-account block — healthy progress, not stuck. **Decision:** do not interrupt. Next wake: done/rejected/blocked fswatch event or next 5-min poll.
