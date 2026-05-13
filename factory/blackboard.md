@@ -18,8 +18,8 @@
 
 | # | ID | Title | Role | Status | Depends on | Feature file |
 |---|---|---|---|---|---|---|
-| 68 | T-REG-01 | Step defs — AUTH-REG-LOGIN-* debug gate scenarios | step-def-writer | open | — | `docs/features/act-0-auth/registration.feature` |
-| 69 | T-REG-01-impl | DEBUG gate on login screen + register route guard | feature-builder | open | #68 | `docs/features/act-0-auth/registration.feature` |
+| 68 | T-REG-01 | Step defs — AUTH-REG-LOGIN-* debug gate scenarios | step-def-writer | **integrated (MR !19)** | — | `docs/features/act-0-auth/registration.feature` |
+| 69 | T-REG-01-impl | DEBUG gate on login screen + register route guard | feature-builder | claimable | #68 ✓ | `docs/features/act-0-auth/registration.feature` |
 | 70 | T-REG-02 | Step defs — AUTH-REGISTER-* registration form scenarios | step-def-writer | open | #69 | `docs/features/act-0-auth/registration.feature` |
 | 71 | T-REG-02-impl | Registration service + view + template | feature-builder | open | #70, #69 | `docs/features/act-0-auth/registration.feature` |
 
@@ -81,12 +81,12 @@ _None — sprint plan + feature file are unambiguous on the in-scope slice._
 
 # Event queue (LE)
 
-- **PENDING:** T-REG-01, T-REG-01-impl, T-REG-02, T-REG-02-impl
+- **PENDING:** T-REG-01-impl (claimable — dep T-REG-01 done), T-REG-02 (blocked on T-REG-01-impl), T-REG-02-impl (blocked on T-REG-02 + T-REG-01-impl)
 - **CLAIMED:** —
-- **Done worker tasks:** —
+- **Done (integrated):** T-REG-01 (MR !19, merged to main 14:41 UTC)
 
-(`claim.sh` gates each task on `factory/tasks/done/<dep>.md`; only T-REG-01 will be claimable
-until T-REG-01 lands in done/. No `blocked/` placement needed.)
+(`claim.sh` gates each task on `factory/tasks/done/<dep>.md`. T-REG-01 in done/ →
+T-REG-01-impl claimable by feature-builder. The remaining chain is strictly linear.)
 
 ---
 
