@@ -15,17 +15,45 @@
       <h1 class="hg-page-title">Huginn</h1>
       <p class="text-muted small mb-0">Human-AI Command Composite</p>
     </div>
+
     <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
         <h2 class="fs-5 fw-semibold mb-3">Create your account</h2>
+        {% if password_error %}
+          <div class="alert alert-danger" role="alert" data-testid="register-error">{{ password_error }}</div>
+        {% endif %}
         <form class="vstack gap-3" method="post" action="" autocomplete="off" data-testid="register-form">
           {% csrf_token %}
-          <button type="submit" class="btn btn-primary w-100 fw-semibold mt-2" data-testid="register-submit" disabled>
+          <div>
+            <label for="register-name" class="form-label">Full name <span class="text-danger">*</span></label>
+            <input name="name" type="text" class="form-control" id="register-name" data-testid="register-name"
+                   placeholder="Casey Commander" autocomplete="name"
+                   value="{{ field_name|default:'' }}">
+          </div>
+          <div>
+            <label for="register-email" class="form-label">Work email <span class="text-danger">*</span></label>
+            <input name="email" type="email" class="form-control" id="register-email" data-testid="register-email"
+                   placeholder="you@company.com" autocomplete="email"
+                   value="{{ field_email|default:'' }}">
+          </div>
+          <div>
+            <label for="register-password" class="form-label">Password <span class="text-danger">*</span></label>
+            <input name="password" type="password" class="form-control" id="register-password" data-testid="register-password"
+                   autocomplete="new-password">
+            <div class="form-text">Minimum 8 characters.</div>
+          </div>
+          <div>
+            <label for="register-password-confirm" class="form-label">Confirm password <span class="text-danger">*</span></label>
+            <input name="password_confirm" type="password" class="form-control" id="register-password-confirm" data-testid="register-password-confirm"
+                   autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary w-100 fw-semibold mt-2" data-testid="register-submit">
             <i class="fa-solid fa-user-plus me-1" aria-hidden="true"></i> Create Account
           </button>
         </form>
         <div class="text-center mt-3">
-          <a href="{% url 'auth-login' %}" class="btn btn-link btn-sm" data-testid="register-sign-in-link">Sign in</a>
+          <span class="text-muted small">Already have an account?</span>
+          <a href="{% url 'auth-login' %}" class="btn btn-link btn-sm px-1" data-testid="register-sign-in-link">Sign in</a>
         </div>
       </div>
     </div>
