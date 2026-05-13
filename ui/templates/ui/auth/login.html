@@ -17,6 +17,14 @@
     </div>
     <div class="card border-0 shadow-sm">
       <div class="card-body p-4">
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert" data-testid="login-flash-message">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
         {% if login_error %}
           <div class="alert alert-warning" role="alert" data-testid="login-inline-error">{{ login_error }}</div>
         {% endif %}
@@ -46,6 +54,13 @@
             <button type="button" class="btn btn-link btn-sm disabled text-muted" tabindex="-1" disabled data-testid="forgot-password">Forgot password?</button>
           </span>
         </div>
+        {% if debug_mode %}
+          <div class="text-center mt-2">
+            <a href="{% url 'auth-register' %}" class="btn btn-link btn-sm" data-testid="login-register-link">Create an account</a>
+          </div>
+        {% else %}
+          <p class="text-center text-muted small mt-2 mb-0">Need an account? Contact your admin.</p>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -63,4 +63,4 @@ class LoginScreenView(View):
         return settings.LOGIN_REDIRECT_URL or "/"
 
     def _context(self, request: HttpRequest) -> dict:
-        return {}
+        return {"debug_mode": settings.DEBUG}
