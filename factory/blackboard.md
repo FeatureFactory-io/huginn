@@ -131,3 +131,7 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 12:16:34** 🔀 (LE) merged **T-TOOLS** via !24 → integrated
 
 - **2026-05-14 12:17:25 (LE):** T-TOOLS rescue completed → merged via !24. Branch `factory/T-TOOLS-tool-executor` @ 4a29710 was real work blocked only by an empty Result block (same failure mode as T-LLM). LE checks 1–7 clean: 7/7 files in scope (168 LOC, ToolExecutor + 5 read tools + build_executor factory), 19/19 acceptance tests GREEN, MR mergeable with no conflicts, Dr. Dobbs spot-check passed (project-scoping enforced, write-tool guard, envelope never raises). Worker pragmatically adapted tool return shapes to real model fields (`external_id`/`occurred_at` vs spec'd `sha`/`committed_at`; `workflow_md`, `body_md`) — tests agree; T-AGENT prompts must honor these shapes. T-AGENT now dep-satisfied (T-LLM ✅ + T-TOOLS ✅) and eligible for claim. 6 further downstream tasks remain in `pending/` and will unblock topologically via `claim.sh` as each upstream lands in `done/`.
+
+- **2026-05-14 12:20:41** 🔧 **feature-builder** claimed **T-AGENT**
+
+- **2026-05-14 12:21:39 (LE wake — startup):** Phase 3 in progress. T-AGENT claimed (feature-builder, worktree `factory/T-AGENT-gjallarhorn-agent`); 6 downstream tasks pending, dep-gated by claim.sh. No action — awaiting done/T-AGENT.md.
