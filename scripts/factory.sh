@@ -178,11 +178,11 @@ _process_pending() {
             echo "[\$(date +%H:%M:%S)] [sync] copied # Result block from worktree → claimed/"
           fi
         fi
-        # Layer B: last-resort auto-fill from git state if Result still missing
-        if ! rg -q '^# Result' "\$claimed_path" 2>/dev/null; then
-          echo "[\$(date +%H:%M:%S)] [rescue] Result still missing — running rescue-result.sh"
-          "$REPO_ROOT/scripts/rescue-result.sh" "\$id" 2>/dev/null || true
-        fi
+        # Layer B: unconditionally run rescue-result.sh — it no-ops if all fields are
+        # already filled, and auto-fills from git state otherwise (fixes #79: agent
+        # consistently writes the # Result header but leaves fields empty).
+        echo "[\$(date +%H:%M:%S)] [rescue] running rescue-result.sh (always)"
+        "$REPO_ROOT/scripts/rescue-result.sh" "\$id" 2>/dev/null || true
         if _verify_reason="\$($REPO_ROOT/scripts/verify-result.sh "\$id" 2>&1 1>/dev/null)"; then
           "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
           "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** ✅ **%s** done **%s**' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id")"

@@ -37,10 +37,22 @@ else
   exit 1
 fi
 
-# Already has a Result block — nothing to do
+# Already has a Result block with all fields filled — nothing to do
 if rg -q '^# Result' "$TARGET" 2>/dev/null; then
-  echo "rescue-result: ${TASK_ID} already has # Result block — skipping"
-  exit 0
+  result_section="$(awk '/^# Result/{found=1; next} found{print}' "$TARGET")"
+  _status="$(printf '%s\n' "$result_section" | rg -m1 '^status:[[:space:]]*' 2>/dev/null | sed 's/^status:[[:space:]]*//' | tr -d '"' || true)"
+  _branch="$(printf '%s\n' "$result_section" | rg -m1 '^branch:[[:space:]]*' 2>/dev/null | sed 's/^branch:[[:space:]]*//' | tr -d '"' || true)"
+  _mr="$(printf '%s\n' "$result_section" | rg -m1 '^mr:[[:space:]]*' 2>/dev/null | sed 's/^mr:[[:space:]]*//' | tr -d '"' || true)"
+  _sha="$(printf '%s\n' "$result_section" | rg -m1 '^commit_sha:[[:space:]]*' 2>/dev/null | sed 's/^commit_sha:[[:space:]]*//' | tr -d '"' || true)"
+  if [[ -n "$_status" && -n "$_branch" && -n "$_mr" && -n "$_sha" ]]; then
+    echo "rescue-result: ${TASK_ID} already has complete # Result block — skipping"
+    exit 0
+  fi
+  echo "rescue-result: ${TASK_ID} has # Result block but fields are empty — stripping and re-filling"
+  # Strip the existing (empty) Result block before appending a filled one
+  tmpfile="$(mktemp)"
+  awk '/^# Result/{exit} {print}' "$TARGET" > "$tmpfile"
+  mv "$tmpfile" "$TARGET"
 fi
 
 # ── Resolve branch from frontmatter ──────────────────────────────────────────
