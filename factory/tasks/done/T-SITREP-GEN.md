@@ -343,7 +343,7 @@ Closes #61" \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-SITREP-GEN-narrative-pipeline-v2
 mr: 30
 commit_sha: 53f8c04c
