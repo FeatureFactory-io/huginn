@@ -135,3 +135,5 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 12:20:41** 🔧 **feature-builder** claimed **T-AGENT**
 
 - **2026-05-14 12:21:39 (LE wake — startup):** Phase 3 in progress. T-AGENT claimed (feature-builder, worktree `factory/T-AGENT-gjallarhorn-agent`); 6 downstream tasks pending, dep-gated by claim.sh. No action — awaiting done/T-AGENT.md.
+
+- **2026-05-14 12:35:18** ✅ **feature-builder** done **T-AGENT**
