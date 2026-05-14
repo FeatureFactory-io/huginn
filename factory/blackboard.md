@@ -172,3 +172,5 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 (LE) T-EXEC (att 2) auto-claimed on clean base — first poisoning-free worker handoff.** Factory loop claimed T-EXEC at 13:15:02 (two seconds after T-AGENT moved to done/). Worktree HEAD is `9db34f2` — the merge commit on `origin/main` that contains the T-AGENT squash. Branch `factory/T-EXEC-execute-plan` is now based off `origin/main`'s tip, **not** a poisoned worktree tip. The "trend escalation" from the previous wake (three consecutive workers ignoring the `git reset --hard origin/main` boilerplate) is broken — this worker either ran the reset or branched from a freshly-synced HEAD. Worktree is mid-implementation: `gjallarhorn/services/factory.py` + `gjallarhorn/tasks/plan_tasks.py` modified, uncommitted. Holding until `done/T-EXEC.md` lands.
 
 - **PHASE 3 update (LE):** 3 of 6 in-flight tasks merged (T-LLM !23, T-TOOLS !24, T-AGENT !28). T-EXEC running on clean base. Remaining: T-EXEC, T-SITREP-GEN, T-SITREP-LIST-STEPS/IMPL, T-SITREP-VIEW-STEPS/IMPL (latter 5 dep-gated in `pending/`).
+
+- **2026-05-14 13:22:04** ✅ **feature-builder** done **T-EXEC**
