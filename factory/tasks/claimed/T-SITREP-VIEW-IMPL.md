@@ -44,6 +44,47 @@ test contract for T-SITREP-VIEW-STEPS uses different kwarg names
 (`reverse('sitrep-view', kwargs={...})`), reconcile against this URL pattern —
 list-screen integration wins because list-screen is already on `main`.
 
+T-SITREP-VIEW-STEPS used kwargs `{"project_pk": project.pk, "pk": sitrep.pk}` —
+matches the URL above 1:1. No reconciliation needed.
+
+## LE-note (2026-05-14, T-SITREP-VIEW-STEPS integration)
+
+The step-def-writer worker overrode the blueprint testid for the Open Chat link
+because the **mockup** uses a different attribute. Per LE protocol (mockup wins
+when there's a conflict with the blueprint), the test file at
+`tests/ui/test_sitrep_view_scenarios.py:614` asserts:
+
+```python
+assert 'data-testid="sitrep-open-chat"' in body
+```
+
+NOT `sitrep-open-chat-link` as the original T-SITREP-VIEW-IMPL blueprint
+suggested. When you port `ui/templates/ui/mockups/sitrep/view.html` to
+`ui/templates/ui/sitrep/view.html`, **keep the mockup's `data-testid="sitrep-open-chat"`
+verbatim** — do not rename it to match the blueprint. The Chat-fullscreen URL
+isn't registered in this milestone; the test accepts any `href=` so `href="#"`
+is fine until the Chat milestone wires the real route.
+
+Other testids the mockup already wires correctly (verified vs the canonical test
+contract — port verbatim, no renames):
+
+- `data-testid="sitrep-assessed-period"` (with `aria-label="Assessed period"` for VIEW-30)
+- `data-testid="sitrep-status-badge"` (with `aria-label="Status: No Variables"` for VIEW-31)
+- `data-testid="sitrep-open-decisions-btn"` (VIEW-24)
+- `data-testid="sitrep-open-variables-btn"` (VIEW-25)
+- `data-testid="sitrep-mode-badge"` (VIEW-07/08)
+- `data-testid="page-title"` (VIEW-01)
+
+VIEW-29 ("Back to SitRep list") asserts the response body contains
+`href="<sitrep-list URL for the same project>"`. T-SITREP-LIST-IMPL is on main
+so `reverse('sitrep-list', kwargs={'project_pk': project.pk})` resolves —
+include a back link in the template that uses that `{% url %}` tag.
+
+VIEW-04 (manual trigger) and VIEW-08 (auto mode) use **separate fixtures** —
+your view must read `trigger` and `mode_at_generation` from the SitRep model
+and render them per-instance. Don't hardcode "Auto" / "semi_auto" labels in
+the template.
+
 ---
 
 # Task T-SITREP-VIEW-IMPL — port SITREP-VIEW_SITREP-1 to production
