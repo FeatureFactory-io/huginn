@@ -181,9 +181,12 @@ Closes #76 (paired with T-SITREP-LIST-STEPS)" \
 - Do NOT POST in this view — the form posts to `sitrep-generate` (T-SITREP-GEN).
 - Do NOT introduce `FOB-*` Screen IDs.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-SITREP-LIST-IMPL-list-screen
+mr: 32
+commit_sha: 1d556a5b
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
