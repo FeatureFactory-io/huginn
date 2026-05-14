@@ -181,3 +181,12 @@ Closes #66" \
 - Do NOT implement the full resilience matrix in `execute_plan` — that's T-EXEC.
 - Do NOT add `from gjallarhorn.tasks.plan_tasks import execute_plan` at module
   top in `agent.py` — must be a function-local import to break the cycle.
+
+# Result
+
+status: rescued
+branch: factory/T-AGENT-gjallarhorn-agent
+mr: 28
+commit_sha: ba04346e
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
