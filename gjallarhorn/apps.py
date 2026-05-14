@@ -6,4 +6,7 @@ class GjallarhornConfig(AppConfig):
     name = "gjallarhorn"
 
     def ready(self):
-        pass  # TODO(sitrep-sprint): import gjallarhorn.tasks.sitrep_tasks to register sync signal receiver
+        from gjallarhorn.tasks.sitrep_tasks import on_sync_project_completed  # noqa: PLC0415
+        from ingestion.signals import sync_project_completed  # noqa: PLC0415
+
+        sync_project_completed.connect(on_sync_project_completed)

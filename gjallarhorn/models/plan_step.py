@@ -22,6 +22,8 @@ class PlanStep(models.Model):
     result = models.JSONField(null=True, blank=True)
     outcome_assessment = models.TextField(blank=True)
     is_critical = models.BooleanField(default=True)
+    is_planning = models.BooleanField(default=False)
+    model_used = models.CharField(max_length=64, blank=True, default="")
 
     class Meta:
         ordering = ["order"]
