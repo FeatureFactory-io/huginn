@@ -2,13 +2,12 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). **T-AGENT, T-EXEC, T-SITREP-GEN all rejected on attempt 1** — same systemic "poisoned base" failure (workers branched off worktree tip without `git reset --hard origin/main`, dragging in earlier rejected branches). T-AGENT now claimed (attempt 2). T-EXEC + T-SITREP-GEN re-queued as attempt 2/3 in `pending/`, dep-gated until T-AGENT lands in `done/`.
+**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). **T-AGENT merged (!28)** on attempt 2 — first task to land cleanly post-poisoning episode (clean ancestry, 7/7 in-scope files, 15/15 acceptance GREEN, 414 regression GREEN, ruff clean, Dr. Dobbs clean). T-EXEC auto-claimed by factory loop (attempt 2/3, branched from `9db34f2` = current `origin/main` tip — clean base, no poisoning).
 
 **In flight (`claimed/`):**
-- T-AGENT (attempt 2/3 — feature-builder; worktree `factory/T-AGENT-gjallarhorn-agent`). Spec contains `## Remediation (attempt 2 — LE)` block requiring `git reset --hard origin/main` before branching.
+- T-EXEC (attempt 2/3 — feature-builder; worktree `factory/T-EXEC-execute-plan` based on `9db34f2`). Spec contains `## Remediation (attempt 2 — LE)` block; worker is mid-implementation (`gjallarhorn/services/factory.py` + `gjallarhorn/tasks/plan_tasks.py` modified).
 
 **Pending but dep-gated by `claim.sh` until upstream lands in `done/`:**
-- T-EXEC (attempt 2/3) — needs T-AGENT
 - T-SITREP-GEN (attempt 2/3) — needs T-EXEC. Spec contains a fresh `## Remediation (attempt 2 — LE)` block with verbatim boilerplate, ancestor sanity-checks, cherry-pick-from-`e193a03` recipe, and a "≤ 16 files vs origin/main" diff cap.
 - T-SITREP-LIST-STEPS — needs T-SITREP-GEN
 - T-SITREP-LIST-IMPL — needs T-SITREP-LIST-STEPS
@@ -31,8 +30,8 @@
 |---|---|---|---|---|---|---|
 | 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | **integrated** (!23) | — | `test_llm_contract.py`, `test_retry_on_rate_limit.py`, `test_prompts.py` |
 | 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | **integrated** (!24) | T-LLM ✅ | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
-| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **claimed — attempt 2/3** (worker running) | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
-| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | **pending — attempt 2/3** (rejected: stale base + 14 out-of-scope files; MR !26 closed) | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
+| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **integrated** (!28, attempt 2) | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
+| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | **claimed — attempt 2/3** (worker running on clean base `9db34f2`) | T-AGENT ✅ | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
 | 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | **pending — attempt 2/3** (rejected: poisoned base from rejected T-AGENT+T-EXEC chain, +.venv tracked, +factory state in feature commit; MR !27 closed) | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
 | 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
 | 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | pending (dep-gated) | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
@@ -163,3 +162,13 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 ~13:12 (LE wake — 5-min poll, no action).** T-AGENT (att 2) worker still active (pid 62988, ~8 min elapsed). Worktree on `factory/T-AGENT-gjallarhorn-agent` with **clean ancestry** (verified `6fa587f`, `b7a2339`, `4a29710` are NOT ancestors of HEAD; branch base = `0cb8f5c` which IS reachable from `origin/main` `6f47b10`). Uncommitted tree: only the 7 in-scope files (`gjallarhorn/agent/{agent,exceptions,__init__}.py`, `gjallarhorn/services/{sitrep_service,__init__}.py`, `gjallarhorn/tasks/{plan_tasks,__init__}.py`) — **no out-of-scope drag this time**, remediation block landed. Worker just ran the 4 acceptance test files: **15/15 PASSED in 2.84s**, regression suite (with the 8 downstream-RED ignores) currently in flight in worker stream. No `done/T-AGENT.md` yet; nothing for LE to do. Holding until next fswatch event.
 
 - **2026-05-14 13:15:00** ✅ **feature-builder** done **T-AGENT**
+
+- **2026-05-14 13:15:02** 🔧 **feature-builder** claimed **T-EXEC**
+
+- **2026-05-14 13:17:58** 🔀 (LE) merged **T-AGENT** via !28 → integrated
+
+- **2026-05-14 (LE) T-AGENT (att 2) integrated.** LE checks 1–7 all clean on first read: branch `factory/T-AGENT-gjallarhorn-agent` @ `ba04346e` pushed; MR !28 `detailed_merge_status: mergeable`, no conflicts; `git diff origin/main...` shows **exactly 7 files / 236 LoC matching `files_in_scope` 1:1** (no drag, no `.venv`, no factory state in feature commit); acceptance suite 15/15 GREEN (`test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py`); regression sweep 414 passed / 1 skipped — only failures are `test_execute_plan_max_retries_exhausted` + `test_execute_plan_rate_limit_retry`, both squarely inside T-EXEC's `test_execute_plan_*.py` contract (not regressions); ruff clean on new files; Dr. Dobbs spot-check clean (`transaction.atomic` on plan/step writes, lazy `from gjallarhorn.tasks.plan_tasks import execute_plan` inside `create_plan` to break the agent↔tasks cycle, `NotImplementedError` for `process_user_message` as specified, defensive `[<label> unavailable]` fallback in `_build_system_blocks`, 4 ephemeral-cached system blocks per SAO §17.6, no real API calls). `integrate.sh merge T-AGENT` reported MR was **already merged** by the time we ran it (likely auto-merge / parallel run); script idempotently set `status: integrated` in `done/T-AGENT.md` (verified `^status: integrated` present, the integrate.sh bug noted in blackboard did NOT recur this time). Squash commit on `main`: `1f932b0`.
+
+- **2026-05-14 (LE) T-EXEC (att 2) auto-claimed on clean base — first poisoning-free worker handoff.** Factory loop claimed T-EXEC at 13:15:02 (two seconds after T-AGENT moved to done/). Worktree HEAD is `9db34f2` — the merge commit on `origin/main` that contains the T-AGENT squash. Branch `factory/T-EXEC-execute-plan` is now based off `origin/main`'s tip, **not** a poisoned worktree tip. The "trend escalation" from the previous wake (three consecutive workers ignoring the `git reset --hard origin/main` boilerplate) is broken — this worker either ran the reset or branched from a freshly-synced HEAD. Worktree is mid-implementation: `gjallarhorn/services/factory.py` + `gjallarhorn/tasks/plan_tasks.py` modified, uncommitted. Holding until `done/T-EXEC.md` lands.
+
+- **PHASE 3 update (LE):** 3 of 6 in-flight tasks merged (T-LLM !23, T-TOOLS !24, T-AGENT !28). T-EXEC running on clean base. Remaining: T-EXEC, T-SITREP-GEN, T-SITREP-LIST-STEPS/IMPL, T-SITREP-VIEW-STEPS/IMPL (latter 5 dep-gated in `pending/`).

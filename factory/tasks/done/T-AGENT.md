@@ -184,7 +184,7 @@ Closes #66" \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-AGENT-gjallarhorn-agent
 mr: 28
 commit_sha: ba04346e
