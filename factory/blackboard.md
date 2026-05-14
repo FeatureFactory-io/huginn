@@ -268,3 +268,5 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 15:00:52** 🚀 (LE) cut release **0.2.0** — CI pipeline starting on release/0.2.0
 
 - **2026-05-14 15:18:02** 🚀 (LE) cut release **0.2.1** — CI pipeline starting on release/0.2.1
+
+- **2026-05-14 (human) Staging 500 on POST /projects/1/sitrep/generate/.** Django is up (login page loads). 500 after auth + POST. Root cause candidate: `result.get()` in `sitrep_generate_view` (line ~33) calls `.get()` on the Celery AsyncResult synchronously in the web thread — if the task raises (missing ANTHROPIC_API_KEY on EB, DB schema drift, or any other error) it re-raises as a 500. LE to investigate EB logs + either remove `.get()` (fire-and-forget, return 202 immediately) or guard with try/except.
