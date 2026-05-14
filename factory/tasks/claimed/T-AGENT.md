@@ -129,9 +129,12 @@ Closes #66" \
 - Do NOT add `from gjallarhorn.tasks.plan_tasks import execute_plan` at module
   top in `agent.py` — must be a function-local import to break the cycle.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-AGENT-gjallarhorn-agent
+mr: 25
+commit_sha: b7a6f152
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
