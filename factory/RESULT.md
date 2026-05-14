@@ -1,11 +1,57 @@
 # Sprint result — AI → SitRep (milestone 7419357)
 
-**Release tag:** `0.2.1` (patch over `0.2.0` — see "Staging deploy 0.2.0 failed" below)
-**Release branch:** `release/0.2.1`
-**Staging pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526062983
-**Previous (failed) pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526025464 (deploy_staging FAILED on smoke test — root cause below, fixed in `a151229`)
-**Staging URL:** http://huginn-staging.us-east-1.elasticbeanstalk.com (HTTP 200 on `/health/` — revision `a151229c`, all checks ok: DB ✅ Redis ✅ Celery worker ✅ Celery beat ✅)
+**Release tag:** `0.2.2` (patch over `0.2.1` — fixes staging 500 on POST `/projects/<pk>/sitrep/generate/`, see "Staging 500 → 0.2.2 patch" below)
+**Release branch:** `release/0.2.2`
+**Staging pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526098827 (✅ verify ✅ lint ✅ test ✅ build ✅ deploy_staging ✅ create_release; `promote_production` manual, awaiting human)
+**Previous pipelines:**
+- `0.2.1`: https://gitlab.com/dp2580/huginn/-/pipelines/2526062983 (deploy green, but `result.get()` 500 surfaced in manual smoke — fixed below)
+- `0.2.0`: https://gitlab.com/dp2580/huginn/-/pipelines/2526025464 (deploy_staging FAILED on smoke test — `anthropic` missing from `requirements-docker.txt`, fixed in `a151229`)
+
+**Staging URL:** http://huginn-staging.us-east-1.elasticbeanstalk.com (HTTP 200 on `/health/` — revision `a1196e91`, all checks ok: DB ✅ Redis ✅ Celery worker ✅ Celery beat ✅)
 **Production:** **NOT promoted.** `make swap` is a manual human decision per SAO §9–§10.
+
+## Staging 500 → 0.2.2 patch
+
+After `0.2.1` deploy went green, the human did a manual smoke through the
+login + sitrep flow and got **HTTP 500 on `POST /projects/1/sitrep/generate/`**
+(the manual "Generate SitRep" button). Two adjacent bugs in
+`ui/views/sitrep.py::sitrep_generate_view`:
+
+1. **The actual 500.** The view ran `result = generate_sitrep_for_project.delay(...)`
+   and then `result.get()` synchronously on the AsyncResult. `.get()` blocks
+   the gunicorn worker waiting for the Celery task to finish — and the
+   generation task makes an LLM round-trip via `ClaudeLLM`, which takes
+   seconds-to-minutes. Worse, if the task raises *anything* (missing
+   `ANTHROPIC_API_KEY` on EB, broker unreachable, transient DB error, ...),
+   `.get()` re-raises it in the web request → Django 500. Fix: remove
+   `.get()`, log enqueue failures only, return `result.id` (Celery task
+   UUID) on the AJAX 202.
+
+2. **Adjacent: wrong redirect target.** Non-AJAX form POSTs redirected to
+   `reverse("projects-detail", kwargs={"pk": project_pk})` with
+   `?generated=1`. But the SITREP-LIST+FIND-20 toast template only fires
+   on the `sitrep-list` template, so the toast never appeared after a
+   form POST. Switched to `reverse("sitrep-list", ...)` and preserved
+   `period` in the query string.
+
+**Diff:** +17/-10 LoC in one file (`ui/views/sitrep.py`), shipped as commit
+`a1196e9`. Full regression: **512 passed / 1 skipped**, ruff clean.
+Pipeline `#2526098827` ✅, staging now on revision `a1196e91`.
+
+**Manual verification needed.** The fix removes the 500 architecturally,
+but the `ANTHROPIC_API_KEY`-on-EB question is still open: if the env var
+is unset on staging, the task will now fail in Celery worker logs
+(visible in EB logs) instead of as a user-visible 500. To fully verify
+the end-to-end happy path, the human should:
+
+1. Log into staging with commander credentials.
+2. Navigate to a project's SitRep list.
+3. Click "Generate SitRep ▾" → "Since last SitRep".
+4. Confirm: page redirects to `sitreps/?generated=1&period=since_last`,
+   toast "SitRep generation started — this may take a moment." appears.
+5. Wait ~30–90 seconds, refresh the list page. Either a new SitRep row
+   appears (full happy path) or `eb logs` shows the failure reason
+   (architecturally separable from the web-layer bug we just fixed).
 
 ## Staging deploy 0.2.0 failed → 0.2.1 patch
 
@@ -139,10 +185,24 @@ Plus two new bugs surfaced this sprint:
 
 ## What the human reviews
 
-- The staging URL above (once `deploy_staging` completes — currently building).
+- The staging URL above (HTTP 200 on `/health/`, revision `a1196e91`).
+- Manually verify the sitrep generate flow end-to-end (steps in "Staging
+  500 → 0.2.2 patch" above) — confirms either the full happy path works
+  or surfaces the next layer of failure (likely `ANTHROPIC_API_KEY` env
+  var on EB) in worker logs instead of as a user-visible 500.
 - This file + `factory/blackboard.md` (full event log).
 - Then, when satisfied: **`make swap`** to promote staging → production.
   `make swap` promotes the revision currently on the inactive EB env (i.e. the
   one this pipeline just deployed); do not pass `BRANCH=` or arbitrary HEAD.
 - File bugs against the post-sprint factory bug list if you want any of those
   fixed before the next milestone.
+
+## Note on uncommitted work
+
+`infra/gitlab-ci.yml` has an uncommitted edit (`infra-test` job switched to
+use `cdk-setup` + install Node/CDK in `before_script`) that was already
+present in the worktree when I picked up this fix. It's unrelated to the
+sitrep generate 500 and I stashed it to keep the patch focused. To recover:
+`git stash list` → `git stash pop "stash@{0}"` (look for the entry titled
+"WIP: infra-test cdk-setup change (unrelated to sitrep fix)"). It can be
+shipped on its own follow-up MR.
