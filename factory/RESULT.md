@@ -4,7 +4,7 @@
 **Release branch:** `release/0.2.1`
 **Staging pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526062983
 **Previous (failed) pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526025464 (deploy_staging FAILED on smoke test — root cause below, fixed in `a151229`)
-**Staging URL** (once `deploy_staging` completes on 0.2.1): https://huginn-staging.us-east-1.elasticbeanstalk.com
+**Staging URL:** http://huginn-staging.us-east-1.elasticbeanstalk.com (HTTP 200 on `/health/` — revision `a151229c`, all checks ok: DB ✅ Redis ✅ Celery worker ✅ Celery beat ✅)
 **Production:** **NOT promoted.** `make swap` is a manual human decision per SAO §9–§10.
 
 ## Staging deploy 0.2.0 failed → 0.2.1 patch
@@ -94,8 +94,10 @@ five backend + four UI, all integrated to `main` and tagged `0.2.0`.
   T-SITREP-VIEW-IMPL — recurring failure mode, post-sprint fix recommended).
 - **Pre-release gates green on `main`:** `make lint` ✅, `make test` ✅
   (512 passed / 1 skipped).
-- **CI pipeline status:** `verify_release_branch` ✅, `lint` ✅, `test` running,
-  `build` / `deploy_staging` queued, `promote_production` **awaits manual click**.
+- **CI pipeline status (0.2.1):** all stages ✅ — `verify_release_branch`,
+  `lint`, `test`, `build`, `deploy_staging`, `create_release`. Only
+  `promote_production` remaining; it's set to `manual` and **awaits human
+  click**.
 
 ## Known factory bugs (post-sprint backlog)
 
