@@ -1,3 +1,5 @@
+reason: Branch based on rejected T-AGENT commit 6fa587f (worker skipped 'git reset --hard origin/main' before branching); diff touches 17 files vs 3 in scope, dragging in all of T-AGENT/T-TOOLS/T-SITREP-GEN scope (re-implements already-merged !24, duplicates rejected !25). MR !26 closed. plan_tasks.py body itself is correct (73 LoC) and reusable for attempt 2.
+---
 ---
 id: T-EXEC
 role: feature-builder
