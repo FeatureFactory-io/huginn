@@ -251,3 +251,5 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 (LE) T-SITREP-VIEW-IMPL auto-claimed on clean base + with LE-notes intact.** No `touch` nudge needed this time — the LE `StrReplace` edit on `pending/T-SITREP-VIEW-IMPL.md` (adding the second LE-note about `data-testid="sitrep-open-chat"`) wrote bytes to the pending file, which fired the feature-builder's fswatch event in <4 min. `claim.sh` moved pending → claimed; worker's worktree is at `415549b` (`origin/main`'s tip — the worktree reset above ensured a clean base, no orphan ancestry). The claimed copy of the task file contains BOTH LE-notes (URL constraint + testid override) before the original `# Task` body, so the worker reads them as part of the task brief.
 
 - **PHASE 3 update (LE): 8/9 integrated, 1 in flight.** Backend complete (5/5) + UI list complete (2/2) + UI view-steps complete (1/2). One task remaining: T-SITREP-VIEW-IMPL (claimed, feature-builder running on clean base). When it lands integrated, RELEASE-READY: yes.
+
+- **2026-05-14 14:44:07** ✅ **feature-builder** done **T-SITREP-VIEW-IMPL**
