@@ -204,7 +204,7 @@ Closes #77 (paired with T-SITREP-VIEW-STEPS)" \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-SITREP-VIEW-IMPL-detail-screen
 mr: 34
 commit_sha: be5f6bd7
