@@ -186,3 +186,12 @@ Closes #67" \
   Leave `# TODO(sitrep-generate): _persist_sitrep_from_plan(plan)` comment.
 - Do NOT add SSE/Redis publishing.
 - Do NOT add `execute_decision_outcome` — Decisions milestone.
+
+# Result
+
+status: rescued
+branch: factory/T-EXEC-execute-plan
+mr: 29
+commit_sha: 91965208
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
