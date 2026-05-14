@@ -144,20 +144,27 @@ def sitrep_generate_view(request, project_pk: int):
         from_dt = last.to_dt.isoformat() if last else now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
         to_dt = now.isoformat()
 
-    result = generate_sitrep_for_project.delay(
-        project_id=project.pk,
-        from_dt=from_dt,
-        to_dt=to_dt,
-        trigger="manual",
-    )
-    plan_id = result.get() if hasattr(result, "get") else None
+    # Fire-and-forget: do NOT call result.get() — it blocks the web thread on the
+    # LLM round-trip and re-raises task exceptions as a 500. Task progress and
+    # any failure surface via Celery worker logs / chat-milestone SSE events.
+    try:
+        result = generate_sitrep_for_project.delay(
+            project_id=project.pk,
+            from_dt=from_dt,
+            to_dt=to_dt,
+            trigger="manual",
+        )
+        task_id = getattr(result, "id", None)
+    except Exception:
+        logger.exception("sitrep_generate_view: failed to enqueue generate_sitrep_for_project")
+        task_id = None
 
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.accepts("application/json")
     if is_ajax:
-        return JsonResponse({"status": "queued", "plan_id": plan_id}, status=202)
+        return JsonResponse({"status": "queued", "task_id": task_id}, status=202)
 
-    list_url = reverse("projects-detail", kwargs={"pk": project_pk})
-    return redirect(f"{list_url}?generated=1")
+    list_url = reverse("sitrep-list", kwargs={"project_pk": project_pk})
+    return redirect(f"{list_url}?generated=1&period={period}")
 
 
 def _since_this_label(sitrep: SitRep) -> str:
