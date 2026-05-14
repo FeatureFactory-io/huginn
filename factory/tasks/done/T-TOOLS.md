@@ -1,4 +1,3 @@
-
 ---
 id: T-TOOLS
 role: feature-builder
@@ -62,6 +61,7 @@ and stay unimplemented this milestone.
   tests/gjallarhorn/test_sitrep_tools_sa.py \
   tests/gjallarhorn/test_sitrep_tools_fragos.py -x
 ```
+
 …exits 0. Full suite `.venv/bin/python -m pytest tests/ -x` green.
 
 ## Files in scope
@@ -137,3 +137,11 @@ status: done
 branch: "factory/T-TOOLS-tool-executor"
 mr: "24"
 commit_sha: "4a29710b737bb2917f8219964f6643454a239542"
+
+<!-- Rescued from blocked/ by LE — worker completed branch + MR but exited without
+     filling the Result block. LE checks 1–7 ran clean: branch pushed,
+     MR !24 mergeable, 7 in-scope files (168 LoC), 19/19 acceptance tests GREEN,
+     406 passed / 1 skipped on full suite minus known-RED downstream tests, ruff
+     clean, no regressions, Dr. Dobbs spot-check clean (fail-closed WRITE_TOOLS
+     allowlist, project-scoped queries, no async, sane defaults, select_related
+     for N+1). -->

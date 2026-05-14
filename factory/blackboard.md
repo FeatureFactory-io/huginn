@@ -2,12 +2,12 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution in progress. T-LLM merged (!23 → main). T-TOOLS now eligible (only upstream was T-LLM); 7 downstream tasks gated in `blocked/` until their upstreams complete.
+**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). All 7 downstream tasks live in `pending/`; `claim.sh` enforces dependency order via `done/<dep>.md` existence checks (no pre-gating per bug #78).
 
-**Eligible now (`pending/`):** T-TOOLS (feature-builder; depends_on: T-LLM ✅).
+**Eligible now (`pending/`, dep-satisfied):**
+- T-AGENT (feature-builder; depends_on: T-LLM ✅, T-TOOLS ✅)
 
-**Gated (`blocked/`, awaiting upstream):**
-- T-AGENT — needs T-TOOLS
+**Pending but dep-gated by `claim.sh` until upstream lands in `done/`:**
 - T-EXEC — needs T-AGENT
 - T-SITREP-GEN — needs T-EXEC
 - T-SITREP-LIST-STEPS — needs T-SITREP-GEN
@@ -15,7 +15,7 @@
 - T-SITREP-VIEW-STEPS — needs T-SITREP-LIST-IMPL
 - T-SITREP-VIEW-IMPL — needs T-SITREP-VIEW-STEPS
 
-**Promotion rule (LE):** when each `done/T-X.md` reaches `status: integrated`, move every `blocked/T-Y.md` whose `depends_on` is now fully satisfied → `pending/`.
+**Promotion rule (LE):** Never move tasks to `blocked/` manually; `blocked/` is only for `done.sh --blocked` failures. Tasks with unmet deps stay in `pending/` — `claim.sh` rejects them until each `depends_on` is present in `done/`.
 
 **Milestone:** AI → SitRep (GitLab ID 7419357)
 
@@ -30,14 +30,14 @@
 | # | ID | Title | Role | Status | Depends on | Feature file / tests |
 |---|---|---|---|---|---|---|
 | 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | **integrated** (!23) | — | `test_llm_contract.py`, `test_retry_on_rate_limit.py`, `test_prompts.py` |
-| 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | **pending (eligible)** | T-LLM ✅ | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
-| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | blocked | T-LLM ✅, T-TOOLS | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
-| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | blocked | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
-| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | blocked | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
-| 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | blocked | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
-| 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | blocked | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
-| 77 | T-SITREP-VIEW-STEPS | [SITREP-VIEW_SITREP-1] RED tests | step-def-writer | blocked | T-SITREP-LIST-IMPL | (new) `tests/ui/test_sitrep_view_scenarios.py` |
-| 77 | T-SITREP-VIEW-IMPL | [SITREP-VIEW_SITREP-1] SitRep detail view | feature-builder | blocked | T-SITREP-VIEW-STEPS | `tests/ui/test_sitrep_view_scenarios.py` GREEN |
+| 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | **integrated** (!24) | T-LLM ✅ | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
+| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **pending (eligible)** | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
+| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | pending (dep-gated) | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
+| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | pending (dep-gated) | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
+| 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
+| 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | pending (dep-gated) | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
+| 77 | T-SITREP-VIEW-STEPS | [SITREP-VIEW_SITREP-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-LIST-IMPL | (new) `tests/ui/test_sitrep_view_scenarios.py` |
+| 77 | T-SITREP-VIEW-IMPL | [SITREP-VIEW_SITREP-1] SitRep detail view | feature-builder | pending (dep-gated) | T-SITREP-VIEW-STEPS | `tests/ui/test_sitrep_view_scenarios.py` GREEN |
 
 ---
 
@@ -123,3 +123,7 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 12:10 (LE follow-up):** Dr. Dobbs spot-check on T-LLM merge revealed a contract drift — prompt JSON schema declared {narrative, key_risks, recommended_actions} but SitRep model + SITREP-GEN-13 require {headline, situation_assessment, notable_activity}. T-SITREP-GEN's parser is written for the model fields. Featurefile wins per LE protocol — pushed direct fix to main as **6d4d1af** (`fix(gjallarhorn): align SitRep prompt schema`). Tests still GREEN; T-SITREP-GEN no longer needs to flag this. (Note: race with parallel LE pane's `git checkout main` caused the commit to land on main directly instead of via a feature branch — non-force fast-forward, no force-push to main, no policy violation.)
 
 - **2026-05-14 12:12:34** 🔴 blocked **T-TOOLS**: reason:status: field 'status' is empty
+
+- **2026-05-14 12:16:34** 🔀 (LE) merged **T-TOOLS** via !24 → integrated
+
+- **2026-05-14 12:17:25 (LE):** T-TOOLS rescue completed → merged via !24. Branch `factory/T-TOOLS-tool-executor` @ 4a29710 was real work blocked only by an empty Result block (same failure mode as T-LLM). LE checks 1–7 clean: 7/7 files in scope (168 LOC, ToolExecutor + 5 read tools + build_executor factory), 19/19 acceptance tests GREEN, MR mergeable with no conflicts, Dr. Dobbs spot-check passed (project-scoping enforced, write-tool guard, envelope never raises). Worker pragmatically adapted tool return shapes to real model fields (`external_id`/`occurred_at` vs spec'd `sha`/`committed_at`; `workflow_md`, `body_md`) — tests agree; T-AGENT prompts must honor these shapes. T-AGENT now dep-satisfied (T-LLM ✅ + T-TOOLS ✅) and eligible for claim. 6 further downstream tasks remain in `pending/` and will unblock topologically via `claim.sh` as each upstream lands in `done/`.
