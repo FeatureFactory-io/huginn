@@ -121,10 +121,15 @@ _process_pending() {
     if claimed_path="\$($REPO_ROOT/scripts/claim.sh "\$id" "$role" 2>/dev/null)"; then
       echo "[\$(date +%H:%M:%S)] $role claimed \$id"
       "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** 🔧 **%s** claimed **%s**' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id")"
-      # Switch this worktree to the task's feature branch
+      # Switch this worktree to the task's feature branch, always based on a
+      # fresh origin/main (fixes #80: workers were branching off the dirty
+      # worktree tip, dragging rejected commits into the new branch).
       task_branch="\$(rg -m1 '^branch:[[:space:]]*' "\$claimed_path" 2>/dev/null | sed 's/^branch:[[:space:]]*//')"
       if [[ -n "\$task_branch" ]]; then
-        git checkout "\$task_branch" 2>/dev/null || git checkout -b "\$task_branch" 2>/dev/null || true
+        git fetch origin 2>/dev/null || true
+        git checkout "\$task_branch" 2>/dev/null \
+          || git checkout -b "\$task_branch" origin/main 2>/dev/null \
+          || true
       fi
       # release-engineer guard: skip cursor-agent if release branch pipeline already exists
       _skip_agent=0
