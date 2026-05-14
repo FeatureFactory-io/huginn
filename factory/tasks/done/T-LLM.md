@@ -123,7 +123,7 @@ Closes #64" \
 
 # Result
 
-status: done
+status: integrated
 branch: "factory/T-LLM-llm-layer"
 mr: "23"
 commit_sha: "e90fa48f47b343fab0de9772ce54cfc50ea434fb"
