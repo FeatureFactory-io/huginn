@@ -544,9 +544,9 @@ def test_sitrep_view_23_section_notable_activity_empty(commander_client, atlas_p
     body = response.content.decode()
     section_present = 'data-testid="sitrep-notable-activity"' in body
     if section_present:
-        assert (
-            "No notable activity in this period" in body or 'data-testid="sitrep-notable-empty"' in body
-        ), "Notable Activity section is rendered but empty-state message is missing"
+        assert "No notable activity in this period" in body or 'data-testid="sitrep-notable-empty"' in body, (
+            "Notable Activity section is rendered but empty-state message is missing"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -663,9 +663,9 @@ def test_sitrep_view_29_back_to_sitrep_list(commander_client, atlas_project, aut
     assert response.status_code == 200
     body = response.content.decode()
     list_url = reverse("sitrep-list", kwargs={"project_pk": atlas_project.pk})
-    assert (
-        f'href="{list_url}"' in body
-    ), f"SitRep view must include a back link to the project's SitRep list ({list_url})"
+    assert f'href="{list_url}"' in body, (
+        f"SitRep view must include a back link to the project's SitRep list ({list_url})"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -686,9 +686,9 @@ def test_sitrep_view_30_assessed_period_has_label(commander_client, atlas_projec
     idx = body.find('data-testid="sitrep-assessed-period"')
     assert idx != -1, 'expected data-testid="sitrep-assessed-period" on the page'
     snippet = body[max(0, idx - 400) : idx + 400]
-    assert (
-        'aria-label="Assessed period"' in snippet or "aria-labelledby=" in snippet
-    ), "sitrep-assessed-period must carry an aria-label or aria-labelledby for AT users"
+    assert 'aria-label="Assessed period"' in snippet or "aria-labelledby=" in snippet, (
+        "sitrep-assessed-period must carry an aria-label or aria-labelledby for AT users"
+    )
 
 
 def test_sitrep_view_31_status_badge_accessible_name(commander_client, atlas_project, auto_sitrep):

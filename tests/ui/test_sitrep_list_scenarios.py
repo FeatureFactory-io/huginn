@@ -480,12 +480,12 @@ def test_sitrep_list_find_19_custom_period_datetime_fields(commander_client, atl
     body = response.content.decode()
     assert 'data-testid="sitrep-period-custom"' in body
     assert "Custom" in body
-    assert (
-        'name="from_dt"' in body or 'data-testid="sitrep-custom-from"' in body
-    ), "Custom-period region must expose a From datetime field (name='from_dt' or testid 'sitrep-custom-from')"
-    assert (
-        'name="to_dt"' in body or 'data-testid="sitrep-custom-to"' in body
-    ), "Custom-period region must expose a To datetime field (name='to_dt' or testid 'sitrep-custom-to')"
+    assert 'name="from_dt"' in body or 'data-testid="sitrep-custom-from"' in body, (
+        "Custom-period region must expose a From datetime field (name='from_dt' or testid 'sitrep-custom-from')"
+    )
+    assert 'name="to_dt"' in body or 'data-testid="sitrep-custom-to"' in body, (
+        "Custom-period region must expose a To datetime field (name='to_dt' or testid 'sitrep-custom-to')"
+    )
 
 
 def test_sitrep_list_find_20_preset_fires_generate_toast(commander_client, atlas_project):
@@ -555,6 +555,6 @@ def test_sitrep_list_find_22_generate_button_a11y_label(commander_client, atlas_
     start = max(0, idx - 400)
     end = min(len(body), idx + 400)
     snippet = body[start:end]
-    assert (
-        'aria-label="Generate SitRep"' in snippet
-    ), "generate-sitrep-btn must carry aria-label='Generate SitRep' as its accessible name"
+    assert 'aria-label="Generate SitRep"' in snippet, (
+        "generate-sitrep-btn must carry aria-label='Generate SitRep' as its accessible name"
+    )
