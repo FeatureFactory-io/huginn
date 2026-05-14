@@ -133,7 +133,7 @@ glab mr create \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-SITREP-LIST-STEPS-red-tests
 mr: 31
 commit_sha: 3bf61163
