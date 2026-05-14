@@ -130,9 +130,12 @@ glab mr create \
 - Do NOT add `@pytest.mark.skip` or `xfail`. RED means fail, not skip.
 - Do NOT modify the mockup or invent new `data-testid`s.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-SITREP-LIST-STEPS-red-tests
+mr: 31
+commit_sha: 3bf61163
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
