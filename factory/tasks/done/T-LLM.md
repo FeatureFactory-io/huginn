@@ -1,8 +1,3 @@
-# Blocked
-
-reason: reason:status: field 'status' is empty
-
----
 
 ---
 id: T-LLM
@@ -128,9 +123,9 @@ Closes #64" \
 
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: done
+branch: "factory/T-LLM-llm-layer"
+mr: "23"
+commit_sha: "e90fa48f47b343fab0de9772ce54cfc50ea434fb"
 
 <!-- Fill all four fields before scripts/done.sh runs. Empty = blocked. -->
