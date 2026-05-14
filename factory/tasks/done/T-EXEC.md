@@ -189,7 +189,7 @@ Closes #67" \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-EXEC-execute-plan
 mr: 29
 commit_sha: 91965208
