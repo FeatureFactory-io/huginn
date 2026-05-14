@@ -1,5 +1,7 @@
 """Factory helpers for gjallarhorn services."""
 
+from django.conf import settings
+
 from gjallarhorn.agent.tool_executor import ToolExecutor
 from gjallarhorn.mcp_tools import (
     get_active_playbook,
@@ -8,6 +10,19 @@ from gjallarhorn.mcp_tools import (
     list_active_fragos,
     list_commits,
 )
+
+
+def create_agent(user=None, project=None):
+    """Construct a GjallarhornAgent backed by ClaudeLLM and the full tool executor.
+
+    ClaudeLLM is lazy-imported to keep test setup free of ANTHROPIC_API_KEY.
+    """
+    from gjallarhorn.agent.agent import GjallarhornAgent  # noqa: PLC0415
+    from gjallarhorn.llm.claude import ClaudeLLM  # noqa: PLC0415
+
+    llm = ClaudeLLM(api_key=settings.ANTHROPIC_API_KEY)
+    tool_executor = build_executor(user=user, project=project)
+    return GjallarhornAgent(llm=llm, tool_executor=tool_executor)
 
 
 def build_executor(user, project) -> ToolExecutor:
