@@ -90,3 +90,5 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 PHASE 0 complete (LE):** preflight green; milestone "AI -> SitRep" (gid 7419357), 7 issues, 4 infra issues waived (no feature file), 3 issues with feature paths (#61, #76, #77). Tools/git clean; mockups present at ui/templates/ui/mockups/.
 
 - **2026-05-14 11:55:33** 🔧 **feature-builder** claimed **T-LLM**
+
+- **2026-05-14 11:59:12** 🔴 blocked **T-LLM**: reason:status: field 'status' is empty
