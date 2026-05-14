@@ -2,9 +2,9 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 0 — Preflight pending. Factory reset for AI → SitRep re-run. Previous crappy Composer-2 implementation wiped; models/migrations/RED tests retained as foundation. Ready for `scripts/preflight.sh "AI -> SitRep"` then Phase 1.
+**Phase:** 2 — Decomposition in progress. Phase 0 preflight + Phase 1 ingestion complete. System blueprint written at `factory/blueprints/system.md`. Per-task blueprints + `tasks/pending/` files being authored next.
 
-**Milestone:** AI → SitRep (GitLab IID to confirm via `glab milestone list`)
+**Milestone:** AI → SitRep (GitLab ID 7419357)
 
 **Sprint goal:** Wire Gjallarhorn to produce SitReps from the doctrine layer and ingested data. First SitRep, first color-coded Project on the Tactical Plot.
 
@@ -16,13 +16,15 @@
 
 | # | ID | Title | Role | Status | Depends on | Feature file / tests |
 |---|---|---|---|---|---|---|
-| 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | pending | — (models retained) | `test_llm_contract.py`, `test_retry_on_rate_limit.py` |
-| 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | pending | #64 | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_*_tools_*.py` |
-| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | pending | #64, #65 | `test_agent_create_plan.py`, `test_agent_execute_single_step.py` |
-| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | pending | #66 | `test_execute_plan_*.py`, `test_execution_plan_state_machine.py` |
-| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | pending | #67 | `test_sitrep_generate_scenarios.py`, `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_service_steps.py`, `test_sitrep_signal.py` |
-| 76 | T-SITREP-LIST | [SITREP-LIST+FIND-1] SitRep list + generate endpoint | feature-builder | pending | #61 | `tests/ui/test_sitrep_list_scenarios.py` (to be written as step-def-writer task) |
-| 77 | T-SITREP-VIEW | [SITREP-VIEW_SITREP-1] SitRep detail view | feature-builder | pending | #76 | `tests/ui/test_sitrep_view_scenarios.py` (to be written as step-def-writer task) |
+| 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | pending | — | `test_llm_contract.py`, `test_retry_on_rate_limit.py`, `test_prompts.py` |
+| 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | pending | T-LLM | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
+| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | pending | T-LLM, T-TOOLS | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
+| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | pending | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
+| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | pending | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
+| 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | pending | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
+| 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | pending | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
+| 77 | T-SITREP-VIEW-STEPS | [SITREP-VIEW_SITREP-1] RED tests | step-def-writer | pending | T-SITREP-LIST-IMPL | (new) `tests/ui/test_sitrep_view_scenarios.py` |
+| 77 | T-SITREP-VIEW-IMPL | [SITREP-VIEW_SITREP-1] SitRep detail view | feature-builder | pending | T-SITREP-VIEW-STEPS | `tests/ui/test_sitrep_view_scenarios.py` GREEN |
 
 ---
 
@@ -52,8 +54,13 @@ Workers must turn RED tests GREEN without modifying test files (except to add st
 ## Dependency chain
 
 ```
-#64 (LLM) → #65 (Tools) → #66 (Agent) → #67 (execute_plan) → #61 (SitRep gen) → #76 (List) → #77 (View)
+T-LLM ─┬─→ T-AGENT ─→ T-EXEC ─→ T-SITREP-GEN ─→ T-SITREP-LIST-STEPS ─→ T-SITREP-LIST-IMPL
+        │      ↑                                                                 │
+T-TOOLS ┴──────┘                                                                 ↓
+                                                                  T-SITREP-VIEW-STEPS ─→ T-SITREP-VIEW-IMPL
 ```
+
+(`feature-builder` rows except `*-STEPS` which are `step-def-writer`.)
 
 ---
 
@@ -79,3 +86,7 @@ _None — issues are fully specified against SAO §17 and feature files._
 
 <!-- Append-only: LE and workers add dated lines -->
 - **2026-05-14 (LE) Factory reset for AI → SitRep re-run.** Previous Composer-2 implementation wiped (gjallarhorn llm/agent/tools/services/tasks, crappy sitrep GUI). Retained: models, migrations, llm/base.py (ABC), all backend RED tests (21 import errors = 21 RED contracts). SAO §17.5 updated with SitRep model schema + ExecutionPlan sitrep_* fields. GitLab: #60 closed (models retained), #61 checkpoint fixed (was pointing to non-existent test files), #65/#67 checkpoints expanded, #76 (SITREP-LIST+FIND-1) + #77 (SITREP-VIEW_SITREP-1) created with mockup references. Registration-0.1.0 factory archived. lint clean, 25 tests green. **Awaiting `scripts/preflight.sh` + Phase 1.**
+
+- **2026-05-14 PHASE 0 complete (LE):** preflight green; milestone "AI -> SitRep" (gid 7419357), 7 issues, 4 infra issues waived (no feature file), 3 issues with feature paths (#61, #76, #77). Tools/git clean; mockups present at ui/templates/ui/mockups/.
+
+- **2026-05-14 11:55:33** 🔧 **feature-builder** claimed **T-LLM**

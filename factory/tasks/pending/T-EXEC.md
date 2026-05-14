@@ -1,0 +1,131 @@
+---
+id: T-EXEC
+role: feature-builder
+attempt: 1
+depends_on: [T-AGENT]
+gitlab_issue: 67
+branch: factory/T-EXEC-execute-plan
+tools:
+  - git
+  - glab
+  - python
+  - pytest
+  - ruff
+files_in_scope:
+  - gjallarhorn/tasks/plan_tasks.py
+  - gjallarhorn/services/factory.py
+  - huginn/settings/test.py
+---
+
+# Task T-EXEC — execute_plan Celery task with full resilience matrix
+
+## Goal
+
+Replace T-AGENT's `execute_plan` stub with the production body: completed
+steps never re-run on retry, `RateLimitError`/`TimeoutError`/`OSError` →
+`mark_paused_for_retry` + Celery `self.retry`, any other exception →
+`mark_failed`. Also add `create_agent` in `services/factory.py` so production
+code (not tests) can construct a `GjallarhornAgent` with the real `ClaudeLLM`.
+
+`ExecutionPlan` state-machine helpers and `InvalidStateTransitionError` are
+already implemented on the model — do **not** add them again.
+
+## Must read first
+
+1. **GitLab issue #67** — `glab issue view 67`. Implementation Plan §C–F has
+   verbatim `execute_plan` body, factory helper, and test inventory.
+2. [`factory/blueprints/T-EXEC.md`](../../blueprints/T-EXEC.md).
+3. [`factory/blueprints/system.md`](../../blueprints/system.md).
+4. `docs/architecture/SAO.md` §17.5 (Plans & Async Execution, resilience matrix).
+5. Existing model: `gjallarhorn/models/execution_plan.py` — confirm
+   `mark_started`, `mark_paused_for_retry`, `mark_completed`, `mark_failed`,
+   `update_progress`, `get_next_pending_step` all exist. **Do not modify.**
+6. The 6 RED test files (do **not** modify):
+   - `tests/gjallarhorn/test_execution_plan_state_machine.py`
+   - `tests/gjallarhorn/test_execute_plan_happy_path.py`
+   - `tests/gjallarhorn/test_execute_plan_rate_limit_retry.py`
+   - `tests/gjallarhorn/test_execute_plan_permanent_failure.py`
+   - `tests/gjallarhorn/test_execute_plan_partial_resume.py`
+   - `tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py`
+
+## Acceptance criteria
+
+```bash
+.venv/bin/python -m pytest \
+  tests/gjallarhorn/test_execution_plan_state_machine.py \
+  tests/gjallarhorn/test_execute_plan_happy_path.py \
+  tests/gjallarhorn/test_execute_plan_rate_limit_retry.py \
+  tests/gjallarhorn/test_execute_plan_permanent_failure.py \
+  tests/gjallarhorn/test_execute_plan_partial_resume.py \
+  tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py -x
+```
+…exits 0. Full suite green.
+
+## Files in scope
+
+- `gjallarhorn/tasks/plan_tasks.py` — REPLACE T-AGENT's stub body with the verbatim implementation from issue #67 §C. Keep `_build_agent_for_plan` and add `_retry_countdown` as module-level helpers (tests monkey-patch `_build_agent_for_plan` to inject a `ScriptedLLM`-backed agent).
+- `gjallarhorn/services/factory.py` — add `create_agent(user=None, project=None) -> GjallarhornAgent` per issue #67 §D. Uses `ClaudeLLM(api_key=settings.ANTHROPIC_API_KEY)` + `build_executor(user, project)`. Lazy-import `ClaudeLLM` to keep test setup free of `ANTHROPIC_API_KEY`.
+- `huginn/settings/test.py` — confirm or add `CELERY_TASK_ALWAYS_EAGER = True` and `CELERY_TASK_EAGER_PROPAGATES = True`.
+
+## Do not touch
+
+- `gjallarhorn/models/*` — state-machine helpers already exist.
+- `gjallarhorn/agent/*` — owned by T-AGENT.
+- `gjallarhorn/llm/*` — owned by T-LLM.
+- Any test file.
+
+## Branch & MR
+
+```bash
+cd .worktrees/feature-builder
+git fetch origin && git checkout main && git reset --hard origin/main
+git checkout -b factory/T-EXEC-execute-plan
+
+# … implement …
+
+.venv/bin/python -m pytest tests/gjallarhorn/test_execution_plan_state_machine.py tests/gjallarhorn/test_execute_plan_happy_path.py tests/gjallarhorn/test_execute_plan_rate_limit_retry.py tests/gjallarhorn/test_execute_plan_permanent_failure.py tests/gjallarhorn/test_execute_plan_partial_resume.py tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py -x
+.venv/bin/python -m pytest tests/ -x
+ruff check . && ruff format --check .
+
+git add -A
+git commit -m "feat(gjallarhorn): execute_plan Celery task + resilience matrix"
+git push -u origin factory/T-EXEC-execute-plan
+
+glab mr create \
+  --source-branch factory/T-EXEC-execute-plan \
+  --target-branch main \
+  --title "feat(gjallarhorn): execute_plan Celery task + resilience matrix" \
+  --description "Implements GJLR-EXECUTE-PLAN (#67). 6 RED test files go GREEN.
+
+Closes #67" \
+  --yes
+```
+
+## Checkpoint
+
+```bash
+.venv/bin/python -m pytest \
+  tests/gjallarhorn/test_execution_plan_state_machine.py \
+  tests/gjallarhorn/test_execute_plan_happy_path.py \
+  tests/gjallarhorn/test_execute_plan_rate_limit_retry.py \
+  tests/gjallarhorn/test_execute_plan_permanent_failure.py \
+  tests/gjallarhorn/test_execute_plan_partial_resume.py \
+  tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py -x
+# expect: 0 failed
+```
+
+## Do not
+
+- Do NOT touch `ExecutionPlan` model — state-machine helpers already exist.
+- Do NOT mark a plan `failed` on `RateLimitError` — must be `mark_paused_for_retry` (the model auto-fails when retry_count exceeds max).
+- Do NOT write the SitRep persistence side-effect — that's T-SITREP-GEN.
+  Leave `# TODO(sitrep-generate): _persist_sitrep_from_plan(plan)` comment.
+- Do NOT add SSE/Redis publishing.
+- Do NOT add `execute_decision_outcome` — Decisions milestone.
+
+# Result
+
+status:
+branch:
+mr:
+commit_sha:
