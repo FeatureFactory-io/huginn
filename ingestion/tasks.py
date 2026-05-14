@@ -9,12 +9,22 @@ from django.utils import timezone
 
 from ingestion.models import Project
 from ingestion.services.sync_engine import SyncEngine
+from ingestion.signals import sync_project_completed
 
 
 @shared_task(name="ingestion.sync_project")
 def sync_project(project_id: int) -> None:
     """Run :class:`~ingestion.services.sync_engine.SyncEngine` for one project."""
     SyncEngine().run_for_project(project_id)
+    try:
+        project = Project.objects.get(pk=project_id)
+        sync_project_completed.send(
+            sender=SyncEngine,
+            project=project,
+            to_dt=timezone.now(),
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @shared_task(name="ingestion.sync_project_placeholder")

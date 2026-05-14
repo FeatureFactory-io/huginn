@@ -7,6 +7,7 @@ from gjallarhorn.agent.prompts import SITREP_NARRATIVE_SYSTEM_PROMPT
 from gjallarhorn.agent.tool_executor import ToolExecutor
 from gjallarhorn.llm.base import LLM
 from gjallarhorn.models import ExecutionPlan, PlanStep
+from gjallarhorn.services.factory import PLANNING_MODEL
 
 NARRATIVE_TOOLS: list[dict] = []
 
@@ -29,6 +30,7 @@ class GjallarhornAgent:
                 goal=goal,
                 status="pending",
                 progress_total=len(steps),
+                planning_model=PLANNING_MODEL,
             )
             for i, s in enumerate(steps):
                 PlanStep.objects.create(
@@ -38,6 +40,7 @@ class GjallarhornAgent:
                     reasoning_why_needed=s["reasoning_why_needed"],
                     expected_outcome=s["expected_outcome"],
                     status="pending",
+                    is_planning=s.get("is_planning", False),
                 )
 
         # Lazy import to break circular dependency: agent → tasks → agent
@@ -74,6 +77,7 @@ class GjallarhornAgent:
         step.result = {"tool_results": tool_results, "synthesis": response.content}
         step.outcome_assessment = response.content
         step.status = "completed"
+        step.model_used = response.model or ""
         step.save()
         # TODO(chat-milestone): publish plan_step_update to Redis
 

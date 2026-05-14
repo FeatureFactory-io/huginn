@@ -11,8 +11,11 @@ from gjallarhorn.mcp_tools import (
     list_commits,
 )
 
+PLANNING_MODEL = "claude-opus-4-5"
+EXECUTION_MODEL = "claude-sonnet-4-6"
 
-def create_agent(user=None, project=None):
+
+def create_agent(user=None, project=None, plan_id: str | None = None):
     """Construct a GjallarhornAgent backed by ClaudeLLM and the full tool executor.
 
     ClaudeLLM is lazy-imported to keep test setup free of ANTHROPIC_API_KEY.
@@ -21,13 +24,13 @@ def create_agent(user=None, project=None):
     from gjallarhorn.llm.claude import ClaudeLLM  # noqa: PLC0415
 
     llm = ClaudeLLM(api_key=settings.ANTHROPIC_API_KEY)
-    tool_executor = build_executor(user=user, project=project)
+    tool_executor = build_executor(user=user, project=project, plan_id=plan_id)
     return GjallarhornAgent(llm=llm, tool_executor=tool_executor)
 
 
-def build_executor(user, project) -> ToolExecutor:
+def build_executor(user, project, plan_id: str | None = None) -> ToolExecutor:
     """Instantiate ToolExecutor and register all narrative-phase read tools."""
-    executor = ToolExecutor(user=user, project=project)
+    executor = ToolExecutor(user=user, project=project, plan_id=plan_id)
     executor.register("list_commits", list_commits)
     executor.register("get_contributor_activity", get_contributor_activity)
     executor.register("get_active_playbook", get_active_playbook)

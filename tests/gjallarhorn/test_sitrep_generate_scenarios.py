@@ -401,3 +401,129 @@ class TestSitRepGenerateScenarios:
             trigger="automatic",
         )
         assert SitRep.objects.filter(project=project, to_dt=to_dt).count() == 1
+
+    def test_sitrep_gen_21_planning_model_recorded(self, scripted_llm_factory, atlas):
+        """
+        plan.planning_model == services.factory.PLANNING_MODEL after generation.
+        """
+        from gjallarhorn.services.factory import PLANNING_MODEL
+
+        project, user, now = atlas
+        from_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
+        to_dt = now.replace(hour=13, minute=0, second=0, microsecond=0)
+        plan_id = _run_generate(scripted_llm_factory, project, from_dt, to_dt)
+        plan = ExecutionPlan.objects.get(plan_id=plan_id)
+        assert plan.planning_model == PLANNING_MODEL
+
+    def test_sitrep_gen_22_step_model_used(self, scripted_llm_factory, atlas):
+        """
+        Final ("compose narrative") step has model_used == PLANNING_MODEL;
+        all other steps have model_used == EXECUTION_MODEL.
+        """
+        from unittest.mock import patch
+
+        from gjallarhorn.services.factory import EXECUTION_MODEL, PLANNING_MODEL
+
+        project, user, now = atlas
+        from_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
+        to_dt = now.replace(hour=13, minute=0, second=0, microsecond=0)
+
+        exec_resp = LLMResponse(
+            content=_NARRATIVE_JSON, stop_reason="end_turn", usage={}, tool_calls=[], model=EXECUTION_MODEL
+        )
+        plan_resp = LLMResponse(
+            content=_NARRATIVE_JSON, stop_reason="end_turn", usage={}, tool_calls=[], model=PLANNING_MODEL
+        )
+
+        llm = scripted_llm_factory([exec_resp] * 4 + [plan_resp])
+        te = MagicMock()
+        te.execute.return_value = {"success": True, "result": None, "error": None}
+        agent = GjallarhornAgent(llm=llm, tool_executor=te)
+
+        with patch("gjallarhorn.tasks.plan_tasks._build_agent_for_plan", return_value=agent):
+            plan_id = generate_sitrep_for_project(
+                project_id=project.pk,
+                from_dt=from_dt.isoformat(),
+                to_dt=to_dt.isoformat(),
+                trigger="automatic",
+            )
+
+        plan = ExecutionPlan.objects.get(plan_id=plan_id)
+        steps = list(plan.steps.order_by("order"))
+        for step in steps[:-1]:
+            assert step.model_used == EXECUTION_MODEL, f"step {step.order} model_used mismatch"
+        assert steps[-1].model_used == PLANNING_MODEL
+
+    def test_sitrep_gen_23_intra_plan_tool_cache_hit(self, atlas):
+        """
+        Two execute() calls for list_commits with identical args hit the cache;
+        the underlying function is invoked only once.
+        """
+        from gjallarhorn.agent.tool_executor import ToolExecutor
+
+        project, user, now = atlas
+        from_dt_str = now.replace(hour=9, minute=0, second=0, microsecond=0).isoformat()
+        to_dt_str = now.replace(hour=13, minute=0, second=0, microsecond=0).isoformat()
+        plan_id = "test-cache-plan-23"
+
+        executor = ToolExecutor(user=user, project=project, plan_id=plan_id)
+        call_count = [0]
+
+        def fake_list_commits(**kwargs):
+            call_count[0] += 1
+            return [{"sha": "abc"}]
+
+        executor.register("list_commits", fake_list_commits)
+
+        r1 = executor.execute("list_commits", from_dt=from_dt_str, to_dt=to_dt_str)
+        r2 = executor.execute("list_commits", from_dt=from_dt_str, to_dt=to_dt_str)
+
+        assert call_count[0] == 1, "underlying tool should be called once (cache hit on second call)"
+        assert r1 == r2
+
+    def test_sitrep_gen_24_cache_keys_cleared_on_terminate(self, db):
+        """
+        After mark_completed / mark_failed, all plan-scoped cache entries are gone.
+        """
+        import hashlib
+        import json
+
+        from django.contrib.auth import get_user_model
+        from django.core.cache import cache
+        from django.utils import timezone
+
+        from gjallarhorn.agent.tool_executor import ToolExecutor
+        from gjallarhorn.models import Conversation, ExecutionPlan
+        from ingestion.models import Project
+
+        user_model = get_user_model()
+        user = user_model.objects.create_user(email="cache24@example.com", password="test")
+        project = Project.objects.create(name="cache-proj-24", slug="cache-proj-24", imported_by=user)
+        conv = Conversation.objects.create(user=user, project=project, conversation_type="sitrep_generation")
+        now = timezone.now()
+        plan = ExecutionPlan.objects.create(
+            conversation=conv,
+            goal="cache test",
+            progress_total=1,
+            sitrep_from_dt=now,
+            sitrep_to_dt=now,
+        )
+        plan_id_str = str(plan.plan_id)
+
+        executor = ToolExecutor(user=user, project=project, plan_id=plan_id_str)
+        executor.register("list_commits", lambda **kw: [])
+
+        from_dt_str = now.isoformat()
+        to_dt_str = now.isoformat()
+        executor.execute("list_commits", from_dt=from_dt_str, to_dt=to_dt_str)
+
+        args = {"project_id": project.pk, "from_dt": from_dt_str, "to_dt": to_dt_str}
+        payload = json.dumps(args, sort_keys=True, default=str)
+        sha = hashlib.sha256(payload.encode()).hexdigest()
+        cache_key = f"plan:{plan_id_str}:tool:list_commits:{sha}"
+
+        assert cache.get(cache_key) is not None, "entry should be in cache before terminate"
+
+        plan.mark_completed()
+
+        assert cache.get(cache_key) is None, "entry should be cleared after mark_completed"

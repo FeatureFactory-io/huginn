@@ -29,6 +29,7 @@ class ExecutionPlan(models.Model):
     sitrep_from_dt = models.DateTimeField(null=True, blank=True)
     sitrep_to_dt = models.DateTimeField(null=True, blank=True)
     sitrep_trigger = models.CharField(max_length=16, blank=True, default="")
+    planning_model = models.CharField(max_length=64, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def mark_started(self) -> None:
@@ -41,12 +42,18 @@ class ExecutionPlan(models.Model):
     def mark_completed(self, result=None) -> None:
         self.status = "completed"
         self.save(update_fields=["status"])
+        from gjallarhorn.agent.tool_executor import clear_plan_cache  # noqa: PLC0415
+
+        clear_plan_cache(str(self.plan_id))
 
     def mark_failed(self, exc: BaseException) -> None:
         self.status = "failed"
         self.last_error = str(exc)
         self.last_error_type = type(exc).__name__
         self.save(update_fields=["status", "last_error", "last_error_type"])
+        from gjallarhorn.agent.tool_executor import clear_plan_cache  # noqa: PLC0415
+
+        clear_plan_cache(str(self.plan_id))
 
     def mark_paused_for_retry(self, exc: BaseException) -> None:
         """Mark waiting_retry and increment counter; mark failed if max retries reached."""
