@@ -79,8 +79,9 @@ test-integration: ## Run integration tests only
 ##@ Code Quality
 
 .PHONY: lint
-lint: ## Run ruff linter
+lint: ## Run ruff linter + format check (mirrors make ci-lint)
 	$(RUFF) check .
+	$(RUFF) format --check .
 
 .PHONY: format
 format: ## Auto-format code with ruff

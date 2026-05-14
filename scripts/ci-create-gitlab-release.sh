@@ -1,7 +1,8 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Create a GitLab Release for the semver tag (tag must already exist on the commit).
 # Used by: make gitlab-release (GitLab release stage; requires release-cli on PATH).
-set -euo pipefail
+# NOTE: runs inside registry.gitlab.com/gitlab-org/release-cli which has no bash.
+set -eu
 : "${CI_COMMIT_BRANCH:?}"
 
 RELEASE_TAG="${CI_COMMIT_BRANCH#release/}"

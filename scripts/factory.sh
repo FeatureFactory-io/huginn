@@ -83,11 +83,17 @@ ROLES=(step-def-writer feature-builder release-engineer manual-tester)
 
 # Create a worktree for each role on an orphan scratch branch.
 # Workers check out their task branch inside the worktree when they claim a task.
+# Retry up to 3 times so a transient lock doesn't silently kill a worker pane.
 for role in "${ROLES[@]}"; do
   wt="$REPO_ROOT/.worktrees/$role"
-  if [[ ! -d "$wt" ]]; then
-    # Start on the mgmt branch so the worktree has the full history
+  for _wt_try in 1 2 3; do
+    [[ -d "$wt" ]] && break
     git worktree add "$wt" "$MGMT_BRANCH" --detach 2>/dev/null || true
+    sleep 2
+  done
+  if [[ ! -d "$wt" ]]; then
+    echo "error: could not create worktree for $role after 3 attempts — aborting" >&2
+    exit 1
   fi
 done
 
@@ -99,8 +105,13 @@ worker_loop() {
   cat <<EOF
 cd "$wt" || exit 1
 WORKER_MODEL="$model"
-while :; do
-  fswatch -1 "$REPO_ROOT/factory/tasks/pending" >/dev/null 2>&1 || true
+
+# _process_pending — scan pending/ and claim+work any task matching this role.
+# Called once at startup (so pre-existing tasks aren't missed) and on each fswatch event.
+_process_pending() {
+  local f id declared_role claimed_path task_branch
+  local _skip_agent _rel_branch _existing _task_outcome _verify_reason
+  local COMBINED_PROMPT _remediation _wt_copy
   for f in "$REPO_ROOT"/factory/tasks/pending/*.md; do
     [[ -f "\$f" ]] || continue
     id="\$(basename "\$f" .md)"
@@ -132,12 +143,21 @@ while :; do
       if [[ \$_skip_agent -eq 1 ]]; then
         # Pipeline already running — inject a minimal Result block so done.sh accepts
         # the file without running verify-result.sh (no MR was created this invocation).
-        printf '\n\n# Result\n\nstatus: monitoring\nbranch: "%s"\nmr: "0"\ncommit_sha: "monitoring"\n' "\$_rel_branch" >> "\$claimed_path"
+        printf '\n\n# Result\n\nstatus: monitoring\nbranch: "%s"\nmr: "0"\ncommit_sha: "monitoring"\n' "\$task_branch" >> "\$claimed_path"
         "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
         "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** ✅ **release-engineer** done **%s** (pipeline already running — monitoring)' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "\$id")"
         _task_outcome="done"
       else
-        COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
+        # Include LE remediation overlay if present alongside the claimed task
+        _remediation=""
+        if [[ -f "$REPO_ROOT/factory/tasks/claimed/\${id}.remediation.md" ]]; then
+          _remediation="\$(cat "$REPO_ROOT/factory/tasks/claimed/\${id}.remediation.md")"
+        fi
+        if [[ -n "\$_remediation" ]]; then
+          COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s\n\n---\n\n## LE Remediation\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")" "\$_remediation")"
+        else
+          COMBINED_PROMPT="\$(printf '%s\n\n---\n\n%s' "\$(cat $REPO_ROOT/prompts/${role}.md)" "\$(cat "\$claimed_path")")"
+        fi
         CURSOR_ARGS=(--print --yolo --output-format stream-json --stream-partial-output --workspace "\$wt")
         if [[ -n "\$WORKER_MODEL" ]]; then
           CURSOR_ARGS=(--model "\$WORKER_MODEL" "\${CURSOR_ARGS[@]}")
@@ -148,6 +168,21 @@ while :; do
           2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.jsonl" \
                | jq -r 'select(.type=="text") | .text' 2>/dev/null \
                | tee -a "$REPO_ROOT/factory/logs/${role}.log"
+        # Layer A: sync Result block from worktree copy → repo-root copy.
+        # Workers write to \$wt/factory/tasks/claimed/T-NNN.md (their workspace); verify-result.sh
+        # reads \$REPO_ROOT/factory/tasks/claimed/T-NNN.md — different files in different worktrees.
+        _wt_copy="$wt/factory/tasks/claimed/\${id}.md"
+        if [[ -f "\$_wt_copy" ]] && rg -q '^# Result' "\$_wt_copy" 2>/dev/null; then
+          if ! rg -q '^# Result' "\$claimed_path" 2>/dev/null; then
+            awk '/^# Result/{found=1} found{print}' "\$_wt_copy" >> "\$claimed_path"
+            echo "[\$(date +%H:%M:%S)] [sync] copied # Result block from worktree → claimed/"
+          fi
+        fi
+        # Layer B: last-resort auto-fill from git state if Result still missing
+        if ! rg -q '^# Result' "\$claimed_path" 2>/dev/null; then
+          echo "[\$(date +%H:%M:%S)] [rescue] Result still missing — running rescue-result.sh"
+          "$REPO_ROOT/scripts/rescue-result.sh" "\$id" 2>/dev/null || true
+        fi
         if _verify_reason="\$($REPO_ROOT/scripts/verify-result.sh "\$id" 2>&1 1>/dev/null)"; then
           "$REPO_ROOT/scripts/done.sh" "\$id" 2>/dev/null || true
           "$REPO_ROOT/scripts/bb-append.sh" "\$(printf -- '- **%s %s** ✅ **%s** done **%s**' "\$(date +%Y-%m-%d)" "\$(date +%H:%M:%S)" "$role" "\$id")"
@@ -176,6 +211,15 @@ while :; do
       fi
     fi
   done
+}
+
+# Initial scan — process any tasks already sitting in pending/ before fswatch starts.
+# fswatch -1 is edge-triggered and misses pre-existing files on restart.
+_process_pending
+# Event loop — wake on filesystem events and re-scan
+while :; do
+  fswatch -1 "$REPO_ROOT/factory/tasks/pending" >/dev/null 2>&1 || true
+  _process_pending
 done
 EOF
 }

@@ -91,7 +91,7 @@ create_release:
     entrypoint: [""]
   needs: [deploy_staging]
   script:
-    - bash scripts/ci-create-gitlab-release.sh
+    - sh scripts/ci-create-gitlab-release.sh
 
 promote_production:
   stage: promote

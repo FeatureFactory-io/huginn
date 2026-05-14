@@ -56,4 +56,8 @@ for ((i = 0; i < ${#deps[@]}; i++)); do
 done
 
 mv "$PENDING" "$CLAIMED"
+# Also move any LE remediation overlay so the worker sees it in their combined prompt
+PENDING_REMEDIATION="factory/tasks/pending/${TASK_ID}.remediation.md"
+CLAIMED_REMEDIATION="factory/tasks/claimed/${TASK_ID}.remediation.md"
+[[ -f "$PENDING_REMEDIATION" ]] && mv "$PENDING_REMEDIATION" "$CLAIMED_REMEDIATION" || true
 echo "$(pwd)/${CLAIMED}"

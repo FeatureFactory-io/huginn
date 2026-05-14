@@ -44,6 +44,8 @@ From repo root:
 
 Prints absolute path to **`factory/tasks/claimed/T-042.md`**. On failure (wrong role, deps missing, race): exit `1`.
 
+If a **remediation overlay** exists (`pending/T-042.remediation.md`), `claim.sh` moves it to `claimed/T-042.remediation.md` atomically alongside the task. The factory worker loop includes it in your prompt under the heading `## LE Remediation`. Read and follow it before starting work — it contains specific fix instructions from the LE for a previously rejected attempt.
+
 ## While working
 
 - Work only in **`files_in_scope`** unless justified under **`out_of_scope_changes:`** in `# Result`.
@@ -57,7 +59,7 @@ Prefer:
 ./scripts/done.sh T-042
 ```
 
-Edit **`# Result`** before or after move:
+Edit **`# Result`** in `factory/tasks/claimed/T-042.md` **relative to your workspace root** before calling `done.sh`. Your workspace is the git worktree (`.worktrees/<role>/`), so the path inside your workspace is `factory/tasks/claimed/T-042.md`. Do not write to `done/` directly — `done.sh` moves the file.
 
 ```markdown
 # Result
@@ -79,7 +81,9 @@ Atomicity: when writing the done file from scratch, write to **`factory/tasks/do
 ./scripts/reject.sh T-042 "Check 5 failed: scenario X …"
 ```
 
-Archives snapshot under **`factory/tasks/rejected/T-042/<timestamp>.txt`**. LE re-creates **`pending/T-042.md`** with bumped **`attempt:`**.
+Archives snapshot under **`factory/tasks/rejected/T-042/<timestamp>.txt`** and requeues a fresh `pending/T-042.md` with a bumped `attempt:`.
+
+The LE may also create **`factory/tasks/pending/T-042.remediation.md`** with specific fix instructions. When the task is claimed next, `claim.sh` moves the remediation file to `claimed/` atomically. The worker loop injects its content into your prompt under `## LE Remediation`. Always read and follow it before starting work.
 
 ## Merge request
 
