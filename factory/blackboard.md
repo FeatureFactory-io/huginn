@@ -2,16 +2,14 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). T-AGENT **rejected on attempt 1** (out-of-scope work + stale-base merge conflict; MR !25 closed) → re-queued as attempt 2/3 in `pending/`. T-EXEC currently in `claimed/` running on top of the rejected T-AGENT branch (factory loop claimed it autonomously when T-AGENT briefly landed in `done/`); it will likely fail similarly and need rework once attempt-2 T-AGENT lands. Systemic "Full suite green" trap removed from all remaining task specs + blueprints.
-
-**Eligible now (`pending/`, dep-satisfied):**
-- T-AGENT (attempt 2/3 — feature-builder; depends_on: T-LLM ✅, T-TOOLS ✅). See `## Remediation (attempt 2 — LE)` block in the task file.
+**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). **T-AGENT, T-EXEC, T-SITREP-GEN all rejected on attempt 1** — same systemic "poisoned base" failure (workers branched off worktree tip without `git reset --hard origin/main`, dragging in earlier rejected branches). T-AGENT now claimed (attempt 2). T-EXEC + T-SITREP-GEN re-queued as attempt 2/3 in `pending/`, dep-gated until T-AGENT lands in `done/`.
 
 **In flight (`claimed/`):**
-- T-EXEC (feature-builder, worktree on factory/T-EXEC-execute-plan based off rejected T-AGENT branch — expect issues at done-time)
+- T-AGENT (attempt 2/3 — feature-builder; worktree `factory/T-AGENT-gjallarhorn-agent`). Spec contains `## Remediation (attempt 2 — LE)` block requiring `git reset --hard origin/main` before branching.
 
 **Pending but dep-gated by `claim.sh` until upstream lands in `done/`:**
-- T-SITREP-GEN — needs T-EXEC
+- T-EXEC (attempt 2/3) — needs T-AGENT
+- T-SITREP-GEN (attempt 2/3) — needs T-EXEC. Spec contains a fresh `## Remediation (attempt 2 — LE)` block with verbatim boilerplate, ancestor sanity-checks, cherry-pick-from-`e193a03` recipe, and a "≤ 16 files vs origin/main" diff cap.
 - T-SITREP-LIST-STEPS — needs T-SITREP-GEN
 - T-SITREP-LIST-IMPL — needs T-SITREP-LIST-STEPS
 - T-SITREP-VIEW-STEPS — needs T-SITREP-LIST-IMPL
@@ -33,9 +31,9 @@
 |---|---|---|---|---|---|---|
 | 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | **integrated** (!23) | — | `test_llm_contract.py`, `test_retry_on_rate_limit.py`, `test_prompts.py` |
 | 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | **integrated** (!24) | T-LLM ✅ | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
-| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **pending — attempt 2/3** (rejected, requeued) | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
+| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **claimed — attempt 2/3** (worker running) | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
 | 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | **pending — attempt 2/3** (rejected: stale base + 14 out-of-scope files; MR !26 closed) | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
-| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | **claimed** (running on poisoned base — expect reject) | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
+| 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | **pending — attempt 2/3** (rejected: poisoned base from rejected T-AGENT+T-EXEC chain, +.venv tracked, +factory state in feature commit; MR !27 closed) | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
 | 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
 | 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | pending (dep-gated) | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
 | 77 | T-SITREP-VIEW-STEPS | [SITREP-VIEW_SITREP-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-LIST-IMPL | (new) `tests/ui/test_sitrep_view_scenarios.py` |
@@ -155,3 +153,9 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 (LE) cleanup:** Removed orphan duplicate `factory/tasks/pending/T-SITREP-GEN.md` (the worker had `claim.sh`-moved its working copy to `claimed/` at 12:44:25, but the original tracked pending/ file was somehow restored — possibly by an earlier wake's `git pull --rebase`). Canonical state is now `claimed/T-SITREP-GEN.md` only. Initial reject of T-EXEC in this wake also failed to persist for unclear reasons (probably a tool-write race against a concurrent `git` op); re-ran `reject.sh T-EXEC` and verified on disk before adding the remediation block. Stable state going into commit: pending/ = T-AGENT (att 2), T-EXEC (att 2), 4× T-SITREP-LIST/VIEW (dep-gated); claimed/ = T-SITREP-GEN (worker on poisoned base — expect reject); done/ = T-LLM, T-TOOLS (both integrated); rejected/ = T-AGENT, T-EXEC.
 
 - **2026-05-14 13:01:40** ✅ **feature-builder** done **T-SITREP-GEN**
+
+- **2026-05-14 13:04:50** 🔁 requeued **T-SITREP-GEN** attempt 2/3: Poisoned base — branched off worktree tip containing rejected T-AGENT (6fa587f) + rejected T-EXEC (b7a2339) + pre-squash T-TOOLS (4a29710); diff vs main is 26 files/924 LoC instead of ~14/~335 in implementation commit e193a03. Plus .venv tracked in git (gitignore violation) and factory/tasks/pending/T-EXEC.md modified in the feature commit. Worker did not run 'git fetch && git checkout main && git reset --hard origin/main' before branching. Implementation commit e193a03 itself is mostly in-scope and reusable as a starting point for attempt 2.
+
+- **2026-05-14 13:04:52** 🔧 **feature-builder** claimed **T-AGENT**
+
+- **2026-05-14 (LE) T-SITREP-GEN rejected → attempt 2.** Third instance of the same systemic failure mode (T-AGENT att 1, T-EXEC att 1, now T-SITREP-GEN att 1): worker did `git checkout -b factory/T-SITREP-GEN-narrative-pipeline` from a worktree tip that already contained `6fa587f` (rejected T-AGENT body) + `b7a2339` (rejected T-EXEC body) + `4a29710` (pre-squash T-TOOLS body — already merged via squash !24). Implementation commit `e193a03` itself is **mostly clean** (14 files, ~335 LoC, in-scope shape — reusable for attempt 2 via cherry-pick), but the branch as a whole presents 26 files / 924 LoC vs main, including duplicate-merges of T-TOOLS and resurrections of rejected T-AGENT/T-EXEC bodies. Two extra defects on top of the base poisoning: `.venv` tracked in git (gitignore violation, 1 line in the feature commit), and `factory/tasks/pending/T-EXEC.md` modified inside the feature commit (factory state file leak). MR !27 closed by LE. Remediation block in `pending/T-SITREP-GEN.md` (attempt 2) now includes ancestor-not-reachable assertions for `6fa587f` and `b7a2339`, an `origin/main`-tip identity check, an upstream-merged check (T-AGENT body + T-EXEC body must already be on main), a cherry-pick recipe for `e193a03` with explicit `git restore` commands for the four polluted paths, a `≤ 16 files vs origin/main` diff cap, and a new branch name `factory/T-SITREP-GEN-narrative-pipeline-v2` to avoid pushing to the poisoned ref. **T-AGENT auto-claimed two seconds after T-SITREP-GEN's reject** — factory loop healthy. **Trend escalation:** three consecutive workers ignored the `git fetch && reset --hard` boilerplate in `## Branch & MR`. The boilerplate currently lives at the bottom of the task spec; workers may not be reading it before they `cd` into the worktree. Post-sprint factory-bug: hoist this boilerplate into the system blueprint AND make `claim.sh` either run the reset itself or refuse to hand the task to the worker until the worktree's HEAD == `origin/main`.

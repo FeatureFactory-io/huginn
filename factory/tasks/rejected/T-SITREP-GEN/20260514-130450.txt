@@ -1,3 +1,5 @@
+reason: Poisoned base — branched off worktree tip containing rejected T-AGENT (6fa587f) + rejected T-EXEC (b7a2339) + pre-squash T-TOOLS (4a29710); diff vs main is 26 files/924 LoC instead of ~14/~335 in implementation commit e193a03. Plus .venv tracked in git (gitignore violation) and factory/tasks/pending/T-EXEC.md modified in the feature commit. Worker did not run 'git fetch && git checkout main && git reset --hard origin/main' before branching. Implementation commit e193a03 itself is mostly in-scope and reusable as a starting point for attempt 2.
+---
 ---
 id: T-SITREP-GEN
 role: feature-builder
