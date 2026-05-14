@@ -95,6 +95,12 @@ _None — issues are fully specified against SAO §17 and feature files._
 
 ---
 
+## Known factory bugs / post-sprint fixes
+
+- **LE pre-gates tasks into `blocked/`** — LE moves downstream tasks to `blocked/` when it detects their deps aren't merged yet. This is wrong: `blocked/` is only for tasks that were **claimed, ran, and failed** (written by `done.sh --blocked`). Pre-emptive gating is already handled by `claim.sh` (checks `done/` for each dep). Tasks buried in `blocked/` are invisible to workers forever. **Fix:** add explicit guidance to `prompts/lead-engineer.md` — "Never move a task to `blocked/` manually. If a task has unmet deps, leave it in `pending/`; `claim.sh` will reject it until deps land in `done/`. Only `done.sh --blocked` may create files in `blocked/`."
+
+---
+
 # Event log
 
 <!-- Append-only: LE and workers add dated lines -->
