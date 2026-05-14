@@ -1,4 +1,4 @@
-"""SitRep views — list screen and generate endpoint (manual trigger)."""
+"""SitRep views — list screen, detail screen, and generate endpoint (manual trigger)."""
 
 import logging
 from datetime import datetime
@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views import View
 from django.views.decorators.http import require_POST
@@ -155,7 +156,64 @@ def sitrep_generate_view(request, project_pk: int):
     if is_ajax:
         return JsonResponse({"status": "queued", "plan_id": plan_id}, status=202)
 
-    from django.urls import reverse  # noqa: PLC0415
-
     list_url = reverse("projects-detail", kwargs={"pk": project_pk})
     return redirect(f"{list_url}?generated=1")
+
+
+def _since_this_label(sitrep: SitRep) -> str:
+    """Return a human label for 'Since this SitRep' anchor in the generate dropdown."""
+    delta = timezone.now() - sitrep.to_dt
+    total_seconds = max(0, int(delta.total_seconds()))
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    if hours > 0:
+        return f"Since this SitRep ({hours}h {minutes}m ago)"
+    return f"Since this SitRep ({minutes}m ago)"
+
+
+class SitRepDetailView(LoginRequiredMixin, View):
+    """SITREP-VIEW_SITREP-1 — read-only detail screen for a single SitRep."""
+
+    template_name = "ui/sitrep/view.html"
+
+    def get(self, request: HttpRequest, project_pk: int, pk: int) -> HttpResponse:
+        project = get_object_or_404(Project, pk=project_pk)
+        sitrep = get_object_or_404(SitRep, pk=pk, project_id=project_pk)
+
+        local_from = timezone.localtime(sitrep.from_dt)
+        local_to = timezone.localtime(sitrep.to_dt)
+        assessed_period = f"{local_from.strftime('%a %H:%M')} \u2192 {local_to.strftime('%H:%M')}"
+
+        trigger_label = "Auto" if sitrep.trigger == "automatic" else "Manual"
+        mode_label = "Semi-Auto" if sitrep.mode_at_generation == "semi_auto" else "Auto"
+        pb_version_label = f"v{sitrep.playbook_version}" if sitrep.playbook_version is not None else "v?"
+
+        fragos_applied = sitrep.fragos_applied.order_by("title")
+        notable_activity = sitrep.notable_activity or []
+
+        since_last_label = _since_this_label(sitrep)
+
+        back_url = reverse("sitrep-list", kwargs={"project_pk": project.pk})
+
+        try:
+            chat_url = reverse("chat-fullscreen")
+        except NoReverseMatch:
+            chat_url = "#"
+
+        generated_at = timezone.localtime(sitrep.generated_at).strftime("%Y-%m-%d %H:%M")
+
+        ctx = {
+            "project": project,
+            "sitrep": sitrep,
+            "generated_at": generated_at,
+            "assessed_period": assessed_period,
+            "trigger_label": trigger_label,
+            "mode_label": mode_label,
+            "pb_version_label": pb_version_label,
+            "fragos_applied": fragos_applied,
+            "notable_activity": notable_activity,
+            "since_last_label": since_last_label,
+            "back_url": back_url,
+            "chat_url": chat_url,
+        }
+        return render(request, self.template_name, ctx)
