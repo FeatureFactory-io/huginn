@@ -1,11 +1,15 @@
-"""SitRep views — generate endpoint (manual trigger)."""
+"""SitRep views — list screen and generate endpoint (manual trigger)."""
 
 import logging
+from datetime import datetime
+from typing import Any
 
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views import View
 from django.views.decorators.http import require_POST
 
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
@@ -13,6 +17,103 @@ from ingestion.models import Project
 from sitrep.models import SitRep
 
 logger = logging.getLogger(__name__)
+
+
+def _sitrep_row(sr: SitRep) -> dict[str, Any]:
+    return {
+        "id": sr.id,
+        "generated_at": sr.generated_at.strftime("%Y-%m-%d %H:%M"),
+        "assessed_period": f"{sr.from_dt.strftime('%a %H:%M')} \u2192 {sr.to_dt.strftime('%H:%M')}",
+        "trigger": sr.trigger,
+        "trigger_label": "Auto" if sr.trigger == "automatic" else "Manual",
+        "headline": sr.headline,
+        "decisions_proposed": 0,
+        "decisions_accepted": 0,
+        "pb_version": sr.playbook_version if sr.playbook_version is not None else 1,
+    }
+
+
+def _since_last_label(project: Project) -> tuple[str, bool]:
+    """Return (label, disabled) for the Since last SitRep dropdown item."""
+    last = SitRep.objects.filter(project=project).order_by("-to_dt").first()
+    if last is None:
+        return "Since last SitRep", True
+    delta = timezone.now() - last.to_dt
+    total_seconds = max(0, int(delta.total_seconds()))
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    if hours > 0:
+        label = f"Since last SitRep ({hours}h {minutes}m ago)"
+    else:
+        label = f"Since last SitRep ({minutes}m ago)"
+    return label, False
+
+
+class SitRepListView(LoginRequiredMixin, View):
+    """SITREP-LIST+FIND-1 — browse and filter SitReps for a project."""
+
+    template_name = "ui/sitrep/list.html"
+
+    def get(self, request: HttpRequest, project_pk: int) -> HttpResponse:
+        project = get_object_or_404(Project, pk=project_pk)
+
+        filter_trigger = (request.GET.get("trigger") or "").strip()
+        filter_pb_version = (request.GET.get("pb_version") or "").strip()
+        filter_from = (request.GET.get("from") or "").strip()
+        filter_to = (request.GET.get("to") or "").strip()
+
+        qs = SitRep.objects.filter(project=project).order_by("-generated_at")
+
+        if filter_trigger in {"automatic", "manual"}:
+            qs = qs.filter(trigger=filter_trigger)
+
+        if filter_pb_version:
+            try:
+                qs = qs.filter(playbook_version=int(filter_pb_version.lstrip("vV")))
+            except ValueError:
+                pass
+
+        if filter_from:
+            try:
+                from_date = datetime.strptime(filter_from, "%Y-%m-%d").date()
+                qs = qs.filter(generated_at__date__gte=from_date)
+            except ValueError:
+                pass
+
+        if filter_to:
+            try:
+                to_date = datetime.strptime(filter_to, "%Y-%m-%d").date()
+                qs = qs.filter(generated_at__date__lte=to_date)
+            except ValueError:
+                pass
+
+        rows = [_sitrep_row(sr) for sr in qs[:50]]
+
+        pb_versions = (
+            SitRep.objects.filter(project=project)
+            .exclude(playbook_version__isnull=True)
+            .values_list("playbook_version", flat=True)
+            .distinct()
+            .order_by("playbook_version")
+        )
+        pb_version_choices = [(str(v), f"v{v}") for v in pb_versions]
+
+        since_last_label, since_last_disabled = _since_last_label(project)
+
+        ctx = {
+            "project": project,
+            "rows": rows,
+            "trigger_choices": [("automatic", "Auto"), ("manual", "Manual")],
+            "pb_version_choices": pb_version_choices,
+            "filter_trigger": filter_trigger,
+            "filter_pb_version": filter_pb_version,
+            "filter_from": filter_from,
+            "filter_to": filter_to,
+            "since_last_label": since_last_label,
+            "since_last_disabled": since_last_disabled,
+            "show_toast": request.GET.get("generated") == "1",
+        }
+        return render(request, self.template_name, ctx)
 
 
 @login_required
