@@ -184,7 +184,7 @@ Closes #76 (paired with T-SITREP-LIST-STEPS)" \
 
 # Result
 
-status: rescued
+status: integrated
 branch: factory/T-SITREP-LIST-IMPL-list-screen
 mr: 32
 commit_sha: 1d556a5b

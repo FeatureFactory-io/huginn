@@ -18,6 +18,34 @@ files_in_scope:
   - ui/urls.py
 ---
 
+## LE-note (2026-05-14, T-SITREP-LIST-IMPL integration)
+
+T-SITREP-LIST-IMPL hardcoded `<a href="/projects/{{ project.pk }}/sitreps/{{ r.id }}/">`
+in `ui/templates/ui/sitrep/list.html` (row headline link AND dropdown View item) as a
+forward-reference to the URL **this** task will register. Test 08
+(`SITREP-LIST+FIND-08 Row View action navigates to SITREP-VIEW_SITREP-1`) only
+asserts the substring `f"/sitreps/{sitrep.pk}/"` so it currently passes against
+the hardcoded path, but the actual click-through 404s until you register the
+real route.
+
+**Constraint locked in:** your `ui/urls.py` entry MUST be exactly:
+
+```python
+path(
+    "projects/<int:project_pk>/sitreps/<int:pk>/",
+    SitRepDetailView.as_view(),
+    name="sitrep-view",
+),
+```
+
+Anything else (different path shape, different kwarg names, view-only without
+project scope) breaks the View dropdown click on the list screen. If your
+test contract for T-SITREP-VIEW-STEPS uses different kwarg names
+(`reverse('sitrep-view', kwargs={...})`), reconcile against this URL pattern —
+list-screen integration wins because list-screen is already on `main`.
+
+---
+
 # Task T-SITREP-VIEW-IMPL — port SITREP-VIEW_SITREP-1 to production
 
 ## Goal
