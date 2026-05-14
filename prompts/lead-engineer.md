@@ -60,7 +60,7 @@ When a worker moves a task to `tasks/done/`, you read its `# Result` block. Run 
 6. **Smoke-test the change.** For a `feature-builder` task, run the scenario locally. For infra tasks, run the smoke command from the blueprint.
 7. **Dr. Dobbs bar (Huginn).** Read **`.cursor/agents/dr-dobbs-v2.md`** in the target repo. On worker output / MR diffs, spot-check: boundaries validated, tests cover failure paths where the scenario demands it, no obvious “untestable” blobs, logging sensible at decision points (without PII leaks). Reject or remediate when the change is clever but not provable; cite the principle (e.g. missing edge-case test, magic numbers in new hot paths).
 
-If any check fails, write a remediation task. Be specific: name the failing scenario or the offending file. Don't say "fix it" — say "scenario X is failing because Y; expected Z." Move the original done file to `tasks/rejected/T-NNN/<attempt>.md`.
+If any check fails, write a remediation task. Be specific: name the failing scenario or the offending file. Don't say "fix it" — say "scenario X is failing because Y; expected Z." Use `scripts/reject.sh <id> "<reason>"` — it archives to `tasks/rejected/<id>/<timestamp>.txt` and requeues `pending/<id>.md` with a bumped `attempt:`.
 
 ## Phase 4 — Integration
 
@@ -88,9 +88,17 @@ When the status context shows `RELEASE-READY: yes` (all tasks integrated, no pen
 
 1. **Decide the semver bump** — read the latest tag (`git describe --tags --abbrev=0`) and the sprint goal to choose the correct increment (patch for bugfix-only sprints, minor for new features, major for breaking changes).
 
-2. **Run pre-release checks** — per `SKILL.md` Phase 4.5: confirm `make lint` and `make test` are green on `main`. If not, create a remediation task, do not proceed.
+2. **Handle monitoring tasks** — if `scripts/factory.sh` detected that a CI pipeline for the release branch already existed and skipped the cursor-agent, the task lands in `done/` with `status: monitoring` and `mr: "0"`. These have no real MR to merge. Before running `scripts/release.sh`, manually set `status: integrated` in each such file:
+   ```bash
+   # find them
+   grep -rl 'mr: "0"' factory/tasks/done/
+   # edit each one: change  status: monitoring  →  status: integrated
+   ```
+   `scripts/release.sh` requires every `done/*.md` to have `status: integrated`; monitoring tasks will block it otherwise.
 
-3. **Switch to `main`, then cut the release** — the factory loop runs on `MGMT_BRANCH`; `release.sh` requires you to be on `main`. From the repo root:
+3. **Run pre-release checks** — per `SKILL.md` Phase 4.5: confirm `make lint` and `make test` are green on `main`. If not, create a remediation task, do not proceed.
+
+4. **Switch to `main`, then cut the release** — the factory loop runs on `MGMT_BRANCH`; `release.sh` requires you to be on `main`. From the repo root:
    ```bash
    git checkout main && git pull --ff-only origin main
    ```
@@ -99,9 +107,9 @@ When the status context shows `RELEASE-READY: yes` (all tasks integrated, no pen
    - Pushes the tag to origin
    - Pushes `main` as `release/<semver>` branch (triggers GitLab CI)
 
-4. **Monitor staging CI** — the CI pipeline runs `make staging` to deploy to the inactive Elastic Beanstalk environment. Watch the pipeline; report status to the human when staging is ready.
+5. **Monitor staging CI** — the CI pipeline runs `make staging` to deploy to the inactive Elastic Beanstalk environment. Watch the pipeline; report status to the human when staging is ready.
 
-5. **Do not promote production** — `make swap` (which promotes staging to production) is always a manual human decision. Write `factory/RESULT.md` with the staging URL and stop — the human promotes when ready.
+6. **Do not promote production** — `make swap` (which promotes staging to production) is always a manual human decision. Write `factory/RESULT.md` with the staging URL and stop — the human promotes when ready.
 
 ## Rejecting work is normal
 

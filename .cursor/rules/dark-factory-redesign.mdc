@@ -60,19 +60,10 @@ Rules:
 ## Known bugs to fix in next version
 
 ### `fswatch -1` is edge-triggered — misses pre-existing tasks on restart
-When a factory session is restarted (e.g., after worker pane crashes), tasks already
-sitting in `pending/` are invisible to workers. `fswatch -1` blocks until the *next*
-filesystem event; it does not fire for files that existed before it started watching.
 
-**Fix:** in `factory.sh` worker loop, do an initial scan of `pending/` *before* entering
-the fswatch wait. Pseudocode:
-```bash
-# Scan once at startup, then event-loop
-scan_and_claim   # run the for-loop over pending/*.md immediately
-while :; do
-  fswatch -1 "$pending_dir" && scan_and_claim
-done
-```
+**[RESOLVED]** `factory.sh` now runs `_process_pending` once before entering the
+`while fswatch` loop, performing an initial scan of `pending/` at startup. Restarted
+workers pick up pre-existing tasks immediately.
 
 ### Workers consistently submit empty `# Result` blocks → `verify-result.sh` blocks every task
 Workers run inside a git worktree (`.worktrees/<role>/`). The task file they received
@@ -123,39 +114,63 @@ the `release` stage failed. Pre-existed the Registration sprint.
 2. Add `apk add bash` as a `before_script` step in the `create_release` job.
 
 ### LE can't inject remediation into an already-claimed task file
-`cursor-agent` reads the task file **once at startup** and does not re-read it.
-When the LE edits `factory/tasks/claimed/T-NNN.md` to add a `⚠️ REMEDIATION` section
-after the worker has already started, the worker never sees it. This is why T-REG-02-impl
-attempt 2 produced the same bug as attempt 1: the LE's fix instructions were invisible.
 
-**Fix options:**
-1. Add a separate `factory/tasks/claimed/T-NNN.remediation.md` overlay file. In the
-   worker prompt, instruct the worker to check for this file at startup and merge its
-   contents before beginning.
-2. Have the LE write the remediation to the *pending* task file *before* the worker
-   claims it (requires a short window between reject.sh and the next claim).
-3. Pass `REMEDIATION_FILE` as an env var to the `cursor-agent` invocation in
-   `factory.sh`; LE writes to that path; worker reads it early in its loop.
+**[RESOLVED]** `scripts/claim.sh` now moves a `pending/T-NNN.remediation.md` overlay
+(if present) to `claimed/T-NNN.remediation.md` atomically alongside the task file.
+`factory.sh` injects its content into the worker prompt under `## LE Remediation`.
+The LE writes the remediation to `pending/` *before* the worker claims the re-queued
+task (via `reject.sh` + a follow-up write to `pending/<id>.remediation.md`).
 
 ### `scripts/rescue-result.sh` does not exist
-The LE rescued all four empty-Result-block tasks inline this sprint by manually
-filling `status`, `branch`, `mr`, `commit_sha` from `git ls-remote` + `glab mr list`,
-moving `blocked/ → done/`, and touching the next pending task. This was done four
-times identically. Without a script, each rescue costs LE tokens and is not auditable.
 
-**Fix:** implement `scripts/rescue-result.sh <task-id>` that:
-1. Reads the claimed/blocked task file.
-2. Resolves `branch` from `git branch -r | grep <task-id>`.
-3. Resolves `mr` from `glab mr list --source-branch <branch> -F json | jq -r '.[0].iid'`.
-4. Resolves `commit_sha` from `git ls-remote origin <branch>`.
-5. Writes those values into the task file's `# Result` block.
-6. Moves `blocked/T-NNN.md → done/T-NNN.md`.
-7. Commits the rescue: `factory: rescue T-NNN (auto-filled empty Result block)`.
+**[RESOLVED]** `scripts/rescue-result.sh <task-id>` now exists. It resolves `branch`,
+`mr`, and `commit_sha` from git + glab, writes them into the task's `# Result` block,
+moves `blocked/ → done/`, and commits `factory: rescue T-NNN`.
 
 ## Implementation note
 
-The simplest implementation: in `prompts/lead-engineer.md`, replace every instance of
-"pause for human review" / "await human approval" with
-"log your decision to the blackboard and proceed immediately to the next phase."
-Add a final instruction: "When staging is deployed, write `factory/RESULT.md` with the
-staging URL and a one-paragraph summary, then exit the LE loop."
+**[RESOLVED]** `prompts/lead-engineer.md` has been updated: all "pause for human review"
+language is replaced with "log and proceed". The LE writes `factory/RESULT.md` with the
+staging URL and sprint summary at the end of Phase 5.
+
+---
+
+## Monitoring tasks and `RELEASE-READY`
+
+### Background
+
+When `scripts/factory.sh` dispatches a `release-engineer` task and detects that a CI
+pipeline for the `release/` branch already exists (state: running, passed, or pending),
+it **skips the cursor-agent invocation** and injects a synthetic `# Result` block:
+
+```
+status: monitoring
+branch: "release/x.y.z"
+mr: "0"
+commit_sha: "monitoring"
+```
+
+The task then goes straight to `tasks/done/` via `scripts/done.sh` (bypassing
+`verify-result.sh`). This is correct — no new MR was created, the pipeline was
+triggered by a prior run.
+
+### Problem
+
+`scripts/release.sh` guards on every `done/*.md` having `status: integrated`. A
+monitoring task's `status: monitoring` causes `RELEASE-READY: no` indefinitely; the LE
+has no automated path to clear it.
+
+### Doctrine
+
+Before running `scripts/release.sh <semver>`, the LE must:
+
+1. Identify monitoring tasks:
+   ```bash
+   grep -rl 'mr: "0"' factory/tasks/done/
+   ```
+2. For each, update `status: monitoring` → `status: integrated` directly in the file.
+3. Commit: `factory: mark monitoring tasks integrated`.
+4. Then run `scripts/release.sh <semver>`.
+
+This is a manual step by design — monitoring tasks represent "pipeline already existed",
+which the LE should verify before declaring the sprint integrated.

@@ -38,6 +38,12 @@ Run from the **repository root**.
 # Phase 3 — tmux factory (after LE has filled pending tasks)
 ./scripts/factory.sh 'Your-Milestone-Slug'
 # Attach: tmux a -t huginn-Your-Milestone-Slug
+
+# Post-sprint — archive completed sprint and reset factory/ for the next run
+./scripts/archive.sh 'your-sprint-slug'
+# Moves blackboard, blueprints, done/rejected/blocked tasks, and logs to
+# factory/archive/<slug>/; recreates a clean skeleton; removes stale worktrees.
+# Refuses to run if pending/ or claimed/ are non-empty.
 ```
 
 **Preflight flags:** `--allow-dirty` — skip “clean git working tree” check. `--allow-missing-featurefile-ref` — warn but pass when some milestone issues omit `docs/features/.../*.feature` (default remains strict).
@@ -61,7 +67,8 @@ Syntax-check scripts:
 ```bash
 bash -n scripts/factory.sh scripts/preflight.sh scripts/claim.sh scripts/done.sh \
          scripts/reject.sh scripts/status.sh scripts/bb-append.sh \
-         scripts/verify-result.sh scripts/integrate.sh scripts/release.sh
+         scripts/verify-result.sh scripts/integrate.sh scripts/release.sh \
+         scripts/archive.sh
 ```
 
 Functional **preflight** requires **`glab auth`** and a real milestone title.
@@ -74,7 +81,7 @@ Functional **preflight** requires **`glab auth`** and a real milestone title.
 | `tasks/claimed/` | Currently being worked on (atomic `mv` from pending) |
 | `tasks/done/` | Worker completed; awaiting LE review and `integrate.sh merge` |
 | `tasks/rejected/<id>/` | Archived rejection snapshots (timestamped `.txt` files) |
-| `tasks/blocked/` | Tasks that exhausted `FACTORY_MAX_ATTEMPTS` (default 3) — LE decides next action |
+| `tasks/blocked/` | Tasks routed here by two paths: (1) `reject.sh` when `attempt+1 > FACTORY_MAX_ATTEMPTS`; (2) `done.sh --blocked` when `verify-result.sh` fails after a worker finishes (missing/blank `# Result`, branch not pushed, or MR not open/merged). LE decides next action in both cases. |
 
 `scripts/reject.sh <id> "<reason>"` auto-requeues to `pending/` with `attempt: N+1`.
 When `attempt+1 > FACTORY_MAX_ATTEMPTS`, it writes to `blocked/<id>.md` instead.
