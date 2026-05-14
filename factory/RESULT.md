@@ -1,10 +1,35 @@
 # Sprint result — AI → SitRep (milestone 7419357)
 
-**Release tag:** `0.2.0`
-**Release branch:** `release/0.2.0`
-**Staging pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526025464
-**Staging URL** (once `deploy_staging` completes): https://huginn-staging.us-east-1.elasticbeanstalk.com
+**Release tag:** `0.2.1` (patch over `0.2.0` — see "Staging deploy 0.2.0 failed" below)
+**Release branch:** `release/0.2.1`
+**Staging pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526062983
+**Previous (failed) pipeline:** https://gitlab.com/dp2580/huginn/-/pipelines/2526025464 (deploy_staging FAILED on smoke test — root cause below, fixed in `a151229`)
+**Staging URL** (once `deploy_staging` completes on 0.2.1): https://huginn-staging.us-east-1.elasticbeanstalk.com
 **Production:** **NOT promoted.** `make swap` is a manual human decision per SAO §9–§10.
+
+## Staging deploy 0.2.0 failed → 0.2.1 patch
+
+The `0.2.0` staging deploy succeeded into `huginn-green` (the inactive EB
+env) but its `/health/` smoke test returned **502 Bad Gateway** for the full
+5-minute window — gunicorn never bound to `:8000`. **Root cause:**
+`requirements-docker.txt` (the runtime-only deps used by the production
+Docker image, deliberately slimmer than `requirements.txt`) was missing
+`anthropic`. `gjallarhorn/tasks/plan_tasks.py:5` does `import anthropic` at
+module level, and that module is pulled in transitively by
+`gjallarhorn.apps.GjallarhornConfig.ready()` (signal-handler registration)
+during Django startup → `ModuleNotFoundError` → app crash → 502 from nginx.
+
+**Why CI tests didn't catch it:** the `test` job uses `requirements.txt`
+(which does include `anthropic>=0.101,<0.102`); the runtime image uses
+`requirements-docker.txt`. The two diverged. **Fix:** one line added in
+commit `a151229` — `anthropic>=0.101,<0.102` appended to
+`requirements-docker.txt`. **Patch release `0.2.1` cut immediately** and is
+re-deploying to `huginn-green` now.
+
+This is a backlog candidate: add a CI step (or extend `make ci-test`) that
+spins up the Docker image with `requirements-docker.txt` and probes
+`/health/` before the release pipeline accepts it. Would have caught this
+at the build stage, not the deploy stage.
 
 ## What shipped
 
