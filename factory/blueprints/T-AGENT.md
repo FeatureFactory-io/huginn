@@ -65,4 +65,8 @@ wiring the `LLM` ABC + `ToolExecutor` + `ExecutionPlan`/`PlanStep` persistence.
   tests/gjallarhorn/test_agent_process_user_message_deferred.py \
   tests/gjallarhorn/test_sitrep_service_steps.py -x
 ```
-…exits 0. Full suite green. Ruff clean.
+…exits 0. Ruff clean. **Acceptance is the 4 test files above ONLY** — other
+RED tests in the suite belong to downstream tasks (T-EXEC, T-SITREP-GEN).
+Confirm no previously-GREEN test regresses, but do NOT implement those
+downstream subjects to make them pass — that's out of scope and will be
+rejected.

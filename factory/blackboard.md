@@ -2,13 +2,15 @@
 
 <!-- LE edits this section in place -->
 
-**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). All 7 downstream tasks live in `pending/`; `claim.sh` enforces dependency order via `done/<dep>.md` existence checks (no pre-gating per bug #78).
+**Phase:** 3 — Execution in progress. T-LLM merged (!23). T-TOOLS merged (!24). T-AGENT **rejected on attempt 1** (out-of-scope work + stale-base merge conflict; MR !25 closed) → re-queued as attempt 2/3 in `pending/`. T-EXEC currently in `claimed/` running on top of the rejected T-AGENT branch (factory loop claimed it autonomously when T-AGENT briefly landed in `done/`); it will likely fail similarly and need rework once attempt-2 T-AGENT lands. Systemic "Full suite green" trap removed from all remaining task specs + blueprints.
 
 **Eligible now (`pending/`, dep-satisfied):**
-- T-AGENT (feature-builder; depends_on: T-LLM ✅, T-TOOLS ✅)
+- T-AGENT (attempt 2/3 — feature-builder; depends_on: T-LLM ✅, T-TOOLS ✅). See `## Remediation (attempt 2 — LE)` block in the task file.
+
+**In flight (`claimed/`):**
+- T-EXEC (feature-builder, worktree on factory/T-EXEC-execute-plan based off rejected T-AGENT branch — expect issues at done-time)
 
 **Pending but dep-gated by `claim.sh` until upstream lands in `done/`:**
-- T-EXEC — needs T-AGENT
 - T-SITREP-GEN — needs T-EXEC
 - T-SITREP-LIST-STEPS — needs T-SITREP-GEN
 - T-SITREP-LIST-IMPL — needs T-SITREP-LIST-STEPS
@@ -31,8 +33,8 @@
 |---|---|---|---|---|---|---|
 | 64 | T-LLM | [GJLR-LLM] LLM layer: ABC + ClaudeLLM + retry_on_rate_limit | feature-builder | **integrated** (!23) | — | `test_llm_contract.py`, `test_retry_on_rate_limit.py`, `test_prompts.py` |
 | 65 | T-TOOLS | [GJLR-TOOLS] ToolExecutor + narrative-phase read tools | feature-builder | **integrated** (!24) | T-LLM ✅ | `test_tool_executor_envelope.py`, `test_data_tools_*.py`, `test_playbook_tools.py`, `test_sitrep_tools_*.py` |
-| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **pending (eligible)** | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
-| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | pending (dep-gated) | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
+| 66 | T-AGENT | [GJLR-AGENT] GjallarhornAgent: create_plan + execute_single_step | feature-builder | **pending — attempt 2/3** (rejected, requeued) | T-LLM ✅, T-TOOLS ✅ | `test_agent_create_plan.py`, `test_agent_execute_single_step.py`, `test_agent_process_user_message_deferred.py`, `test_sitrep_service_steps.py` |
+| 67 | T-EXEC | [GJLR-EXECUTE-PLAN] execute_plan Celery task + resilience matrix | feature-builder | **claimed** (running on rejected T-AGENT branch) | T-AGENT | `test_execution_plan_state_machine.py`, `test_execute_plan_*.py` |
 | 61 | T-SITREP-GEN | [SITREP-GENERATE-1] SitRep generation pipeline (narrative phase) | feature-builder | pending (dep-gated) | T-EXEC | `test_generate_sitrep_task.py`, `test_persist_sitrep_from_plan.py`, `test_sitrep_signal.py`, `test_sitrep_generate_scenarios.py` |
 | 76 | T-SITREP-LIST-STEPS | [SITREP-LIST+FIND-1] RED tests | step-def-writer | pending (dep-gated) | T-SITREP-GEN | (new) `tests/ui/test_sitrep_list_scenarios.py` |
 | 76 | T-SITREP-LIST-IMPL | [SITREP-LIST+FIND-1] List screen + generate POST | feature-builder | pending (dep-gated) | T-SITREP-LIST-STEPS | `tests/ui/test_sitrep_list_scenarios.py` GREEN |
@@ -137,3 +139,11 @@ _None — issues are fully specified against SAO §17 and feature files._
 - **2026-05-14 12:21:39 (LE wake — startup):** Phase 3 in progress. T-AGENT claimed (feature-builder, worktree `factory/T-AGENT-gjallarhorn-agent`); 6 downstream tasks pending, dep-gated by claim.sh. No action — awaiting done/T-AGENT.md.
 
 - **2026-05-14 12:35:18** ✅ **feature-builder** done **T-AGENT**
+
+- **2026-05-14 12:35:19** 🔧 **feature-builder** claimed **T-EXEC**
+
+- **2026-05-14 12:41:25** 🔁 requeued **T-AGENT** attempt 2/3: Out-of-scope work (sitrep_tasks.py, services/factory.py, sitrep_service._persist_sitrep_from_plan, apps.py signal wiring) belongs to T-SITREP-GEN/T-EXEC; MR !25 is in conflict with main (stale base — branched before T-TOOLS merge). Acceptance tests pass (15/15) but scope discipline failed. See remediation block in re-queued task file.
+
+- **2026-05-14 (LE) T-AGENT rejected → attempt 2.** Acceptance tests GREEN (15/15) but branch shipped T-SITREP-GEN/T-EXEC scope (sitrep_tasks.py NEW, services/factory.py NEW, apps.py signal wiring, _persist_sitrep_from_plan) and conflicted on main (stale base — branched pre-T-TOOLS-merge). MR !25 closed. **Root cause:** task spec acceptance criteria said 'Full suite green' which trapped the worker into chasing downstream RED tests. **Systemic fix applied to all remaining task specs + blueprints:** T-AGENT (requeued), T-EXEC (claimed — running worker won't see this; will likely re-hit the trap), T-SITREP-GEN, T-SITREP-LIST-IMPL, T-SITREP-VIEW-IMPL — acceptance is now 'YOUR test files only; do not chase downstream RED'. T-AGENT pending/ now has '## Remediation (attempt 2 — LE)' block. T-EXEC currently in claimed/ with a worker running on top of the rejected T-AGENT branch — expect it to fail similarly; will re-evaluate when it lands in done/.
+
+- **2026-05-14 12:44:23** ✅ **feature-builder** done **T-EXEC**

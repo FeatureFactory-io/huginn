@@ -88,8 +88,13 @@ Migration **0003** adds `ExecutionPlan.planning_model`, `PlanStep.is_planning`,
   tests/gjallarhorn/test_sitrep_signal.py \
   tests/gjallarhorn/test_sitrep_generate_scenarios.py -x
 ```
-…exits 0. Full suite `.venv/bin/python -m pytest tests/ -x` green.
-`python manage.py makemigrations --check` clean (no orphan model edits).
+…exits 0. **Acceptance is the 4 test files above ONLY** — the rest of the
+suite contains intentional RED tests for downstream tasks (T-SITREP-LIST-*,
+T-SITREP-VIEW-*) and feature-builder UI work you must NOT implement. Confirm
+no previously-GREEN tests regress, but do NOT chase the rest of the suite
+green. Implement strictly the files in `## Files in scope` below; anything
+outside is auto-reject. `python manage.py makemigrations --check` clean
+(no orphan model edits).
 
 ## Test additions (NEW — narrowly scoped)
 

@@ -80,8 +80,7 @@ URL. Make every test in `tests/ui/test_sitrep_view_scenarios.py` GREEN.
 ```
 .venv/bin/python -m pytest tests/ui/test_sitrep_view_scenarios.py -x
 # expect: 31 passed
-.venv/bin/python -m pytest tests/ -x
-# full suite green
 ruff check . && ruff format --check .
 # clean
+# Acceptance is THIS test file ONLY. Confirm no previously-GREEN tests regress.
 ```

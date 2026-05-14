@@ -59,7 +59,11 @@ already implemented on the model — do **not** add them again.
   tests/gjallarhorn/test_execute_plan_partial_resume.py \
   tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py -x
 ```
-…exits 0. Full suite green.
+…exits 0. **Acceptance is the 6 test files above ONLY.** The rest of the
+suite contains intentional RED tests for downstream tasks (T-SITREP-GEN,
+T-SITREP-LIST-*, T-SITREP-VIEW-*). Confirm no previously-GREEN tests
+regress, but do NOT implement those downstream subjects. Anything outside
+the files-in-scope list below will be auto-rejected.
 
 ## Files in scope
 
@@ -123,9 +127,12 @@ Closes #67" \
 - Do NOT add SSE/Redis publishing.
 - Do NOT add `execute_decision_outcome` — Decisions milestone.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-EXEC-execute-plan
+mr: 26
+commit_sha: b7a23393
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.

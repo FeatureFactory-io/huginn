@@ -99,8 +99,9 @@ merges) go GREEN — without modifying that test file.
 ```
 .venv/bin/python -m pytest tests/ui/test_sitrep_list_scenarios.py -x
 # expect: 22 passed
-.venv/bin/python -m pytest tests/ -x
-# expect: full suite green
 ruff check . && ruff format --check .
 # clean
+# Acceptance is THIS test file ONLY. Do not implement T-SITREP-VIEW-* subjects
+# to make their RED tests pass — that's a different task. Confirm no
+# previously-GREEN tests regress.
 ```

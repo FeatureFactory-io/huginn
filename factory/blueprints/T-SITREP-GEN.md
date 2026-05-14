@@ -99,4 +99,7 @@ Migration **0003** adds `planning_model` to `ExecutionPlan` + `is_planning` and
   tests/gjallarhorn/test_sitrep_signal.py \
   tests/gjallarhorn/test_sitrep_generate_scenarios.py -x
 ```
-…exits 0. Full suite green. `python manage.py makemigrations --check` clean.
+…exits 0. `python manage.py makemigrations --check` clean.
+**Acceptance is the test files listed in the task's `## Acceptance criteria`
+ONLY** — downstream RED tests (T-SITREP-LIST-*, T-SITREP-VIEW-*) are out of
+scope; do NOT implement them. Confirm no previously-GREEN tests regress.

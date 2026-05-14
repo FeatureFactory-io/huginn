@@ -1,7 +1,8 @@
 ---
 id: T-AGENT
 role: feature-builder
-attempt: 1
+attempt: 2
+previous_attempt: factory/tasks/rejected/T-AGENT/20260514-124125.txt
 depends_on: [T-LLM, T-TOOLS]
 gitlab_issue: 66
 branch: factory/T-AGENT-gjallarhorn-agent
@@ -22,6 +23,44 @@ files_in_scope:
 ---
 
 # Task T-AGENT — GjallarhornAgent + sitrep_service step builder + execute_plan stub
+
+## Remediation (attempt 2 — LE)
+
+**Attempt 1 was rejected** even though the 4 acceptance test files passed
+(15/15 GREEN). Two systemic problems:
+
+1. **Out-of-scope work.** The previous attempt also implemented downstream
+   tasks (T-SITREP-GEN territory): `_persist_sitrep_from_plan` in
+   `sitrep_service.py`, `gjallarhorn/tasks/sitrep_tasks.py` (NEW),
+   `gjallarhorn/services/factory.py` (NEW), and signal-receiver wiring in
+   `gjallarhorn/apps.py`. **Do not do this.** Implement ONLY the 7 files
+   listed in `files_in_scope` (frontmatter, above). Anything else is a hard
+   reject — it will collide with the T-SITREP-GEN task that owns those files.
+
+2. **Stale base.** The previous attempt branched from `main` BEFORE T-TOOLS
+   was merged, then carried T-TOOLS commits inside its own branch as well.
+   This caused a `detailed_merge_status: conflict` MR. Start fresh:
+
+   ```bash
+   cd .worktrees/feature-builder
+   git fetch origin
+   git checkout main
+   git reset --hard origin/main           # main now contains T-LLM + T-TOOLS
+   git branch -D factory/T-AGENT-gjallarhorn-agent || true
+   git push origin --delete factory/T-AGENT-gjallarhorn-agent || true
+   git checkout -b factory/T-AGENT-gjallarhorn-agent
+   ```
+
+   Close MR !25 yourself (`glab mr close 25 --comment "superseded by attempt 2"`)
+   before pushing, then open a fresh MR.
+
+3. **Acceptance criterion clarified** (this is the LE's fault — the previous
+   spec said "Full suite green" which trapped the worker into chasing
+   downstream RED tests). Acceptance is now **only** the 4 test files in the
+   `## Acceptance criteria` section. **Other RED tests in the suite are
+   intentional contracts for downstream tasks (T-EXEC, T-SITREP-GEN). Do
+   NOT make them pass.** Run them only to confirm you have not broken any
+   previously-GREEN tests.
 
 ## Goal
 
@@ -56,7 +95,21 @@ will replace the stub body with the full resilience matrix).
   tests/gjallarhorn/test_agent_process_user_message_deferred.py \
   tests/gjallarhorn/test_sitrep_service_steps.py -x
 ```
-…exits 0. Full suite `.venv/bin/python -m pytest tests/ -x` green.
+…exits 0. **Do not chase the rest of the suite green** — downstream tasks
+own the other RED tests. Confirm only that no previously-GREEN test has
+regressed:
+
+```bash
+.venv/bin/python -m pytest tests/ --ignore=tests/gjallarhorn/test_execute_plan_rate_limit_retry.py \
+  --ignore=tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py \
+  --ignore=tests/gjallarhorn/test_generate_sitrep_task.py \
+  --ignore=tests/gjallarhorn/test_persist_sitrep_from_plan.py \
+  --ignore=tests/gjallarhorn/test_sitrep_signal.py \
+  --ignore=tests/gjallarhorn/test_sitrep_generate_scenarios.py \
+  --ignore=tests/ui/test_sitrep_list_scenarios.py \
+  --ignore=tests/ui/test_sitrep_view_scenarios.py
+# expect: passes (no regressions vs main)
+```
 
 ## Files in scope
 
@@ -128,13 +181,3 @@ Closes #66" \
 - Do NOT implement the full resilience matrix in `execute_plan` — that's T-EXEC.
 - Do NOT add `from gjallarhorn.tasks.plan_tasks import execute_plan` at module
   top in `agent.py` — must be a function-local import to break the cycle.
-
-
-# Result
-
-status: rescued
-branch: factory/T-AGENT-gjallarhorn-agent
-mr: 25
-commit_sha: b7a6f152
-
-Auto-filled by rescue-result.sh — worker exited without writing Result block.

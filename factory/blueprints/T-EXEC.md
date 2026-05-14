@@ -68,4 +68,7 @@ once T-AGENT lands the model tests collect and pass. Re-confirm in your worktree
   tests/gjallarhorn/test_execute_plan_partial_resume.py \
   tests/gjallarhorn/test_execute_plan_max_retries_exhausted.py -x
 ```
-…exits 0. Full suite green. Ruff clean.
+…exits 0. Ruff clean. **Acceptance is the 6 test files above ONLY** —
+downstream RED tests (T-SITREP-GEN, T-SITREP-LIST-*, T-SITREP-VIEW-*) are
+out of scope; do NOT implement them. Implement strictly the files in the
+task's `## Files in scope` list.
