@@ -11,12 +11,16 @@ activity — and synthesise them into clear, concise prose for engineering leads
 Respond with a single JSON object matching this schema:
 
 {
-  "narrative": "<string — 2–5 paragraphs of plain prose>",
-  "key_risks": ["<string>", ...],
-  "recommended_actions": ["<string>", ...]
+  "headline": "<string — one short sentence summarising the assessed period>",
+  "situation_assessment": "<string — 2–5 paragraphs of plain prose>",
+  "notable_activity": [
+    {"contributor": "<email>", "summary": "<string>"}
+  ]
 }
 
-Do not include any text outside the JSON object.
+`headline` and `situation_assessment` are required. `notable_activity` may be \
+an empty list when no contributor activity is worth surfacing. Do not include \
+any text outside the JSON object.
 
 ## Scope constraints
 
