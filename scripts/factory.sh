@@ -197,7 +197,9 @@ _process_pending() {
           # done.sh --blocked already appends to blackboard; _task_outcome stays "blocked"
         fi
       fi
-      (cd "$REPO_ROOT" && git add factory/tasks/ factory/blackboard.md && git commit -m "factory: \${_task_outcome} \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
+      (cd "$REPO_ROOT" && git pull --rebase 2>/dev/null || true; \
+        git diff --name-only --diff-filter=U 2>/dev/null | xargs -r git checkout --theirs -- 2>/dev/null || true; \
+        git add factory/tasks/ factory/blackboard.md && git commit -m "factory: \${_task_outcome} \$id" && git push) 2>&1 | tee -a "$REPO_ROOT/factory/logs/${role}.log" || true
       if [[ "$role" == "release-engineer" && "\$_task_outcome" == "done" ]]; then
         for _i in \$(seq 1 40); do
           sleep 60
@@ -268,7 +270,9 @@ $(ls -t REPO_ROOT_PLACEHOLDER/factory/tasks/done/ REPO_ROOT_PLACEHOLDER/factory/
     2>&1 | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.jsonl" \
          | jq -r 'select(.type=="text") | .text' 2>/dev/null \
          | tee -a "REPO_ROOT_PLACEHOLDER/factory/logs/le.log"
-  (cd "REPO_ROOT_PLACEHOLDER" && git pull --rebase 2>/dev/null; git add factory/ && git commit -m "factory: LE pass ($reason)" && git push) 2>/dev/null || true
+  (cd "REPO_ROOT_PLACEHOLDER" && git pull --rebase 2>/dev/null || true; \
+    git diff --name-only --diff-filter=U 2>/dev/null | xargs -r git checkout --theirs -- 2>/dev/null || true; \
+    git add factory/ && git commit -m "factory: LE pass ($reason)" && git push) 2>/dev/null || true
 }
 
 # Startup scan — ingest new issues, review any existing done/ tasks

@@ -85,4 +85,5 @@ echo "rescue-result: ${TASK_ID} → branch=${BRANCH} mr=!${MR} sha=${COMMIT_SHA}
 
 # ── Commit the rescue ─────────────────────────────────────────────────────────
 git add "$TARGET" 2>/dev/null || true
+git diff --name-only --diff-filter=U 2>/dev/null | xargs -r git checkout --theirs -- 2>/dev/null || true
 git commit -m "factory: rescue ${TASK_ID} (auto-filled empty Result block)" 2>/dev/null || true
