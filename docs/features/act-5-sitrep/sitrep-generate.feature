@@ -163,3 +163,32 @@ Feature: SITREP-GENERATE-1 Gjallarhorn SitRep generation pipeline (narrative pha
     Given a SitRep already exists for "atlas-backend" covering period "2026-05-11 09:00" → "2026-05-11 13:15"
     When the "generate_sitrep_for_project" task is enqueued again for the same project and period
     Then at most one SitRep record exists for "atlas-backend" with that period
+
+  # ---------------------------------------------------------------------------
+  # Model assignment
+  # ---------------------------------------------------------------------------
+
+  Scenario: SITREP-GEN-21 ExecutionPlan records the planning model used for plan creation
+    When the "generate_sitrep_for_project" task runs for "atlas-backend"
+    Then the ExecutionPlan row has a non-empty "planning_model" field
+    And the planning_model value matches the configured Opus-tier model name
+
+  Scenario: SITREP-GEN-22 Steps record their model and planning steps use the Opus model
+    When the "generate_sitrep_for_project" task runs for "atlas-backend"
+    Then every PlanStep has a non-empty "model_used" field after completion
+    And the step with action describing narrative composition has model_used equal to the configured Opus-tier model name
+    And all other steps have model_used equal to the configured Sonnet-tier model name
+
+  # ---------------------------------------------------------------------------
+  # Intra-plan tool-result caching
+  # ---------------------------------------------------------------------------
+
+  Scenario: SITREP-GEN-23 list_commits is not called more than once per plan run for the same arguments
+    Given the ExecutionPlan contains multiple steps that each require commit data for the same period
+    When the plan executes to completion
+    Then the "list_commits" tool was invoked exactly once across all steps for that period
+    And subsequent steps that required commit data received it from the intra-plan cache
+
+  Scenario: SITREP-GEN-24 Intra-plan tool-cache keys are removed when the plan terminates
+    When the "generate_sitrep_for_project" task completes for "atlas-backend"
+    Then no Redis keys matching "plan:{plan_id}:tool:*" remain for that plan_id

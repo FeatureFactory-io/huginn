@@ -6,4 +6,4 @@ class GjallarhornConfig(AppConfig):
     name = "gjallarhorn"
 
     def ready(self):
-        import gjallarhorn.tasks.sitrep_tasks  # noqa: F401 — registers signal receiver
+        pass  # TODO(sitrep-sprint): import gjallarhorn.tasks.sitrep_tasks to register sync signal receiver

@@ -35,7 +35,8 @@
     {% else %}
     <button type="button" class="btn btn-link btn-sm px-0 py-0 disabled text-muted text-decoration-none" disabled aria-disabled="true" data-testid="project-sync-now-disabled">Sync now (archived)</button>
     {% endif %}
-    <a class="btn btn-primary btn-sm" href="{% url 'sitrep-list' project.slug %}" data-testid="project-open-sitreps"><i class="fa-solid fa-file-lines me-1"></i>Open SitReps</a>
+    {# TODO(sitrep-sprint): restore href="{% url 'sitrep-list' project.slug %}" once SITREP-LIST+FIND-1 lands #}
+    <a class="btn btn-primary btn-sm" href="#" data-testid="project-open-sitreps"><i class="fa-solid fa-file-lines me-1"></i>Open SitReps</a>
   </div>
 </section>
 

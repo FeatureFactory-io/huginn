@@ -737,9 +737,22 @@ class LLMResponse:
 ```
 
 **`ClaudeLLM`** (`gjallarhorn/llm/claude.py`):
-- Model: `claude-sonnet-4-6` with `thinking: {type: "enabled", budget_tokens: 8000}`
+- Accepts a `model` string at construction time; defaults to `claude-sonnet-4-6`.
+- Extended thinking enabled per invocation via `thinking: {type: "enabled", budget_tokens: 8000}`.
 - Anthropic **extended prompt caching** via `cache_control: {"type": "ephemeral"}` on four stable system blocks (see §17.6). Cache hit avoids re-billing those tokens; Claude's cache TTL is 5 minutes (refreshed on each hit).
 - Method `generate_with_tools()` is wrapped with `@retry_on_rate_limit(max_retries=3, base_delay=30, status_callback=...)`. The `status_callback` publishes a `rate_limit_status` SSE event to the conversation's Redis pub/sub channel (e.g. *"Hmm, I'm thinking… Give me 30 seconds."*), which the browser receives in real time via the `/chat/stream/` endpoint (see §17.11).
+
+**Model Assignment Policy** — Gjallarhorn uses three named LLM instances, created by `factory.py` and injected into `GjallarhornAgent`:
+
+| Task | Model | Factory instance | Location |
+|---|---|---|---|
+| Plan creation — Playbook → `ExecutionPlan` steps | `claude-opus-4-5` | `PlanningLLM` | `sitrep_service.py` / `create_plan()` |
+| Narrative composition + Decision proposals (final plan step) | `claude-opus-4-5` | `PlanningLLM` | `execute_single_step` — step tagged `is_planning=True` |
+| Per-Variable `execute_single_step` (tool calls + assessment) | `claude-sonnet-4-6` | `ExecutionLLM` | `plan_tasks.py` main loop |
+| Chat (`process_user_message`) | `claude-sonnet-4-6` | `ExecutionLLM` | `chat_tasks.py` |
+| Plan success/failure notifications (`_notify_ai_of_plan_*`) | `claude-haiku-3-5` | `NotificationLLM` | `plan_tasks.py` |
+
+`GjallarhornAgent.__init__` accepts two LLM parameters: `llm` (execution model, used for most steps and chat) and `planning_llm` (planning model, used for plan creation and narrative-compose steps). `execute_single_step` selects between them based on the step's `is_planning` flag. `factory.py` `create_agent(agent_type)` constructs and injects the correct instances for each role (sitrep generation, chat, decision execution).
 
 ---
 
@@ -816,7 +829,13 @@ class ExecutionPlan(Model):
     progress_current = IntegerField(default=0)
     progress_total   = IntegerField(default=0)
     progress_message = CharField(blank=True)
+    planning_model   = CharField(blank=True)  # model used for plan creation (e.g. claude-opus-4-5) — added in migration 0003
     created_at       = DateTimeField(auto_now_add=True)
+    # SitRep-scoped context — set by generate_sitrep_for_project task (migration 0002);
+    # NULL on plans created for other purposes (chat, decision execution)
+    sitrep_from_dt   = DateTimeField(null=True, blank=True)
+    sitrep_to_dt     = DateTimeField(null=True, blank=True)
+    sitrep_trigger   = CharField(max_length=16, blank=True, default="")  # 'automatic'|'manual'
 
 class PlanStep(Model):
     step_id              = UUIDField(primary_key=True, default=uuid4)
@@ -829,7 +848,25 @@ class PlanStep(Model):
     result               = JSONField(null=True)
     outcome_assessment   = TextField(blank=True)
     is_critical          = BooleanField(default=True)  # False → failure skips step, plan continues (post-MVP)
+    is_planning          = BooleanField(default=False)  # True → step uses PlanningLLM (plan-create + narrative-compose) — added in migration 0003
+    model_used           = CharField(blank=True)  # populated from LLMResponse.model after execute_single_step — added in migration 0003
     # UniqueConstraint(plan, order)
+
+# In sitrep/ — core SitRep record written after ExecutionPlan completion
+class SitRep(Model):
+    project              = ForeignKey('ingestion.Project', on_delete=CASCADE, related_name='sitreps')
+    generated_at         = DateTimeField(auto_now_add=True, db_index=True)
+    from_dt              = DateTimeField()
+    to_dt                = DateTimeField()
+    trigger              = CharField(max_length=16)     # 'automatic'|'manual'
+    mode_at_generation   = CharField(max_length=16, default='semi_auto')  # 'semi_auto'|'auto'
+    playbook_version     = IntegerField(null=True, blank=True)
+    headline             = CharField(max_length=200)
+    situation_assessment = TextField()
+    notable_activity     = JSONField(default=list, blank=True)
+    fragos_applied       = ManyToManyField('sitrep.Frago', blank=True, related_name='sitreps_applied_to')
+    source_plan          = ForeignKey('gjallarhorn.ExecutionPlan', null=True, blank=True, on_delete=SET_NULL)
+    # UniqueConstraint(project, to_dt)  — one SitRep per project per sync window end
 
 # In sitrep/ — links each Variable assessment back to the step that produced it
 class VariableDatapoint(Model):
@@ -885,6 +922,26 @@ Context assembly for each Gjallarhorn invocation:
 **Min-RAG for previous SitReps:** Gjallarhorn receives a short text index (date · period · headline Variable values · Decision count). If it needs detail it calls the `get_sitrep(sitrep_id)` tool — only that SitRep's content is fetched. This keeps the context window bounded as project history grows.
 
 **Cache economics:** Anthropic charges ~10 % of normal input-token price for cache reads. Blocks 1–4 together save ~8–18 k tokens per invocation once warmed. Write cost (first call with a new Playbook) is normal; all subsequent calls within the 5-minute TTL pay the read rate.
+
+**Intra-plan tool-result cache:** Within a single `ExecutionPlan` run, tool calls that share identical arguments are cached in Redis so the same data is not fetched more than once across steps. For example, a seven-Variable SitRep plan would otherwise call `list_commits` seven times with the same `(project, from_dt, to_dt)` — the cache collapses those to one real API call.
+
+- **Redis key pattern:** `plan:{plan_id}:tool:{tool_name}:{sha256(canonical_json(args))}` (no namespace collision with prompt-cache or session keys)
+- **TTL:** set to the plan's expected maximum runtime (default 600 s); keys are deleted explicitly by `plan.mark_completed()` / `plan.mark_failed()` — whichever fires first
+- **Hook:** `ToolExecutor.call(tool_name, args)` checks for the key before dispatching to the tool function; on cache miss it writes the result after dispatch
+- **Scope:** read-only tools only (`list_*`, `get_*`, `find_*`); write tools (`create_frago`, `approve_decision`, etc.) are never cached
+
+**Prompt-cache-block invalidation protocol:** §17.6's existing table describes cache blocks 1–4 with informal refresh triggers ("Playbook edit / version bump"). The following are the code-level invalidation hooks:
+
+| Block | Content | Invalidation trigger | Code hook |
+|---|---|---|---|
+| 1 | Base system prompt | Never (universal) | — |
+| 2 | Active Playbook | `Playbook.save()` / version bump | `sitrep/signals.py` → delete `gjallarhorn:cache_block:{project_id}:2` |
+| 3 | Active FRAGOs | FRAGO enable/disable/edit/revoke | `sitrep/signals.py` → delete `gjallarhorn:cache_block:{project_id}:3` |
+| 4 | Situational Awareness capsule | SA edit | `sitrep/signals.py` → delete `gjallarhorn:cache_block:{project_id}:4` |
+
+Invalidation deletes the Redis key; the block is rebuilt and re-cached on the next invocation (Anthropic write cost applies once; subsequent calls within the 5-minute TTL pay the read rate again).
+
+**Variable assessment memoization** — deferred. The narrative-only phase writes no `VariableDatapoint` rows (see §17.7 and `sitrep-generate.feature` SITREP-GEN-14). Memoising Variable assessments across syncs (skip LLM call when the data window is unchanged) will be addressed when the Variables sprint implements `VariableDatapoint` production.
 
 ---
 
@@ -1292,6 +1349,8 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | Chat streaming | SSE (`htmx-sse` + `StreamingHttpResponse` + Redis pub/sub) over HTMX polling | LLM responses and Plan progress need real-time push; polling adds 1–5 s lag and wastes requests; SSE is a unidirectional long-lived HTTP stream compatible with Django sync views when using `gthread` workers; Celery workers publish to Redis pub/sub, the `chat_stream` view subscribes and streams to browser |
 | FRAGO auditing | **`django-simple-history`** on FRAGO rows | Gives `FRAGOS-VIEW_FRAGO-1`'s chronological toggle/edit timeline without bespoke `FRAGOEvent` tables |
 | Semi-Auto Decision approvals | Branch outcomes run **inside the Django view/request** (`ToolExecutor`). Branch **C**: Jira **failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
+| AI model tiering | Opus (`claude-opus-4-5`) for plan creation + narrative synthesis; Sonnet (`claude-sonnet-4-6`) for per-Variable execution steps + Chat; Haiku (`claude-haiku-3-5`) for plan success/failure notifications | Reasoning depth proportional to task complexity; cost proportionality — high-judgment tasks warrant Opus, mechanical tool-call loops warrant Sonnet, formatting-only notifications warrant Haiku |
+| Execution-layer caching | Intra-plan tool-result cache (Redis, scoped to `plan_id`, cleared on termination); explicit prompt-cache-block invalidation via Django signals | Prevents duplicate `list_commits` calls across Variable steps in the same plan; makes prompt-cache block freshness code-anchored rather than informal |
 | Conversation scope | Exactly **one** `gjallarhorn.Conversation` (`UNIQUE(user, project)`), plus optional `conversation_type` | Sidebar + fullscreen share SSE + history per Project boundary |
 | Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |
 | Decisions Logic lines | Canonical **single markdown bullet** template per contribution (human + LLM readable) | Matches product decision; deterministic rendering for tooling |

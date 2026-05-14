@@ -38,7 +38,6 @@ from .views.projects import (
     ProjectsListView,
     ProjectsSyncNowView,
 )
-from .views.sitrep_views import sitrep_detail, sitrep_generate, sitrep_list
 from .views.situational_awareness import SituationalAwarenessEditView, SituationalAwarenessView
 from .views.ux_preview import palette_preview
 
@@ -77,9 +76,7 @@ urlpatterns = [
     path("projects/<int:pk>/archive/", ProjectsArchiveView.as_view(), name="projects-archive"),
     path("projects/<int:pk>/edit/", ProjectsEditView.as_view(), name="projects-edit"),
     path("projects/<int:pk>/sync/", ProjectsSyncNowView.as_view(), name="projects-sync-now"),
-    path("projects/<slug:project_slug>/sitreps/generate/", sitrep_generate, name="sitrep-generate"),
-    path("projects/<slug:project_slug>/sitreps/<int:pk>/", sitrep_detail, name="sitrep-detail"),
-    path("projects/<slug:project_slug>/sitreps/", sitrep_list, name="sitrep-list"),
+    # TODO(sitrep-sprint): sitrep-list, sitrep-generate, sitrep-detail URLs land in SITREP-LIST+FIND-1 / SITREP-VIEW_SITREP-1
     path("projects/<int:pk>/", ProjectsDetailView.as_view(), name="projects-detail"),
     path("health/", health_json, name="health-json"),
     path("ux/palette-preview/", palette_preview, name="ux-palette-preview"),
