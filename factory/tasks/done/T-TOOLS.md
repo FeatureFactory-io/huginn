@@ -1,8 +1,3 @@
-# Blocked
-
-reason: reason:status: field 'status' is empty
-
----
 
 ---
 id: T-TOOLS
@@ -138,7 +133,7 @@ Closes #65" \
 
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: done
+branch: "factory/T-TOOLS-tool-executor"
+mr: "24"
+commit_sha: "4a29710b737bb2917f8219964f6643454a239542"
