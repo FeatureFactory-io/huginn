@@ -340,3 +340,12 @@ Closes #61" \
   `system` user pattern or `null=True` if the model already supports it. If
   blocked, **stop** and flag in the result block — do not invent a new
   semantic for `Conversation`.
+
+# Result
+
+status: rescued
+branch: factory/T-SITREP-GEN-narrative-pipeline-v2
+mr: 30
+commit_sha: 53f8c04c
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
