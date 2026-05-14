@@ -249,11 +249,12 @@ Closes #61" \
   blocked, **stop** and flag in the result block — do not invent a new
   semantic for `Conversation`.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-SITREP-GEN-narrative-pipeline
+mr: 27
+commit_sha: 1a1f4370
 
-<!-- Fill all four fields before scripts/done.sh runs. Empty = blocked. -->
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
