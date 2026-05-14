@@ -201,9 +201,12 @@ Closes #77 (paired with T-SITREP-VIEW-STEPS)" \
 - Do NOT introduce edit/delete controls on this screen (VIEW-28).
 - Do NOT introduce `FOB-*` Screen IDs.
 
+
 # Result
 
-status:
-branch:
-mr:
-commit_sha:
+status: rescued
+branch: factory/T-SITREP-VIEW-IMPL-detail-screen
+mr: 34
+commit_sha: be5f6bd7
+
+Auto-filled by rescue-result.sh — worker exited without writing Result block.
