@@ -221,6 +221,62 @@
           </tr>
         </thead>
         <tbody>
+          {# ── Generating rows (ExecutionPlan pending/running/waiting_retry, no SitRep yet) ── #}
+          {% for p in in_progress_rows %}
+          <tr data-testid="sitrep-row-generating">
+            <td class="text-nowrap small text-muted">—</td>
+            <td class="text-nowrap small">{{ p.assessed_period }}</td>
+            <td>
+              <span class="badge {% if p.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ p.trigger_label }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-warning text-dark d-inline-flex align-items-center gap-1"
+                    data-testid="sitrep-row-generating-badge"
+                    aria-label="Generating">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Generating… ({{ p.progress_current }} / {{ p.progress_total }})
+              </span>
+            </td>
+            <td class="text-muted small fst-italic">In progress</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-muted small">—</td>
+            <td class="text-end ps-3"></td>
+          </tr>
+          {% endfor %}
+
+          {# ── Failed rows (ExecutionPlan failed, no SitRep written) ── #}
+          {% for f in failed_rows %}
+          <tr data-testid="sitrep-row-failed" class="table-danger">
+            <td class="text-nowrap small">{{ f.created_at }}</td>
+            <td class="text-nowrap small">{{ f.assessed_period }}</td>
+            <td>
+              <span class="badge {% if f.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ f.trigger_label }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-danger"
+                    data-testid="sitrep-row-failed-badge"
+                    aria-label="Status: Failed">Failed</span>
+            </td>
+            <td class="small text-danger">{{ f.last_error|truncatechars:80 }}</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-muted small">—</td>
+            <td class="text-end ps-3 align-middle">
+              <a href="{{ chat_url }}"
+                 class="btn btn-sm btn-outline-danger border-0 px-2"
+                 data-testid="sitrep-row-failed-chat-link"
+                 aria-label="View in Chat">
+                <i class="fa-solid fa-comments fa-fw" aria-hidden="true"></i> View in Chat
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+
           {% for r in rows %}
             {% url 'sitrep-view' project.pk r.id as sitrep_view_url %}
             <tr data-testid="sitrep-row-{{ r.id }}">

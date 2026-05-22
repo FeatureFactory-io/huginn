@@ -257,11 +257,17 @@ class SitRepListView(LoginRequiredMixin, View):
 
         since_last_label, since_last_disabled = _since_last_label(project)
 
+        try:
+            chat_url = reverse("chat-fullscreen")
+        except NoReverseMatch:
+            chat_url = "#"
+
         ctx = {
             "project": project,
             "rows": rows,
             "in_progress_rows": in_progress_rows,
             "failed_rows": failed_rows,
+            "chat_url": chat_url,
             "trigger_choices": [("automatic", "Auto"), ("manual", "Manual")],
             "pb_version_choices": pb_version_choices,
             "filter_trigger": filter_trigger,
