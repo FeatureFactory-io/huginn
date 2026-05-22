@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 def _sitrep_row(sr: SitRep) -> dict[str, Any]:
     return {
+        "row_type": "completed",
+        "_sort_dt": sr.generated_at,
         "id": sr.id,
         "generated_at": sr.generated_at.strftime("%Y-%m-%d %H:%M"),
         "assessed_period": f"{sr.from_dt.strftime('%a %H:%M')} \u2192 {sr.to_dt.strftime('%H:%M')}",
@@ -168,6 +170,8 @@ def _plan_failed_row(plan: ExecutionPlan) -> dict[str, Any]:
         (plan.last_error or "")[:80],
     )
     return {
+        "row_type": "failed",
+        "_sort_dt": plan.created_at,
         "plan_id": str(plan.plan_id),
         "assessed_period": assessed_period,
         "trigger": trigger,
@@ -250,7 +254,7 @@ class SitRepListView(LoginRequiredMixin, View):
             except ValueError:
                 pass
 
-        rows = [_sitrep_row(sr) for sr in qs[:50]]
+        completed_rows = [_sitrep_row(sr) for sr in qs[:50]]
 
         # Query ExecutionPlan rows for in-progress and failed generations that
         # have not yet produced a SitRep (i.e. source_plan not yet set on any
@@ -265,12 +269,16 @@ class SitRepListView(LoginRequiredMixin, View):
             _plan_generating_row(p) for p in plans_qs.filter(status__in=["pending", "running", "waiting_retry"])
         ]
         failed_rows = [_plan_failed_row(p) for p in plans_qs.filter(status="failed")]
+
+        # Merge failed and completed rows into a single list sorted newest-first.
+        # In-progress rows always float above since they have no generated_at yet.
+        rows = sorted(completed_rows + failed_rows, key=lambda r: r["_sort_dt"], reverse=True)
         logger.info(
             "SitRepListView | project=%s in_progress=%d failed=%d completed=%d",
             project.pk,
             len(in_progress_rows),
             len(failed_rows),
-            len(rows),
+            len(completed_rows),
         )
 
         pb_versions = (
@@ -300,7 +308,7 @@ class SitRepListView(LoginRequiredMixin, View):
             "project": project,
             "rows": rows,
             "in_progress_rows": in_progress_rows,
-            "failed_rows": failed_rows,
+            "failed_rows": [],  # folded into rows; kept for template backward-compat
             "chat_url": chat_url,
             "trigger_choices": [("automatic", "Auto"), ("manual", "Manual")],
             "pb_version_choices": pb_version_choices,

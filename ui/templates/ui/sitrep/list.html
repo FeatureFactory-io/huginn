@@ -292,14 +292,15 @@
           </tr>
           {% endfor %}
 
-          {# ── Failed rows (ExecutionPlan failed, no SitRep written) ── #}
-          {% for f in failed_rows %}
+          {% for r in rows %}
+          {% if r.row_type == "failed" %}
+          {# ── Failed row (ExecutionPlan failed, no SitRep written) ── #}
           <tr data-testid="sitrep-row-failed" class="table-danger">
-            <td class="text-nowrap small">{{ f.created_at }}</td>
-            <td class="text-nowrap small">{{ f.assessed_period }}</td>
+            <td class="text-nowrap small">{{ r.created_at }}</td>
+            <td class="text-nowrap small">{{ r.assessed_period }}</td>
             <td>
-              <span class="badge {% if f.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
-                {{ f.trigger_label }}
+              <span class="badge {% if r.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ r.trigger_label }}
               </span>
             </td>
             <td>
@@ -307,7 +308,7 @@
                     data-testid="sitrep-row-failed-badge"
                     aria-label="Status: Failed">Failed</span>
             </td>
-            <td class="small text-danger">{{ f.last_error|truncatechars:80 }}</td>
+            <td class="small text-danger">{{ r.last_error|truncatechars:80 }}</td>
             <td class="text-center text-muted">—</td>
             <td class="text-center text-muted">—</td>
             <td class="text-muted small">—</td>
@@ -320,9 +321,8 @@
               </a>
             </td>
           </tr>
-          {% endfor %}
-
-          {% for r in rows %}
+          {% else %}
+          {# ── Completed SitRep row ── #}
             {% url 'sitrep-view' project.pk r.id as sitrep_view_url %}
             <tr data-testid="sitrep-row-{{ r.id }}">
               <td class="text-nowrap small">{{ r.generated_at }}</td>
@@ -368,6 +368,7 @@
                 </div>
               </td>
             </tr>
+          {% endif %}
           {% empty %}
             <tr>
               <td colspan="9">
