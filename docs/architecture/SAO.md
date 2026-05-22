@@ -1,6 +1,6 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven `release/x.y.z` pipelines (staging deploy, then manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven tag-triggered pipelines (`git tag x.y.z && git push origin x.y.z` → lint → test → build → staging → manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
 
 ---
 
@@ -13,7 +13,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - PostgreSQL + Django ORM — relational model sufficient, no graph DB needed
 - Docker Compose everywhere — dev/prod parity, no K8s complexity
 - HTMX partial updates + Apache ECharts — server-rendered, testable UI
-- AWS Elastic Beanstalk + GitLab CI — release pipelines on `release/x.y.z` branches; **Makefile** + **`scripts/`** define build/deploy; GitLab wires `make` targets into jobs. Kaniko for daemonless image builds
+- AWS Elastic Beanstalk + GitLab CI — tag-triggered release pipelines (`x.y.z` semver tag on `main`); **Makefile** + **`scripts/`** define build/deploy; GitLab wires `make` targets into jobs. Kaniko for daemonless image builds
 - Blue/green deployment via `swap-environment-cnames` — two EB environments (`huginn-blue` / `huginn-green`); **staging** deploys to the inactive env first; **production** promotion is a **manual** GitLab job after review. Public DNS `huginn.featurefactory.io` → **CloudFront** (origin = `huginn-prod` EB CNAME); swap does not require Route53 or CloudFront changes
 - AWS RDS (PostgreSQL) in production — no containerised DB on EB; local dev retains the `db` Compose service
 
@@ -384,35 +384,38 @@ Existing resources (ECR, RDS, EB, IAM) will be brought under CDK management via 
 
 **Design:** The **Makefile** and **`scripts/`** own commands and sequencing. **`.gitlab-ci.yml`** only selects runner images, installs **GNU make** where available, and runs **`make <target>`** (or the same shell script the Make target wraps, for images that do not ship `make` — Kaniko and `release-cli`).
 
-**Workflow rule:** Pipelines run **only** for branches matching `release/x.y.z` (semver, e.g. `release/1.2.3`). There is **no** app pipeline on every `main` push.
+**Workflow rule:** Pipelines run **only** on **semver tags** matching `x.y.z` (e.g. `1.2.3`). No `v` prefix. No `release/` branch required. There is **no** app pipeline on every `main` push.
 
-**Release branch gate (validate stage):** `make verify-release` runs `scripts/ci-verify-release-branch.sh` — the Git tag `x.y.z` must already exist on `origin`, and the branch tip must equal `refs/tags/x.y.z` (same commit as the tag you intend to ship).
+**To ship:** push a semver tag from `main` — that is the entire trigger:
+```bash
+git tag 1.2.3 && git push origin 1.2.3
+# or:
+glab release create 1.2.3
+```
 
 **Pipeline stages (app):**
 ```
-validate (make verify-release)
-  → lint (make ci-lint)
+lint (make ci-lint)
   → test (make ci-test)
   → infra (child pipeline, only if infra/** changed)
   → build (bash scripts/ci-kaniko-build.sh — same as make ci-build)
   → deploy (make ci-staging-deploy = ci-prepare-aws + staging)
-  → release (bash scripts/ci-create-gitlab-release.sh — same as make gitlab-release)
+  → release (bash scripts/ci-create-gitlab-release.sh — uses CI_COMMIT_TAG)
   → promote_production (manual: make ci-promote = ci-prepare-aws + swap)
 ```
 
-**Infra pipeline:** `infra/gitlab-ci.yml` — triggered as a **child pipeline** from the parent when **`infra/**` changes** on a matching `release/x.y.z` branch. Stages: CDK assertion tests (`tests/infra/`), `cdk diff` (non-blocking), manual `cdk deploy` (stack selectable via `CDK_STACK`). Requires the same AWS GitLab CI variables as EB deploy jobs.
+**Infra pipeline:** `infra/gitlab-ci.yml` — triggered as a **child pipeline** when **`infra/**` changes** on a matching semver tag. Stages: CDK assertion tests (`tests/infra/`), `cdk diff` (non-blocking), manual `cdk deploy` (stack selectable via `CDK_STACK`). Requires the same AWS GitLab CI variables as EB deploy jobs.
 
 **Stage details:**
 
 | Stage / job | Runner image | What runs |
 |---|---|---|
-| `verify_release_branch` | `alpine:3.19` (+ git, bash, grep, make) | `make verify-release` |
 | `lint` | `python:3.12-slim` (+ make) | `make ci-lint` → `scripts/ci-lint.sh` (ephemeral venv + ruff) |
 | `test` | `python:3.12-slim` (+ make) | `make ci-test` → `scripts/ci-test.sh` (Node.js for jsii/CDK during pytest collection; `huginn.settings.test`, SQLite, etc.) |
 | `infra-pipeline` | (child) | See `infra/gitlab-ci.yml` |
-| `build` | `gcr.io/kaniko-project/executor:v1.23.2-debug` | `bash scripts/ci-kaniko-build.sh` — Kaniko pushes `huginn:${CI_COMMIT_SHORT_SHA}`, `huginn:${RELEASE_SEMVER}` (from branch name), and `huginn:latest` to ECR |
+| `build` | `gcr.io/kaniko-project/executor:v1.23.2-debug` | `bash scripts/ci-kaniko-build.sh` — Kaniko pushes `huginn:${CI_COMMIT_SHORT_SHA}`, `huginn:${CI_COMMIT_TAG}`, and `huginn:latest` to ECR |
 | `deploy_staging` | `python:3.12-slim` (+ make) | `make ci-staging-deploy` → AWS CLI install + `make staging` → `scripts/deploy-staging.sh` |
-| `create_release` | `registry.gitlab.com/gitlab-org/release-cli:latest` | `bash scripts/ci-create-gitlab-release.sh` — GitLab Release for tag `x.y.z` (requires **Job token** permission to create releases, if restricted in project settings) |
+| `create_release` | `registry.gitlab.com/gitlab-org/release-cli:latest` | `bash scripts/ci-create-gitlab-release.sh` — GitLab Release for `$CI_COMMIT_TAG` (requires **Job token** permission to create releases, if restricted in project settings) |
 | `promote_production` | `python:3.12-slim` (+ make), **manual** | `make ci-promote` → `scripts/promote-prod.sh` after human acceptance |
 
 **Why Kaniko:** GitLab shared runners are Alpine-based and lack a Docker daemon. Kaniko builds without DinD and avoids `glibc` issues with `aws-cli` v2 on Alpine.
@@ -451,9 +454,9 @@ validate (make verify-release)
 
 **Artifact registry:** AWS ECR — `411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn`.
 
-**Branch strategy:** Trunk development on `main` (MRs, tests in development). **Shipping** a version: tag `x.y.z` on the release commit on `main`, push branch `release/x.y.z` at that same commit → pipeline above. After staging sign-off, run **`promote_production`** in GitLab.
+**Branch strategy:** Trunk development on `main`. **Shipping** a version: tag `x.y.z` on `main` and push — pipeline triggers on the tag. After staging sign-off, run **`promote_production`** in GitLab. No release branch required.
 
-**Cursor / agents (optional):** A **dark-factory** Cursor skill (personal skill: `dark-factory`, see `SKILL.md` in that skill folder) describes milestone → integration → **BPE-06/07** → tag → `release/x.y.z` → staging → manual promote in LE language. It is **subordinate** to this SAO and the **Makefile** in this repository — reconcile there first.
+**Cursor / agents (optional):** A **dark-factory** Cursor skill (personal skill: `dark-factory`, see `SKILL.md` in that skill folder) describes milestone → integration → tag → staging → manual promote in LE language. It is **subordinate** to this SAO and the **Makefile** in this repository — reconcile there first.
 
 ---
 
@@ -461,13 +464,13 @@ validate (make verify-release)
 
 **Deployment strategy:** Blue/green via **`aws elasticbeanstalk swap-environment-cnames`**. Two EB environments (`huginn-blue`, `huginn-green`) are always running. **Staging:** new bits land on the *inactive* env first; smoke and review use that env’s EB CNAME (`STAGING_URL` from the deploy job). **Production:** the manual **`promote_production`** job swaps the `huginn-prod` CNAME to the env that **currently holds the staging deployment** (inactive), then smoke-tests `https://huginn.featurefactory.io` — i.e. you promote **the staging payload you already validated**, not a freshly chosen git ref. **Application deploys do not change Route53** for the public hostname — CloudFront origin remains the `huginn-prod` EB CNAME; only CDK-driven DNS work (e.g. `HuginnCdn`) changes Route53.
 
-**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) labels EB application versions and the primary ECR tag. The branch-derived semver (`release/x.y.z` → `x.y.z`) is an additional ECR tag. A **Git tag** `x.y.z` must exist and match the pipeline commit before the pipeline runs. **GitLab Release** is created in the pipeline after a successful staging deploy.
+**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) labels EB application versions and the primary ECR tag. `CI_COMMIT_TAG` (e.g. `1.2.3`) is the additional ECR tag. **GitLab Release** is created in the pipeline after a successful staging deploy.
 
 **Rollback:** Run **`promote_production` again** only after the *other* env holds the desired bits, or swap CNAMEs again from AWS / EB so traffic returns to the previously live environment (same mechanism as forward promotion). Target: on the order of minutes.
 
-**Release cadence:** **Semver release branches**, not continuous deploy-on-every-merge to production. Merge work to `main` as usual; cut **`release/x.y.z`** when ready to build, stage, and (after review) promote.
+**Release cadence:** Tag-driven. Merge work to `main` as usual; push a semver tag when ready to build, stage, and (after review) promote.
 
-**Hotfix:** Merge fix to `main`, tag a new patch (or move tag per team policy), push the corresponding `release/x.y.z` branch at that commit, run the pipeline, review staging, promote.
+**Hotfix:** Merge fix to `main`, push a new patch tag (e.g. `1.2.4`), run the pipeline, review staging, promote.
 
 ---
 

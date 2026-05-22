@@ -163,10 +163,9 @@ swap: ## Promote **current staging** (inactive EB) to prod — not HEAD/BRANCH. 
 # .gitlab-ci.yml is thin glue: install `make`, then call these targets. Kaniko and GitLab
 # release-cli images have no Make — those jobs invoke the same scripts as `make ci-build`
 # / `make gitlab-release` (see comments in .gitlab-ci.yml).
-
-.PHONY: verify-release
-verify-release: ## Validate release/x.y.z matches pushed tag x.y.z (CI validate stage)
-	bash scripts/ci-verify-release-branch.sh
+#
+# To ship: git tag x.y.z && git push origin x.y.z  (or: glab release create x.y.z)
+# Pipeline triggers on the tag: lint → test → build → staging → GitLab Release → manual promote.
 
 .PHONY: ci-lint
 ci-lint: ## [CI] Ruff check + format via ephemeral venv (same rules as make lint)
