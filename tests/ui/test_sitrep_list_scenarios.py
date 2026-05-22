@@ -704,3 +704,90 @@ def test_sitrep_list_find_05_failed_row_appears(commander_client, atlas_project,
     assert 'data-testid="sitrep-row-failed-chat-link"' in body, (
         "failed row must have a 'View in Chat' link with data-testid='sitrep-row-failed-chat-link'"
     )
+
+
+def test_sitrep_list_find_23_failed_row_sorts_below_newer_completed(
+    commander_client, atlas_project, atlas_conversation
+):
+    """# SCENARIO: SITREP-LIST+FIND-23
+
+    Scenario: SITREP-LIST+FIND-23 A failed row that is older than a completed
+              SitRep appears below it (mixed newest-first ordering)
+      Given an ExecutionPlan for "atlas-backend" failed at "2026-05-22 20:09"
+      And a completed SitRep was generated at "2026-05-22 20:34"
+      When I view the SitRep list
+      Then the completed SitRep row appears before the failed row
+    """
+    older_ts = timezone.make_aware(timezone.datetime(2026, 5, 22, 20, 9))
+    newer_ts = timezone.make_aware(timezone.datetime(2026, 5, 22, 20, 34))
+
+    plan = ExecutionPlan.objects.create(
+        conversation=atlas_conversation,
+        goal="Generate SitRep",
+        status="failed",
+        sitrep_from_dt=older_ts - timedelta(hours=4),
+        sitrep_to_dt=older_ts,
+        sitrep_trigger="manual",
+        last_error="something went wrong",
+    )
+    # Force the plan's created_at to the older timestamp.
+    ExecutionPlan.objects.filter(plan_id=plan.plan_id).update(created_at=older_ts)
+
+    completed = _make_sitrep(
+        atlas_project,
+        generated_at=newer_ts,
+        to_dt=newer_ts,
+        from_dt=newer_ts - timedelta(hours=4),
+        headline="Newest completed sitrep",
+    )
+
+    response = commander_client.get(_list_url(atlas_project))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    completed_pos = body.index(f'data-testid="sitrep-row-{completed.pk}"')
+    failed_pos = body.index('data-testid="sitrep-row-failed"')
+    assert completed_pos < failed_pos, "completed SitRep generated after a failed plan must appear above the failed row"
+
+
+def test_sitrep_list_find_24_failed_row_sorts_above_older_completed(
+    commander_client, atlas_project, atlas_conversation
+):
+    """# SCENARIO: SITREP-LIST+FIND-24
+
+    Scenario: SITREP-LIST+FIND-24 A failed row that is newer than a completed
+              SitRep appears above it (mixed newest-first ordering)
+      Given a completed SitRep was generated at "2026-05-22 20:09"
+      And an ExecutionPlan for "atlas-backend" failed at "2026-05-22 20:34"
+      When I view the SitRep list
+      Then the failed row appears before the completed SitRep row
+    """
+    older_ts = timezone.make_aware(timezone.datetime(2026, 5, 22, 20, 9))
+    newer_ts = timezone.make_aware(timezone.datetime(2026, 5, 22, 20, 34))
+
+    completed = _make_sitrep(
+        atlas_project,
+        generated_at=older_ts,
+        to_dt=older_ts,
+        from_dt=older_ts - timedelta(hours=4),
+        headline="Older completed sitrep",
+    )
+
+    plan = ExecutionPlan.objects.create(
+        conversation=atlas_conversation,
+        goal="Generate SitRep",
+        status="failed",
+        sitrep_from_dt=newer_ts - timedelta(hours=4),
+        sitrep_to_dt=newer_ts,
+        sitrep_trigger="manual",
+        last_error="something went wrong",
+    )
+    ExecutionPlan.objects.filter(plan_id=plan.plan_id).update(created_at=newer_ts)
+
+    response = commander_client.get(_list_url(atlas_project))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    failed_pos = body.index('data-testid="sitrep-row-failed"')
+    completed_pos = body.index(f'data-testid="sitrep-row-{completed.pk}"')
+    assert failed_pos < completed_pos, "failed plan newer than a completed SitRep must appear above it"

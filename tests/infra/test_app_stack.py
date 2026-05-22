@@ -96,5 +96,5 @@ def test_cloudwatch_alarm_exists(template: Template) -> None:
 def test_cloudwatch_alarm_name(template: Template) -> None:
     template.has_resource_properties(
         "AWS::CloudWatch::Alarm",
-        {"AlarmName": "huginn-celery-error-rate"},
+        {"AlarmName": "huginn-app-error-rate"},
     )
