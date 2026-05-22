@@ -94,13 +94,19 @@ class GjallarhornAgent:
         logger.info("plan=%s step %s calling tool %r with kwargs %s", plan.plan_id, step.order, step.tool, list(kwargs))
         result = self.tool_executor.execute(step.tool, **kwargs)
 
-        if result["success"] is False and step.is_critical:
-            raise ToolExecutionError(step.tool, result["error"])
+        if result["success"] is False:
+            if step.is_critical:
+                raise ToolExecutionError(step.tool, result["error"])
+            # Non-critical: mark step failed but let the plan continue.
+            step.result = result
+            step.outcome_assessment = f"Tool {step.tool!r}: failed — {result['error']}"
+            step.status = "failed"
+            step.model_used = ""
+            step.save()
+            return
 
         step.result = result
-        step.outcome_assessment = (
-            f"Tool {step.tool!r}: {'ok' if result['success'] else 'failed — ' + str(result['error'])}"
-        )
+        step.outcome_assessment = f"Tool {step.tool!r}: ok"
         step.status = "completed"
         step.model_used = ""
         step.save()

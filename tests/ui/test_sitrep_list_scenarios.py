@@ -507,11 +507,8 @@ def test_sitrep_list_find_19_custom_period_datetime_fields(commander_client, atl
 def test_sitrep_list_find_20_preset_fires_generate_toast(commander_client, atlas_project):
     """# SCENARIO: SITREP-LIST+FIND-20
 
-    Scenario: SITREP-LIST+FIND-20 Choosing a preset period fires generate request and shows toast
-      Given a SitRep for "atlas-backend" was generated 2 hours ago
-      When I click "Generate SitRep ▾"
-      And I select "Since last SitRep"
-      Then I see a toast "SitRep generation started — this may take a moment."
+    Scenario: SITREP-LIST+FIND-20 Choosing a preset period redirects to list with flash toast.
+      The toast is delivered via Django messages (consumed on first render, not replayed on reload).
     """
     when = timezone.now() - timedelta(hours=2)
     _make_sitrep(
@@ -522,14 +519,23 @@ def test_sitrep_list_find_20_preset_fires_generate_toast(commander_client, atlas
         headline="Prior 20",
     )
 
-    response = commander_client.get(
-        _list_url(atlas_project),
-        {"generated": "1", "period": "since_last"},
+    # POST to generate → follow redirect → list page with flash message
+    generate_url = reverse("sitrep-generate", kwargs={"project_pk": atlas_project.pk})
+    response = commander_client.post(
+        generate_url,
+        {"period": "since_last"},
+        follow=True,
     )
     assert response.status_code == 200
     body = response.content.decode()
     assert 'data-testid="sitrep-generation-toast"' in body
     assert "SitRep generation started — this may take a moment." in body
+
+    # Reload the same list URL — the flash message must NOT reappear
+    second = commander_client.get(_list_url(atlas_project))
+    assert "SitRep generation started" not in second.content.decode(), (
+        "Flash message must be consumed after first render — should not replay on reload"
+    )
 
 
 def test_sitrep_list_find_21_empty_state(commander_client, atlas_project):
@@ -581,9 +587,7 @@ def test_sitrep_list_find_22_generate_button_a11y_label(commander_client, atlas_
 # ---------------------------------------------------------------------------
 
 
-def test_sitrep_list_find_03_generating_row_appears(
-    commander_client, atlas_project, atlas_conversation
-):
+def test_sitrep_list_find_03_generating_row_appears(commander_client, atlas_project, atlas_conversation):
     """# SCENARIO: SITREP-LIST+FIND-03
 
     Scenario: SITREP-LIST+FIND-03 A generating row appears at the top of the list while a plan is running
@@ -628,14 +632,10 @@ def test_sitrep_list_find_03_generating_row_appears(
     # HTML slice contains no sitrep-row-view-* testid.
     gen_row_end = body.index("</tr>", gen_pos)
     gen_row_html = body[gen_pos:gen_row_end]
-    assert 'data-testid="sitrep-row-view-' not in gen_row_html, (
-        "generating row must not expose a View action link"
-    )
+    assert 'data-testid="sitrep-row-view-' not in gen_row_html, "generating row must not expose a View action link"
 
 
-def test_sitrep_list_find_04_generating_row_shows_progress(
-    commander_client, atlas_project, atlas_conversation
-):
+def test_sitrep_list_find_04_generating_row_shows_progress(commander_client, atlas_project, atlas_conversation):
     """# SCENARIO: SITREP-LIST+FIND-04
 
     Scenario: SITREP-LIST+FIND-04 The generating row shows step progress from the ExecutionPlan
@@ -667,9 +667,7 @@ def test_sitrep_list_find_04_generating_row_shows_progress(
     )
 
 
-def test_sitrep_list_find_05_failed_row_appears(
-    commander_client, atlas_project, atlas_conversation
-):
+def test_sitrep_list_find_05_failed_row_appears(commander_client, atlas_project, atlas_conversation):
     """# SCENARIO: SITREP-LIST+FIND-05
 
     Scenario: SITREP-LIST+FIND-05 A failed row appears in the list with the error reason when generation fails
@@ -698,9 +696,7 @@ def test_sitrep_list_find_05_failed_row_appears(
     assert response.status_code == 200
     body = response.content.decode()
 
-    assert 'data-testid="sitrep-row-failed"' in body, (
-        "expected data-testid='sitrep-row-failed' in response body"
-    )
+    assert 'data-testid="sitrep-row-failed"' in body, "expected data-testid='sitrep-row-failed' in response body"
     assert 'data-testid="sitrep-row-failed-badge"' in body, (
         "failed row must have data-testid='sitrep-row-failed-badge' on its status badge"
     )
