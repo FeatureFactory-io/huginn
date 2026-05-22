@@ -378,6 +378,32 @@ def sitrep_generate_view(request, project_pk: int):
     return redirect(list_url)
 
 
+class SitRepAllListView(LoginRequiredMixin, View):
+    """Global SitRep list — all projects, newest first. Navbar entry point."""
+
+    template_name = "ui/sitrep/all_list.html"
+
+    def get(self, request: HttpRequest) -> HttpResponse:
+        qs = SitRep.objects.select_related("project").order_by("-generated_at")[:100]
+        rows = []
+        for sr in qs:
+            local_from = timezone.localtime(sr.from_dt)
+            local_to = timezone.localtime(sr.to_dt)
+            rows.append(
+                {
+                    "id": sr.id,
+                    "project": sr.project,
+                    "generated_at": timezone.localtime(sr.generated_at).strftime("%Y-%m-%d %H:%M"),
+                    "assessed_period": f"{local_from.strftime('%a %H:%M')} \u2192 {local_to.strftime('%H:%M')}",
+                    "trigger": sr.trigger,
+                    "trigger_label": "Auto" if sr.trigger == "automatic" else "Manual",
+                    "headline": sr.headline,
+                    "pb_version": sr.playbook_version if sr.playbook_version is not None else 1,
+                }
+            )
+        return render(request, self.template_name, {"rows": rows, "active_nav": "sitreps"})
+
+
 def _since_this_label(sitrep: SitRep) -> str:
     """Return a human label for 'Since this SitRep' anchor in the generate dropdown."""
     delta = timezone.now() - sitrep.to_dt

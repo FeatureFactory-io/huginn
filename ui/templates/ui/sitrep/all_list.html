@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}SitReps · Huginn{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item active" aria-current="page">SitReps</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-file-lines hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>SitReps</span>
+    </h1>
+    <p class="text-muted small mb-0">All situation reports across every project, newest first.</p>
+  </div>
+</section>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">Generated at</th>
+            <th scope="col">Project</th>
+            <th scope="col">Assessed period</th>
+            <th scope="col">Trigger</th>
+            <th scope="col">Headline</th>
+            <th scope="col">Playbook version</th>
+            <th class="text-end ps-3" scope="col" style="width:3.25rem;">
+              <span class="visually-hidden">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr>
+            <td class="text-nowrap small">{{ r.generated_at }}</td>
+            <td class="small">
+              <a href="{% url 'sitrep-list' r.project.pk %}" class="text-decoration-none fw-medium">
+                {{ r.project.display_name|default:r.project.name }}
+              </a>
+            </td>
+            <td class="text-nowrap small">{{ r.assessed_period }}</td>
+            <td>
+              <span class="badge {% if r.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ r.trigger_label }}
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'sitrep-view' r.project.pk r.id %}"
+                 class="hg-list-name-link fw-medium d-inline-block">{{ r.headline }}</a>
+            </td>
+            <td class="small">v{{ r.pb_version }}</td>
+            <td class="text-end ps-3 align-middle">
+              <a href="{% url 'sitrep-view' r.project.pk r.id %}"
+                 class="btn btn-sm btn-outline-secondary border-0 px-2"
+                 aria-label="View SitRep">
+                <i class="fa-solid fa-file-lines fa-fw" aria-hidden="true"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="text-center py-5 text-muted">
+                <i class="fa-solid fa-file-lines fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+                <p class="mb-1 fw-medium">No SitReps yet.</p>
+                <p class="small mb-0">Open a project and click <strong>Generate SitRep</strong> to get started.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
