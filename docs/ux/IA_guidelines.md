@@ -845,7 +845,7 @@ Every list and data section must handle all three:
 | Data Source | `fa-plug` | |
 | FRAGO | `fa-flag` | |
 | Decision | `fa-gavel` | |
-| SitRep | `fa-file-lines` | |
+| SitRep | `fa-display-chart-up-circle-currency` | |
 | Variables | `fa-chart-line` | |
 | Contributors | `fa-users` | |
 | Action Stations | `fa-list-check` | |

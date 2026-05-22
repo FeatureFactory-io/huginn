@@ -672,7 +672,7 @@ The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into a
 - **Colour bar** (top edge, full-width): same hue as dominant health.
 - **Title row**: **Project name** + DataSource icon(s) + **health badge** pill (capitalised label: Red / Orange / Yellow / Green — dominant assessment from latest SitRep / variables). *(Gjallarhorn **Semi-Auto / Auto** mode pill is not shown on the current mock card.)*
 - **Headline**: one line under the title (latest SitRep narrative summary, e.g. "All monitored expectations met").
-- **SitRep micro-subcard** (`data-testid="project-card-{id}-sitrep-pill"`): compact **list-item style** block — left **primary accent** bar, soft **icon tile** (`fa-file-lines`), stacked **title** (latest SitRep headline as link → `SITREP-VIEW_SITREP-1`) and **meta row** (“Last SitRep” kicker + generation time). `z-2` above the card stretched link so the title link stays clickable. When none: muted icon tile + **No SitRep yet** (no link).
+- **SitRep micro-subcard** (`data-testid="project-card-{id}-sitrep-pill"`): compact **list-item style** block — left **primary accent** bar, soft **icon tile** (`fa-display-chart-up-circle-currency`), stacked **title** (latest SitRep headline as link → `SITREP-VIEW_SITREP-1`) and **meta row** (“Last SitRep” kicker + generation time). `z-2` above the card stretched link so the title link stays clickable. When none: muted icon tile + **No SitRep yet** (no link).
 - **Variables mini-strip**: abbreviations + coloured dots (tooltips); mock uses master-variable keys Tr, Tp, C, R, Q, X, Co.
 - **Footer**: last sync line (icon OK/warn) + playbook name + auto-track ⟳ vs pinned 📌 icon.
 

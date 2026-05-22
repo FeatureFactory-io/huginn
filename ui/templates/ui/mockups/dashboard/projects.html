@@ -55,7 +55,7 @@
                 {% if p.last_sitrep_pk %}
                   <div class="hg-sitrep-subcard-inner">
                     <div class="hg-sitrep-subcard-icon" aria-hidden="true">
-                      <i class="fa-solid fa-file-lines"></i>
+                      <i class="fa-solid fa-display-chart-up-circle-currency"></i>
                     </div>
                     <div class="hg-sitrep-subcard-body">
                       <a href="{% url 'mockup-sitrep-view' p.last_sitrep_pk %}"
@@ -71,7 +71,7 @@
                 {% else %}
                   <div class="hg-sitrep-subcard-inner hg-sitrep-subcard-inner--empty">
                     <div class="hg-sitrep-subcard-icon hg-sitrep-subcard-icon--muted" aria-hidden="true">
-                      <i class="fa-solid fa-file-lines"></i>
+                      <i class="fa-solid fa-display-chart-up-circle-currency"></i>
                     </div>
                     <div class="hg-sitrep-subcard-body">
                       <span class="hg-sitrep-subcard-title is-static text-muted" data-testid="project-card-{{ p.id }}-sitrep-empty">No SitRep yet</span>
