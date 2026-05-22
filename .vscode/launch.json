@@ -6,16 +6,16 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/manage.py",
-            "args": ["runserver", "0.0.0.0:8000"],
+            "args": ["runserver", "--noreload", "0.0.0.0:8000"],
             "django": true,
             "justMyCode": false,
+            "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.env",
             "env": {
                 "DJANGO_SETTINGS_MODULE": "huginn.settings.local",
                 "POSTGRES_HOST": "localhost",
                 "REDIS_URL": "redis://localhost:6379/0"
             },
-            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 10
@@ -96,7 +96,6 @@
             "name": "Huginn: Django + Celery (worker + beat)",
             "configurations": ["Django: Run Server", "Celery: Worker", "Celery: Beat"],
             "stopAll": true,
-            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 1
@@ -106,7 +105,6 @@
             "name": "Huginn: Django + Celery worker only",
             "configurations": ["Django: Run Server", "Celery: Worker"],
             "stopAll": true,
-            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 2

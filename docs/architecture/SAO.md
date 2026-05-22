@@ -1,6 +1,6 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven `release/x.y.z` pipelines (staging deploy, then manual prod promote) — see §9*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven `release/x.y.z` pipelines (staging deploy, then manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
 
 ---
 
@@ -747,12 +747,12 @@ class LLMResponse:
 | Task | Model | Factory instance | Location |
 |---|---|---|---|
 | Plan creation — Playbook → `ExecutionPlan` steps | `claude-opus-4-5` | `PlanningLLM` | `sitrep_service.py` / `create_plan()` |
-| Narrative composition + Decision proposals (final plan step) | `claude-opus-4-5` | `PlanningLLM` | `execute_single_step` — step tagged `is_planning=True` |
-| Per-Variable `execute_single_step` (tool calls + assessment) | `claude-sonnet-4-6` | `ExecutionLLM` | `plan_tasks.py` main loop |
+| SitRep narrative synthesis (planning step, `is_planning=True`) | `claude-opus-4-5` | `PlanningLLM` | `execute_single_step` → `_execute_planning_step` |
+| Data-collection steps (`is_planning=False`) | **no LLM** | — | `execute_single_step` → `_execute_data_step` (direct tool call) |
 | Chat (`process_user_message`) | `claude-sonnet-4-6` | `ExecutionLLM` | `chat_tasks.py` |
 | Plan success/failure notifications (`_notify_ai_of_plan_*`) | `claude-haiku-3-5` | `NotificationLLM` | `plan_tasks.py` |
 
-`GjallarhornAgent.__init__` accepts two LLM parameters: `llm` (execution model, used for most steps and chat) and `planning_llm` (planning model, used for plan creation and narrative-compose steps). `execute_single_step` selects between them based on the step's `is_planning` flag. `factory.py` `create_agent(agent_type)` constructs and injects the correct instances for each role (sitrep generation, chat, decision execution).
+`GjallarhornAgent.__init__` accepts two LLM parameters: `llm` (execution model, used for chat) and `planning_llm` (planning model, used for plan creation and narrative-compose steps). `execute_single_step` routes to `_execute_data_step` (no LLM) or `_execute_planning_step` (single LLM call) based on the step's `is_planning` flag. `factory.py` `create_agent(agent_type)` constructs and injects the correct instances for each role (sitrep generation, chat, decision execution).
 
 ---
 
@@ -787,25 +787,26 @@ class LLMResponse:
 
 In Chat, Gjallarhorn receives a pre-built `ProjectContextSnapshot` (active Playbook + FRAGOs + SitAwareness + recent SitReps index) in the prompt — AI reads from it rather than calling `list_*` tools. After any write tool mutates state, the snapshot is invalidated in Redis (5-minute TTL). During Plan execution, the full tool set is available so each step can freely query any entity.
 
-**Hybrid step execution** — each `PlanStep` gets its own LLM invocation rather than mechanical tool-call parsing:
+**Two-path step execution** — `execute_single_step` dispatches based on `step.is_planning`:
 
 ```
 execute_single_step(plan, step):
-  1. Build step prompt:
-       - Full workflow context (Playbook goal, Variable definitions)
-       - Previous step results (continuity — prevents hallucinating IDs or values)
-       - Step-specific instruction:
-           "STEP GOAL: {step.action}
-            REASONING: {step.reasoning_why_needed}
-            PREVIOUS STEPS COMPLETED: {formatted_results}
-            Execute this step now using available tools."
-  2. Call LLM → LLM decides which tools to call
-  3. Execute tool calls via ToolExecutor
-  4. LLM synthesises results → stored as step.result + step.outcome_assessment
-  5. Step marked 'completed'; next step picks up synthesised context
+  if step.is_planning is False  →  _execute_data_step(plan, step):
+    1. Look up tool kwargs from plan (from_dt/to_dt → list_commits, at_dt → list_active_fragos, etc.)
+    2. Call tool_executor.execute(step.tool, **kwargs) directly — no LLM
+    3. step.result = raw tool response {success, result, error}
+    4. step.status = 'completed'  (if critical and tool fails → raise ToolExecutionError)
+
+  if step.is_planning is True   →  _execute_planning_step(plan, step):
+    1. Gather results from all prior completed data steps (step.result["result"])
+    2. Format as structured COLLECTED PROJECT DATA context block
+    3. Build system blocks: SITREP_NARRATIVE_SYSTEM_PROMPT + Playbook + FRAGOs + SA (cached)
+    4. Single LLM call:  generate_with_tools(messages=[step_prompt + collected_data], system_blocks)
+    5. step.result = {tool_results, synthesis}; step.outcome_assessment = LLM content
+    6. step.status = 'completed'; step.model_used = response.model
 ```
 
-This prevents the class of bugs where pre-parsing step descriptions into literal tool calls causes the AI to hallucinate data IDs or skip reasoning about intermediate results.
+For the canonical SitRep plan this means **exactly one Anthropic API call** per generation (step 5). Steps 1–4 are deterministic: they call registered tools directly and store raw data that step 5 reads as context.
 
 ---
 
@@ -847,9 +848,10 @@ class PlanStep(Model):
     status               = CharField()  # pending|running|completed|failed
     result               = JSONField(null=True)
     outcome_assessment   = TextField(blank=True)
-    is_critical          = BooleanField(default=True)  # False → failure skips step, plan continues (post-MVP)
-    is_planning          = BooleanField(default=False)  # True → step uses PlanningLLM (plan-create + narrative-compose) — added in migration 0003
-    model_used           = CharField(blank=True)  # populated from LLMResponse.model after execute_single_step — added in migration 0003
+    is_critical          = BooleanField(default=True)  # False → failure skips step, plan continues
+    is_planning          = BooleanField(default=False)  # True → single LLM call (narrative synthesis); False → direct tool call (data collection) — migration 0003
+    tool                 = CharField(max_length=64, blank=True, default="")  # tool function to call for data steps (e.g. 'list_commits') — migration 0004; empty for planning steps
+    model_used           = CharField(blank=True)  # LLMResponse.model, only set on planning steps — migration 0003
     # UniqueConstraint(plan, order)
 
 # In sitrep/ — core SitRep record written after ExecutionPlan completion
@@ -955,24 +957,26 @@ Invalidation deletes the Redis key; the block is rebuilt and re-cached on the ne
 Sync Complete
   └─▶ generate_sitrep_for_project (Celery)
         ├─ create Conversation(type='sitrep_generation')
-        └─ Agent.create_plan(goal='Generate SitRep …', steps=[
-               "Get commits for period",
-               "Assess Variable: Freshness",       # → color + score
-               "Save Freshness VariableDatapoint",
-               "Get issue updates",
-               "Assess Variable: Progress",
-               "Save Progress VariableDatapoint",
-               …  (one assess + save pair per PlaybookVariable)
-               "Compose SitRep narrative",
-               "Propose Decisions",
-           ])
-          └─▶ execute_plan.delay(plan_id)
-                  └─▶ per step: tool calls via ToolExecutor → *services.py
-                  └─▶ _notify_ai_of_plan_success
-                          └─▶ Agent writes SitRep record + Decision records
-                              ├─ Semi-Auto: Decision.status = 'Proposed'
-                              └─ Autonomous: Decision.status = 'Auto-approved';
-                                            outcomes executed immediately
+        └─ build_narrative_plan_steps(project, from_dt, to_dt) → 5 canonical steps:
+               step 1 — "Get commits for period"          tool='list_commits'                    is_planning=False
+               step 2 — "Get contributor activity"        tool='get_contributor_activity'        is_planning=False
+               step 3 — "Load active FRAGOs in window"    tool='list_active_fragos'              is_planning=False
+               step 4 — "Load Situational Awareness"      tool='get_active_situational_awareness' is_planning=False
+               step 5 — "Compose SitRep narrative"        tool=''                                is_planning=True
+           ──► execute_plan.delay(plan_id)
+                  │
+                  ├─ steps 1–4 (_execute_data_step):
+                  │     tool_executor.execute(step.tool, **date_kwargs)
+                  │     → store raw {success, result, error} in step.result
+                  │     → NO LLM call
+                  │
+                  └─ step 5 (_execute_planning_step):
+                        gather results from steps 1–4 → COLLECTED PROJECT DATA block
+                        + system blocks: SITREP_NARRATIVE_SYSTEM_PROMPT + Playbook + FRAGOs + SA
+                        → SINGLE LLM call → JSON {headline, situation_assessment, notable_activity}
+                        → _persist_sitrep_from_plan → SitRep record written
+                        ├─ Semi-Auto: Decision.status = 'Proposed'
+                        └─ Autonomous: Decision.status = 'Auto-approved'; outcomes executed immediately
 ```
 
 `VariableDatapoint` is written once per Variable per SitRep — the timestamped record powering the Variables tab charts. The SitRep record itself stores `from_dt`, `to_dt`, `trigger` (`'automatic'` / `'manual'`), and `mode_at_generation`.
@@ -1154,28 +1158,31 @@ sequenceDiagram
     SitRepTask->>Redis: publish plan_started
     Redis-->>Browser: SSE: plan_started → PlanProgressCard appears in Chat
 
-    loop per PlanStep
-        Agent->>LLM: execute_single_step(step + prev results)
-        alt 429 rate limit
-            LLM-->>Agent: RateLimitError
-            Agent->>Redis: publish rate_limit_status ("Hmm, thinking 30s…")
-            Redis-->>Browser: SSE: rate_limit_status → step shows ⏸ waiting
-            Agent->>LLM: retry after 30 s / 60 s / 120 s
-        end
-        LLM-->>Agent: tool_calls + synthesis
-        Agent->>ToolExec: execute tool (list_commits / assess_variable / …)
+    loop steps 1–4: data collection (no LLM)
+        Agent->>ToolExec: _execute_data_step — call step.tool directly (list_commits / get_contributor_activity / list_active_fragos / get_active_situational_awareness)
         ToolExec->>DB: query via *services.py
         DB-->>ToolExec: {success, result, error}
-        ToolExec-->>Agent: tool result
-        Agent->>DB: step.result = synthesis; step.status = completed
-        Agent->>DB: write VariableDatapoint (source_plan_step = this step)
+        ToolExec-->>Agent: raw tool result
+        Agent->>DB: step.result = raw data; step.status = completed
         Agent->>Redis: publish plan_step_update
         Redis-->>Browser: SSE: plan_step_update → step shows ✓ done
     end
 
-    Agent->>LLM: compose SitRep narrative + propose Decisions
-    LLM-->>Agent: SitRep text + Decision list
-    Agent->>DB: create SitRep(from_dt, to_dt, trigger, mode_at_generation)
+    Note over Agent,LLM: step 5 only — single LLM call with all collected data
+    Agent->>Agent: _execute_planning_step — gather results from steps 1–4
+    Agent->>LLM: generate_with_tools(COLLECTED DATA + SITREP_NARRATIVE_SYSTEM_PROMPT + Playbook + FRAGOs + SA)
+    alt 429 rate limit
+        LLM-->>Agent: RateLimitError
+        Agent->>Redis: publish rate_limit_status ("Hmm, thinking 30s…")
+        Redis-->>Browser: SSE: rate_limit_status → step shows ⏸ waiting
+        Agent->>LLM: retry after 30 s / 60 s / 120 s
+    end
+    LLM-->>Agent: JSON {headline, situation_assessment, notable_activity}
+    Agent->>DB: step.result = synthesis; step.status = completed
+    Agent->>Redis: publish plan_step_update
+    Redis-->>Browser: SSE: plan_step_update → step shows ✓ done
+
+    Agent->>DB: _persist_sitrep_from_plan → create SitRep(from_dt, to_dt, trigger, mode_at_generation)
     Agent->>DB: create Decision records (Proposed or Auto-approved)
     Agent->>DB: contribute SitRep-cycle Decisions to Decisions Logic FRAGO (usual; curator may edit later)
     Agent->>Redis: publish plan_completed
@@ -1351,7 +1358,8 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | Chat streaming | SSE (`htmx-sse` + `StreamingHttpResponse` + Redis pub/sub) over HTMX polling | LLM responses and Plan progress need real-time push; polling adds 1–5 s lag and wastes requests; SSE is a unidirectional long-lived HTTP stream compatible with Django sync views when using `gthread` workers; Celery workers publish to Redis pub/sub, the `chat_stream` view subscribes and streams to browser |
 | FRAGO auditing | **`django-simple-history`** on FRAGO rows | Gives `FRAGOS-VIEW_FRAGO-1`'s chronological toggle/edit timeline without bespoke `FRAGOEvent` tables |
 | Semi-Auto Decision approvals | Branch outcomes run **inside the Django view/request** (`ToolExecutor`). Branch **C**: Jira **failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
-| AI model tiering | Opus (`claude-opus-4-5`) for plan creation + narrative synthesis; Sonnet (`claude-sonnet-4-6`) for per-Variable execution steps + Chat; Haiku (`claude-haiku-3-5`) for plan success/failure notifications | Reasoning depth proportional to task complexity; cost proportionality — high-judgment tasks warrant Opus, mechanical tool-call loops warrant Sonnet, formatting-only notifications warrant Haiku |
+| AI model tiering | Opus (`claude-opus-4-5`) for plan creation + narrative synthesis; Sonnet (`claude-sonnet-4-6`) for Chat; Haiku (`claude-haiku-3-5`) for plan success/failure notifications | Reasoning depth proportional to task complexity; data-collection steps are deterministic tool calls — no model needed |
+| SitRep pipeline execution | Steps 1–4 are data-collection (`is_planning=False`, `PlanStep.tool` names the tool function, direct `ToolExecutor` call, no LLM); step 5 is the single LLM call (`is_planning=True`) that synthesises all collected data into the narrative | Reduces Anthropic API calls from 5 → 1 per SitRep; separates deterministic retrieval from LLM reasoning; data steps store raw results in `step.result` which the planning step assembles as a `COLLECTED PROJECT DATA` context block |
 | Execution-layer caching | Intra-plan tool-result cache (Redis, scoped to `plan_id`, cleared on termination); explicit prompt-cache-block invalidation via Django signals | Prevents duplicate `list_commits` calls across Variable steps in the same plan; makes prompt-cache block freshness code-anchored rather than informal |
 | Conversation scope | Exactly **one** `gjallarhorn.Conversation` (`UNIQUE(user, project)`), plus optional `conversation_type` | Sidebar + fullscreen share SSE + history per Project boundary |
 | Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |

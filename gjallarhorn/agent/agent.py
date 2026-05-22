@@ -1,5 +1,8 @@
 """GjallarhornAgent — create_plan, execute_single_step, process_user_message (deferred)."""
 
+import json
+import logging
+
 from django.db import transaction
 
 from gjallarhorn.agent.exceptions import ToolExecutionError
@@ -7,9 +10,17 @@ from gjallarhorn.agent.prompts import SITREP_NARRATIVE_SYSTEM_PROMPT
 from gjallarhorn.agent.tool_executor import ToolExecutor
 from gjallarhorn.llm.base import LLM
 from gjallarhorn.models import ExecutionPlan, PlanStep
-from gjallarhorn.services.factory import PLANNING_MODEL
+
+logger = logging.getLogger(__name__)
 
 NARRATIVE_TOOLS: list[dict] = []
+
+
+def _planning_model() -> str:
+    """Lazy import to avoid circular dependency: agent → services.factory → agent."""
+    from gjallarhorn.services.factory import PLANNING_MODEL  # noqa: PLC0415
+
+    return PLANNING_MODEL
 
 
 class GjallarhornAgent:
@@ -30,13 +41,14 @@ class GjallarhornAgent:
                 goal=goal,
                 status="pending",
                 progress_total=len(steps),
-                planning_model=PLANNING_MODEL,
+                planning_model=_planning_model(),
             )
             for i, s in enumerate(steps):
                 PlanStep.objects.create(
                     plan=plan,
                     order=i + 1,
                     action=s["action"],
+                    tool=s.get("tool", ""),
                     reasoning_why_needed=s["reasoning_why_needed"],
                     expected_outcome=s["expected_outcome"],
                     status="pending",
@@ -51,12 +63,57 @@ class GjallarhornAgent:
         return plan
 
     def execute_single_step(self, plan: ExecutionPlan, step: PlanStep) -> None:
-        """Hybrid execution: build prompt → LLM → tool dispatch → persist result."""
+        """Dispatch to data-collection or planning execution based on step type.
+
+        Data steps (is_planning=False): call the registered tool directly — no LLM.
+        Planning step (is_planning=True): one LLM call with all collected data as context.
+        """
+        if step.is_planning:
+            self._execute_planning_step(plan, step)
+        else:
+            self._execute_data_step(plan, step)
+
+    def process_user_message(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        raise NotImplementedError("Chat surfaces in a future milestone")
+
+    # ------------------------------------------------------------------
+    # Private: step execution
+    # ------------------------------------------------------------------
+
+    def _execute_data_step(self, plan: ExecutionPlan, step: PlanStep) -> None:
+        """Call the step's registered tool and persist the result — no LLM call."""
+        if not step.tool:
+            logger.warning("plan=%s step %s has no tool configured — skipping data fetch", plan.plan_id, step.order)
+            step.result = {"success": False, "result": None, "error": "no tool configured"}
+            step.outcome_assessment = "no tool configured"
+            step.status = "completed"
+            step.save()
+            return
+
+        kwargs = self._resolve_tool_kwargs(step.tool, plan)
+        logger.info("plan=%s step %s calling tool %r with kwargs %s", plan.plan_id, step.order, step.tool, list(kwargs))
+        result = self.tool_executor.execute(step.tool, **kwargs)
+
+        if result["success"] is False and step.is_critical:
+            raise ToolExecutionError(step.tool, result["error"])
+
+        step.result = result
+        step.outcome_assessment = (
+            f"Tool {step.tool!r}: {'ok' if result['success'] else 'failed — ' + str(result['error'])}"
+        )
+        step.status = "completed"
+        step.model_used = ""
+        step.save()
+        # TODO(chat-milestone): publish plan_step_update to Redis
+
+    def _execute_planning_step(self, plan: ExecutionPlan, step: PlanStep) -> None:
+        """Single LLM call: inject collected data from prior steps, produce narrative."""
+        collected = self._format_collected_data(plan)
         step_prompt = (
             f"STEP GOAL: {step.action}\n"
-            f"REASONING: {step.reasoning_why_needed}\n"
-            f"PREVIOUS STEPS COMPLETED: {self._format_previous_results(plan)}\n"
-            "Execute this step now using available tools."
+            f"REASONING: {step.reasoning_why_needed}\n\n"
+            f"COLLECTED PROJECT DATA:\n{collected}\n\n"
+            "Compose the SitRep narrative now."
         )
 
         system_blocks = self._build_system_blocks(plan)
@@ -67,6 +124,7 @@ class GjallarhornAgent:
             system_blocks=system_blocks,
         )
 
+        # LLM tool calls are theoretically possible (NARRATIVE_TOOLS is empty today but may grow)
         tool_results = []
         for tool_call in response.tool_calls:
             result = self.tool_executor.execute(tool_call["name"], **tool_call["input"])
@@ -81,21 +139,43 @@ class GjallarhornAgent:
         step.save()
         # TODO(chat-milestone): publish plan_step_update to Redis
 
-    def process_user_message(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
-        raise NotImplementedError("Chat surfaces in a future milestone")
+    # ------------------------------------------------------------------
+    # Private: helpers
+    # ------------------------------------------------------------------
 
-    def _format_previous_results(self, plan: ExecutionPlan) -> str:
-        completed = plan.steps.filter(status="completed").order_by("order")
-        if not completed.exists():
-            return "None"
-        lines = []
-        for s in completed:
-            assessment = s.outcome_assessment or ""
-            lines.append(f"Step {s.order} ({s.action}): {assessment}")
-        return "\n".join(lines)
+    def _resolve_tool_kwargs(self, tool_name: str, plan: ExecutionPlan) -> dict:
+        """Return the kwargs to pass to a data tool based on the plan's time window."""
+        if tool_name in ("list_commits", "get_contributor_activity"):
+            return {"from_dt": plan.sitrep_from_dt, "to_dt": plan.sitrep_to_dt}
+        if tool_name == "list_active_fragos":
+            return {"at_dt": plan.sitrep_to_dt}
+        return {}
+
+    def _format_collected_data(self, plan: ExecutionPlan) -> str:
+        """Build a human-readable context block from all completed data steps."""
+        sections = []
+        for step in plan.steps.filter(status="completed", is_planning=False).order_by("order"):
+            raw = step.result or {}
+            data = raw.get("result") if raw.get("success") else None
+            label = step.action
+            if data is not None:
+                try:
+                    body = json.dumps(data, default=str, indent=2)
+                except (TypeError, ValueError):
+                    body = str(data)
+            else:
+                error = raw.get("error", "unavailable")
+                body = f"[{label} unavailable: {error}]"
+            sections.append(f"### {label}\n{body}")
+        return "\n\n".join(sections) if sections else "[No data collected]"
 
     def _build_system_blocks(self, plan: ExecutionPlan) -> list[dict]:
-        """Assemble the 4 cached system prompt blocks per SAO §17.6."""
+        """Assemble cached system prompt blocks for the planning step.
+
+        Provides: system prompt + static commander context (playbook, FRAGOs, SA).
+        Dynamic data (commits, activity) is injected via the user message in
+        _execute_planning_step so it stays separate from the cached system context.
+        """
         blocks = [
             {
                 "type": "text",
@@ -104,12 +184,12 @@ class GjallarhornAgent:
             }
         ]
 
-        tool_names = [
+        static_tools = [
             ("get_active_playbook", "Active Playbook"),
             ("list_active_fragos", "Active FRAGOs"),
             ("get_active_situational_awareness", "Situational Awareness"),
         ]
-        for tool_name, label in tool_names:
+        for tool_name, label in static_tools:
             result = self.tool_executor.execute(tool_name)
             if result["success"] and result["result"] is not None:
                 text = str(result["result"])

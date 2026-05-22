@@ -4,12 +4,14 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime as _parse_datetime
 from django.views import View
 from django.views.decorators.http import require_POST
 
@@ -96,9 +98,7 @@ def _period_window(period: str, project: Project | None, now: datetime) -> tuple
         return from_dt.isoformat(), today_midnight.isoformat()
 
     if period != "since_last":
-        logger.warning(
-            "_period_window | unknown period=%r — falling back to since_last", period
-        )
+        logger.warning("_period_window | unknown period=%r — falling back to since_last", period)
 
     # since_last: anchor from the most recent completed SitRep, or today midnight.
     last = SitRep.objects.filter(project=project).order_by("-to_dt").first()
@@ -178,6 +178,40 @@ def _plan_failed_row(plan: ExecutionPlan) -> dict[str, Any]:
     }
 
 
+def _disabled_periods(
+    project,
+    active_windows: list,
+    since_last_already_disabled: bool,
+    now: datetime,
+) -> set[str]:
+    """Return the set of period preset names that already have an in-flight plan.
+
+    A period is "in-flight" when an active plan's ``sitrep_from_dt`` is within
+    5 minutes of the period's computed ``from_dt`` — i.e. it would be the same
+    window as the running one.
+    """
+    if not active_windows:
+        return set()
+
+    disabled: set[str] = set()
+    presets = ["2h", "4h", "today", "yesterday", "since_last"]
+    for preset in presets:
+        if preset == "since_last" and since_last_already_disabled:
+            continue  # already disabled for a different reason; skip double-marking
+        try:
+            from_iso, _to_iso = _period_window(preset, project, now)
+            from_dt = _parse_datetime(from_iso)
+        except Exception:
+            continue
+        for afrom, _ato in active_windows:
+            if afrom is None:
+                continue
+            if abs((afrom - from_dt).total_seconds()) < 300:
+                disabled.add(preset)
+                break
+    return disabled
+
+
 class SitRepListView(LoginRequiredMixin, View):
     """SITREP-LIST+FIND-1 — browse and filter SitReps for a project."""
 
@@ -221,23 +255,16 @@ class SitRepListView(LoginRequiredMixin, View):
         # Query ExecutionPlan rows for in-progress and failed generations that
         # have not yet produced a SitRep (i.e. source_plan not yet set on any
         # completed SitRep).
-        completed_plan_ids = (
-            SitRep.objects.filter(project=project, source_plan__isnull=False)
-            .values_list("source_plan_id", flat=True)
+        completed_plan_ids = SitRep.objects.filter(project=project, source_plan__isnull=False).values_list(
+            "source_plan_id", flat=True
         )
-        plans_qs = (
-            ExecutionPlan.objects
-            .filter(conversation__project=project, sitrep_from_dt__isnull=False)
-            .exclude(plan_id__in=completed_plan_ids)
+        plans_qs = ExecutionPlan.objects.filter(conversation__project=project, sitrep_from_dt__isnull=False).exclude(
+            plan_id__in=completed_plan_ids
         )
         in_progress_rows = [
-            _plan_generating_row(p)
-            for p in plans_qs.filter(status__in=["pending", "running", "waiting_retry"])
+            _plan_generating_row(p) for p in plans_qs.filter(status__in=["pending", "running", "waiting_retry"])
         ]
-        failed_rows = [
-            _plan_failed_row(p)
-            for p in plans_qs.filter(status="failed")
-        ]
+        failed_rows = [_plan_failed_row(p) for p in plans_qs.filter(status="failed")]
         logger.info(
             "SitRepListView | project=%s in_progress=%d failed=%d completed=%d",
             project.pk,
@@ -256,6 +283,13 @@ class SitRepListView(LoginRequiredMixin, View):
         pb_version_choices = [(str(v), f"v{v}") for v in pb_versions]
 
         since_last_label, since_last_disabled = _since_last_label(project)
+
+        # Compute which period preset buttons should be disabled (in-flight plan exists).
+        active_windows = [
+            (p.sitrep_from_dt, p.sitrep_to_dt)
+            for p in plans_qs.filter(status__in=["pending", "running", "waiting_retry"])
+        ]
+        disabled_periods = _disabled_periods(project, active_windows, since_last_disabled, now=timezone.now())
 
         try:
             chat_url = reverse("chat-fullscreen")
@@ -276,7 +310,7 @@ class SitRepListView(LoginRequiredMixin, View):
             "filter_to": filter_to,
             "since_last_label": since_last_label,
             "since_last_disabled": since_last_disabled,
-            "show_toast": request.GET.get("generated") == "1",
+            "disabled_periods": disabled_periods,
         }
         return render(request, self.template_name, ctx)
 
@@ -291,7 +325,13 @@ def sitrep_generate_view(request, project_pk: int):
         from_dt (ISO string, required when period="custom")
         to_dt   (ISO string, required when period="custom")
 
-    Returns HTTP 202 JSON for AJAX requests; 302 to ?generated=1 for form POSTs.
+    Calls generate_sitrep_for_project synchronously so the ExecutionPlan +
+    PlanSteps exist in the DB before the redirect fires. Inside the task
+    execute_plan is still dispatched to Celery via .delay(), so the web
+    thread only blocks for the DB writes (milliseconds), not the LLM call.
+
+    Returns HTTP 202 JSON for AJAX requests; 302 (clean URL) for form POSTs
+    with a Django flash message consumed on the first render.
     """
     project = get_object_or_404(Project, pk=project_pk)
 
@@ -309,33 +349,33 @@ def sitrep_generate_view(request, project_pk: int):
         to_dt_raw = request.POST.get("to_dt", "")
         from_dt = from_dt_raw or now.isoformat()
         to_dt = to_dt_raw or now.isoformat()
-        logger.info(
-            "sitrep_generate_view | custom branch | from_dt=%s to_dt=%s", from_dt, to_dt
-        )
+        logger.info("sitrep_generate_view | custom branch | from_dt=%s to_dt=%s", from_dt, to_dt)
     else:
         from_dt, to_dt = _period_window(period, project, now)
 
-    # Fire-and-forget: do NOT call result.get() — it blocks the web thread on the
-    # LLM round-trip and re-raises task exceptions as a 500. Task progress and
-    # any failure surface via Celery worker logs / chat-milestone SSE events.
+    # Call the task function directly (not via .delay()) so the
+    # ExecutionPlan + PlanSteps are written to the DB before we redirect.
+    # Inside generate_sitrep_for_project, execute_plan is still dispatched
+    # via .delay(), so the web thread only waits for a handful of DB writes.
     try:
-        result = generate_sitrep_for_project.delay(
+        task_id = generate_sitrep_for_project(
             project_id=project.pk,
             from_dt=from_dt,
             to_dt=to_dt,
             trigger="manual",
         )
-        task_id = getattr(result, "id", None)
     except Exception:
-        logger.exception("sitrep_generate_view: failed to enqueue generate_sitrep_for_project")
+        logger.exception("sitrep_generate_view: generate_sitrep_for_project failed")
         task_id = None
 
-    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.accepts("application/json")
-    if is_ajax:
+    # Only return JSON for explicit XHR callers — standard browser form POSTs must redirect.
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return JsonResponse({"status": "queued", "task_id": task_id}, status=202)
 
+    # Use a flash message (consumed on first render, not replayed on reload).
+    messages.success(request, "SitRep generation started — this may take a moment.")
     list_url = reverse("sitrep-list", kwargs={"project_pk": project_pk})
-    return redirect(f"{list_url}?generated=1&period={period}")
+    return redirect(list_url)
 
 
 def _since_this_label(sitrep: SitRep) -> str:

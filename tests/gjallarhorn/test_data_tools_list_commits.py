@@ -132,3 +132,34 @@ class TestListCommits:
         )
 
         assert result == []
+
+    def test_occurred_at_is_json_serializable(self):
+        """occurred_at is an ISO string, not a datetime — safe to store in a JSONField."""
+        import json
+
+        project = Project.objects.create(name="test-proj", slug="test-proj")
+        ds = DataSource.objects.create(name="test-ds", datasource_type="gitlab", base_url="https://gitlab.com")
+        contributor = Contributor.objects.create(datasource=ds, email="alice@example.com")
+        base_time = timezone.now()
+
+        Increment.objects.create(
+            project=project,
+            datasource=ds,
+            kind="commit",
+            external_id="commit-serial",
+            occurred_at=base_time,
+            contributor=contributor,
+        )
+
+        result = list_commits(
+            project_id=project.id,
+            from_dt=base_time - timezone.timedelta(minutes=1),
+            to_dt=base_time + timezone.timedelta(minutes=1),
+        )
+
+        assert len(result) == 1
+        # Must not raise — this is what PlanStep.result JSONField does on save
+        serialized = json.dumps(result)
+        assert isinstance(result[0]["occurred_at"], str), "occurred_at must be an ISO string, not a datetime object"
+        # Round-trips cleanly
+        assert result[0]["external_id"] in serialized

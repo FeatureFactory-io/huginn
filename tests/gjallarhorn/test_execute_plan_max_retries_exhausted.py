@@ -33,7 +33,9 @@ def plan_1_step_max_retries_1(db):
     project = Project.objects.create(name="mr-proj", slug="mr-proj")
     conv = Conversation.objects.create(user=user, project=project, conversation_type="sitrep_generation")
     plan = ExecutionPlan.objects.create(conversation=conv, goal="test", progress_total=1, max_retries=1)
-    PlanStep.objects.create(plan=plan, order=1, action="Step 1", reasoning_why_needed="r", expected_outcome="o")
+    PlanStep.objects.create(
+        plan=plan, order=1, action="Step 1", reasoning_why_needed="r", expected_outcome="o", is_planning=True
+    )
     return plan
 
 

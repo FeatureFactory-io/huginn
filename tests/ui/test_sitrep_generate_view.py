@@ -8,7 +8,7 @@ Unit tests verify ``_period_window`` computes the correct (from_dt, to_dt) ISO
 strings for each named period.
 """
 
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from django.urls import reverse
@@ -59,41 +59,31 @@ _BROWSER_POST = {"HTTP_ACCEPT": "text/html,application/xhtml+xml"}
 
 def test_generate_view_2h_smoke(commander_client, simple_project):
     """POST period=2h from a browser form returns 302 without exception."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "2h"}, **_BROWSER_POST
-    )
+    response = commander_client.post(_generate_url(simple_project), {"period": "2h"}, **_BROWSER_POST)
     assert response.status_code == 302
 
 
 def test_generate_view_4h_smoke(commander_client, simple_project):
     """POST period=4h from a browser form returns 302 without exception."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "4h"}, **_BROWSER_POST
-    )
+    response = commander_client.post(_generate_url(simple_project), {"period": "4h"}, **_BROWSER_POST)
     assert response.status_code == 302
 
 
 def test_generate_view_today_smoke(commander_client, simple_project):
     """POST period=today from a browser form returns 302 without exception."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "today"}, **_BROWSER_POST
-    )
+    response = commander_client.post(_generate_url(simple_project), {"period": "today"}, **_BROWSER_POST)
     assert response.status_code == 302
 
 
 def test_generate_view_yesterday_smoke(commander_client, simple_project):
     """POST period=yesterday from a browser form returns 302 without exception."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "yesterday"}, **_BROWSER_POST
-    )
+    response = commander_client.post(_generate_url(simple_project), {"period": "yesterday"}, **_BROWSER_POST)
     assert response.status_code == 302
 
 
 def test_generate_view_since_last_smoke(commander_client, simple_project):
     """POST period=since_last from a browser form returns 302 without exception."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "since_last"}, **_BROWSER_POST
-    )
+    response = commander_client.post(_generate_url(simple_project), {"period": "since_last"}, **_BROWSER_POST)
     assert response.status_code == 302
 
 
@@ -112,15 +102,13 @@ def test_generate_view_custom_smoke(commander_client, simple_project):
     assert response.status_code == 302
 
 
-def test_generate_view_redirects_to_list_with_generated_flag(commander_client, simple_project):
-    """POST redirects to the SitRep list screen with ?generated=1&period=... query params."""
-    response = commander_client.post(
-        _generate_url(simple_project), {"period": "2h"}, **_BROWSER_POST
-    )
+def test_generate_view_redirects_to_list_clean_url(commander_client, simple_project):
+    """POST redirects to the SitRep list screen as a clean URL (no ?generated=1 query param)."""
+    response = commander_client.post(_generate_url(simple_project), {"period": "2h"}, **_BROWSER_POST)
     assert response.status_code == 302
     location = response["Location"]
-    assert "generated=1" in location
-    assert "period=2h" in location
+    assert "generated=1" not in location, "Redirect must not carry ?generated=1 — reloads re-show the toast"
+    assert "period=" not in location, "Redirect must not carry period — clean URL required"
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +117,7 @@ def test_generate_view_redirects_to_list_with_generated_flag(commander_client, s
 # ---------------------------------------------------------------------------
 
 # A fixed, timezone-aware "now" used across all unit tests.
-_FIXED_NOW = datetime(2026, 5, 22, 14, 30, 0, tzinfo=dt_timezone.utc)
+_FIXED_NOW = datetime(2026, 5, 22, 14, 30, 0, tzinfo=UTC)
 
 
 def test_period_window_2h_from_dt():

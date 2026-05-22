@@ -22,7 +22,7 @@ def list_commits(project_id: int, from_dt, to_dt, limit: int = 200) -> list[dict
             "external_id": inc.external_id,
             "author_email": inc.contributor.email if inc.contributor else None,
             "message": inc.summary,
-            "occurred_at": inc.occurred_at,
+            "occurred_at": inc.occurred_at.isoformat() if inc.occurred_at else None,
         }
         for inc in qs
     ]

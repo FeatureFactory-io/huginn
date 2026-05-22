@@ -378,6 +378,7 @@ class TestSitRepGenerateScenarios:
                 raise RuntimeError("permanent failure")
 
         te = MagicMock()
+        te.execute.return_value = {"success": True, "result": None, "error": None}
         boom_agent = GjallarhornAgent(llm=BoomLLM(), tool_executor=te)
         with patch("gjallarhorn.tasks.plan_tasks._build_agent_for_plan", return_value=boom_agent):
             with pytest.raises(RuntimeError):
@@ -417,25 +418,22 @@ class TestSitRepGenerateScenarios:
 
     def test_sitrep_gen_22_step_model_used(self, scripted_llm_factory, atlas):
         """
-        Final ("compose narrative") step has model_used == PLANNING_MODEL;
-        all other steps have model_used == EXECUTION_MODEL.
+        Data steps (1–4) have model_used == "" (no LLM involved).
+        The final planning step has model_used == the model returned by the LLM response.
         """
         from unittest.mock import patch
 
-        from gjallarhorn.services.factory import EXECUTION_MODEL, PLANNING_MODEL
+        from gjallarhorn.services.factory import PLANNING_MODEL
 
         project, user, now = atlas
         from_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
         to_dt = now.replace(hour=13, minute=0, second=0, microsecond=0)
 
-        exec_resp = LLMResponse(
-            content=_NARRATIVE_JSON, stop_reason="end_turn", usage={}, tool_calls=[], model=EXECUTION_MODEL
-        )
         plan_resp = LLMResponse(
             content=_NARRATIVE_JSON, stop_reason="end_turn", usage={}, tool_calls=[], model=PLANNING_MODEL
         )
 
-        llm = scripted_llm_factory([exec_resp] * 4 + [plan_resp])
+        llm = scripted_llm_factory([plan_resp])
         te = MagicMock()
         te.execute.return_value = {"success": True, "result": None, "error": None}
         agent = GjallarhornAgent(llm=llm, tool_executor=te)
@@ -450,8 +448,10 @@ class TestSitRepGenerateScenarios:
 
         plan = ExecutionPlan.objects.get(plan_id=plan_id)
         steps = list(plan.steps.order_by("order"))
+        # Data steps do not call the LLM — no model recorded
         for step in steps[:-1]:
-            assert step.model_used == EXECUTION_MODEL, f"step {step.order} model_used mismatch"
+            assert step.model_used == "", f"data step {step.order} must not record a model"
+        # Planning step records the model returned by the LLM response
         assert steps[-1].model_used == PLANNING_MODEL
 
     def test_sitrep_gen_23_intra_plan_tool_cache_hit(self, atlas):

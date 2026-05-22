@@ -137,11 +137,14 @@ Feature: SITREP-LIST+FIND-1 Browse and trigger SitReps for a Project
     Then I see a From datetime field and a To datetime field
     And the To field defaults to the current time
 
-  Scenario: SITREP-LIST+FIND-20 Choosing a preset period fires generate request and shows toast
+  Scenario: SITREP-LIST+FIND-20 Choosing a preset period redirects to list with flash toast and pending row
     Given a SitRep for "atlas-backend" was generated 2 hours ago
     When I click "Generate SitRep ▾"
     And I select "Since last SitRep"
-    Then I see a toast "SitRep generation started — this may take a moment."
+    Then I am redirected to the SitRep list (no ?generated=1 in the URL)
+    And I see a flash toast "SitRep generation started — this may take a moment."
+    And the toast does not reappear when I reload the page
+    And a generating row is visible in the SitRep table
 
   # ---------------------------------------------------------------------------
   # Empty state

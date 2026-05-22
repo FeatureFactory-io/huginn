@@ -33,11 +33,14 @@ Feature: SITREP-GENERATE-1 Gjallarhorn SitRep generation pipeline (narrative pha
   # Manual trigger — period picker
   # ---------------------------------------------------------------------------
 
-  Scenario: SITREP-GEN-03 Manual trigger returns 202 and shows toast
+  Scenario: SITREP-GEN-03 Manual trigger redirects to list with flash toast and pending row
     Given a prior SitRep for "atlas-backend" was generated at "2026-05-11 09:00"
     When I POST to the generate SitRep endpoint for "atlas-backend" with period "Since last SitRep"
-    Then the response status is 202
-    And I see a toast "SitRep generation started — this may take a moment."
+    Then the response redirects to the SitRep list screen (HTTP 302)
+    And the redirect URL does not contain "generated=1"
+    And the SitRep list shows a flash toast "SitRep generation started — this may take a moment."
+    And the flash toast does not reappear when I reload the page
+    And a generating row is visible in the SitRep table before the plan completes
 
   Scenario: SITREP-GEN-04 Since last SitRep period resolves to last_sitrep.generated_at → now
     Given a prior SitRep for "atlas-backend" was generated at "2026-05-11 09:00"
@@ -173,11 +176,29 @@ Feature: SITREP-GENERATE-1 Gjallarhorn SitRep generation pipeline (narrative pha
     Then the ExecutionPlan row has a non-empty "planning_model" field
     And the planning_model value matches the configured Opus-tier model name
 
-  Scenario: SITREP-GEN-22 Steps record their model and planning steps use the Opus model
+  Scenario: SITREP-GEN-22 Planning step records Opus model; data-collection steps record no model
     When the "generate_sitrep_for_project" task runs for "atlas-backend"
-    Then every PlanStep has a non-empty "model_used" field after completion
-    And the step with action describing narrative composition has model_used equal to the configured Opus-tier model name
-    And all other steps have model_used equal to the configured Sonnet-tier model name
+    Then the step with action describing narrative composition has model_used equal to the configured Opus-tier model name
+    And all data-collection steps (is_planning=False) have model_used equal to ""
+
+  # ---------------------------------------------------------------------------
+  # Race-condition guard on manual trigger
+  # ---------------------------------------------------------------------------
+
+  Scenario: SITREP-GEN-25 Period option is disabled while a plan for that period is in-flight
+    Given an ExecutionPlan for "atlas-backend" is "running" covering the "Since last SitRep" window
+    When I view the SitRep list for "atlas-backend"
+    Then the "Since last SitRep" dropdown option is disabled
+
+  Scenario: SITREP-GEN-26 Wider period options remain enabled while a narrower plan is in-flight
+    Given an ExecutionPlan for "atlas-backend" is "running" covering the "2h" window
+    When I view the SitRep list for "atlas-backend"
+    Then the "Today" dropdown option is still enabled
+
+  Scenario: SITREP-GEN-27 List page auto-refreshes while a plan is in-progress
+    Given an ExecutionPlan for "atlas-backend" has status "running"
+    When I view the SitRep list
+    Then the page HTML includes an auto-refresh mechanism targeting the in-progress section
 
   # ---------------------------------------------------------------------------
   # Intra-plan tool-result caching
