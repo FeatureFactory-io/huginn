@@ -1,7 +1,7 @@
 """SitRep views — list screen, detail screen, and generate endpoint (manual trigger)."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.contrib.auth.decorators import login_required
@@ -13,6 +13,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.decorators.http import require_POST
 
+from gjallarhorn.models import ExecutionPlan
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from ingestion.models import Project
 from sitrep.models import SitRep
@@ -48,6 +49,133 @@ def _since_last_label(project: Project) -> tuple[str, bool]:
     else:
         label = f"Since last SitRep ({minutes}m ago)"
     return label, False
+
+
+def _period_window(period: str, project: Project | None, now: datetime) -> tuple[str, str]:
+    """Calculate ISO (from_dt, to_dt) strings for a named generation period.
+
+    :param period: One of ``"2h"``, ``"4h"``, ``"today"``, ``"yesterday"``,
+        ``"since_last"``. Unknown values log a WARNING and fall back to
+        ``"since_last"`` logic.
+    :param project: ``Project`` instance; used only when period is
+        ``"since_last"`` (or the fallback). May be ``None`` for the pure
+        computation cases (``"2h"``, ``"4h"``, ``"today"``, ``"yesterday"``).
+    :param now: Timezone-aware current datetime used as the reference point.
+    :return: Tuple of ``(from_dt_iso, to_dt_iso)`` as ISO-format strings.
+    :raises: Never raises; unknown periods fall back gracefully.
+    """
+    logger.info(
+        "_period_window | period=%r project_pk=%s",
+        period,
+        getattr(project, "pk", None),
+    )
+
+    if period == "2h":
+        from_dt = now - timedelta(hours=2)
+        logger.info("_period_window | 2h branch | from_dt=%s", from_dt)
+        return from_dt.isoformat(), now.isoformat()
+
+    if period == "4h":
+        from_dt = now - timedelta(hours=4)
+        logger.info("_period_window | 4h branch | from_dt=%s", from_dt)
+        return from_dt.isoformat(), now.isoformat()
+
+    if period == "today":
+        from_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info("_period_window | today branch | from_dt=%s", from_dt)
+        return from_dt.isoformat(), now.isoformat()
+
+    if period == "yesterday":
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        from_dt = today_midnight - timedelta(days=1)
+        logger.info(
+            "_period_window | yesterday branch | from_dt=%s to_dt=%s",
+            from_dt,
+            today_midnight,
+        )
+        return from_dt.isoformat(), today_midnight.isoformat()
+
+    if period != "since_last":
+        logger.warning(
+            "_period_window | unknown period=%r — falling back to since_last", period
+        )
+
+    # since_last: anchor from the most recent completed SitRep, or today midnight.
+    last = SitRep.objects.filter(project=project).order_by("-to_dt").first()
+    if last is not None:
+        from_dt = last.to_dt
+        logger.info(
+            "_period_window | since_last branch | last_sitrep_pk=%s from_dt=%s",
+            last.pk,
+            from_dt,
+        )
+    else:
+        from_dt = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        logger.info(
+            "_period_window | since_last branch | no prior sitrep → midnight from_dt=%s",
+            from_dt,
+        )
+    return from_dt.isoformat(), now.isoformat()
+
+
+def _plan_generating_row(plan: ExecutionPlan) -> dict[str, Any]:
+    """Serialize an in-progress ExecutionPlan into a generating-row context dict.
+
+    :param plan: ``ExecutionPlan`` with status in
+        ``{pending, running, waiting_retry}`` and ``sitrep_from_dt`` set.
+    :return: Dict with keys: ``plan_id``, ``assessed_period``, ``trigger``,
+        ``trigger_label``, ``progress_current``, ``progress_total``.
+    """
+    from_local = timezone.localtime(plan.sitrep_from_dt)
+    to_local = timezone.localtime(plan.sitrep_to_dt)
+    assessed_period = f"{from_local.strftime('%a %H:%M')} \u2192 {to_local.strftime('%H:%M')}"
+    trigger = plan.sitrep_trigger or "automatic"
+    trigger_label = "Auto" if trigger == "automatic" else "Manual"
+    logger.info(
+        "_plan_generating_row | plan_id=%s status=%s progress=%s/%s",
+        plan.plan_id,
+        plan.status,
+        plan.progress_current,
+        plan.progress_total,
+    )
+    return {
+        "plan_id": str(plan.plan_id),
+        "assessed_period": assessed_period,
+        "trigger": trigger,
+        "trigger_label": trigger_label,
+        "progress_current": plan.progress_current,
+        "progress_total": plan.progress_total,
+    }
+
+
+def _plan_failed_row(plan: ExecutionPlan) -> dict[str, Any]:
+    """Serialize a failed ExecutionPlan into a failed-row context dict.
+
+    :param plan: ``ExecutionPlan`` with ``status="failed"`` and
+        ``sitrep_from_dt`` set.
+    :return: Dict with keys: ``plan_id``, ``assessed_period``, ``trigger``,
+        ``trigger_label``, ``last_error``, ``created_at``,
+        ``conversation_id``.
+    """
+    from_local = timezone.localtime(plan.sitrep_from_dt)
+    to_local = timezone.localtime(plan.sitrep_to_dt)
+    assessed_period = f"{from_local.strftime('%a %H:%M')} \u2192 {to_local.strftime('%H:%M')}"
+    trigger = plan.sitrep_trigger or "automatic"
+    trigger_label = "Auto" if trigger == "automatic" else "Manual"
+    logger.info(
+        "_plan_failed_row | plan_id=%s last_error=%r",
+        plan.plan_id,
+        (plan.last_error or "")[:80],
+    )
+    return {
+        "plan_id": str(plan.plan_id),
+        "assessed_period": assessed_period,
+        "trigger": trigger,
+        "trigger_label": trigger_label,
+        "last_error": plan.last_error,
+        "created_at": timezone.localtime(plan.created_at).strftime("%Y-%m-%d %H:%M"),
+        "conversation_id": plan.conversation_id,
+    }
 
 
 class SitRepListView(LoginRequiredMixin, View):
@@ -90,6 +218,34 @@ class SitRepListView(LoginRequiredMixin, View):
 
         rows = [_sitrep_row(sr) for sr in qs[:50]]
 
+        # Query ExecutionPlan rows for in-progress and failed generations that
+        # have not yet produced a SitRep (i.e. source_plan not yet set on any
+        # completed SitRep).
+        completed_plan_ids = (
+            SitRep.objects.filter(project=project, source_plan__isnull=False)
+            .values_list("source_plan_id", flat=True)
+        )
+        plans_qs = (
+            ExecutionPlan.objects
+            .filter(conversation__project=project, sitrep_from_dt__isnull=False)
+            .exclude(plan_id__in=completed_plan_ids)
+        )
+        in_progress_rows = [
+            _plan_generating_row(p)
+            for p in plans_qs.filter(status__in=["pending", "running", "waiting_retry"])
+        ]
+        failed_rows = [
+            _plan_failed_row(p)
+            for p in plans_qs.filter(status="failed")
+        ]
+        logger.info(
+            "SitRepListView | project=%s in_progress=%d failed=%d completed=%d",
+            project.pk,
+            len(in_progress_rows),
+            len(failed_rows),
+            len(rows),
+        )
+
         pb_versions = (
             SitRep.objects.filter(project=project)
             .exclude(playbook_version__isnull=True)
@@ -104,6 +260,8 @@ class SitRepListView(LoginRequiredMixin, View):
         ctx = {
             "project": project,
             "rows": rows,
+            "in_progress_rows": in_progress_rows,
+            "failed_rows": failed_rows,
             "trigger_choices": [("automatic", "Auto"), ("manual", "Manual")],
             "pb_version_choices": pb_version_choices,
             "filter_trigger": filter_trigger,
@@ -133,16 +291,23 @@ def sitrep_generate_view(request, project_pk: int):
 
     period = request.POST.get("period", "since_last")
     now = timezone.now()
+    logger.info(
+        "sitrep_generate_view | project=%s period=%r user=%s",
+        project.pk,
+        period,
+        request.user.pk,
+    )
 
     if period == "custom":
         from_dt_raw = request.POST.get("from_dt", "")
         to_dt_raw = request.POST.get("to_dt", "")
         from_dt = from_dt_raw or now.isoformat()
         to_dt = to_dt_raw or now.isoformat()
+        logger.info(
+            "sitrep_generate_view | custom branch | from_dt=%s to_dt=%s", from_dt, to_dt
+        )
     else:
-        last = SitRep.objects.filter(project=project).order_by("-to_dt").first()
-        from_dt = last.to_dt.isoformat() if last else now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-        to_dt = now.isoformat()
+        from_dt, to_dt = _period_window(period, project, now)
 
     # Fire-and-forget: do NOT call result.get() — it blocks the web thread on the
     # LLM round-trip and re-raises task exceptions as a 500. Task progress and
