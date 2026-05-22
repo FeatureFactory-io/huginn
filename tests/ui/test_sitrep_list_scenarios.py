@@ -16,6 +16,7 @@ import pytest
 from django.urls import reverse
 from django.utils import timezone
 
+from gjallarhorn.models import Conversation, ExecutionPlan
 from ingestion.models import Project
 from playbooks.models import Playbook, PlaybookVersion
 from sitrep.models import SitRep
@@ -45,6 +46,21 @@ def atlas_project(commander_user):
         slug="atlas-backend",
         imported_by=commander_user,
         assigned_playbook=pb,
+    )
+
+
+@pytest.fixture
+def atlas_conversation(commander_user, atlas_project):
+    """A Conversation linking commander_user to atlas_project.
+
+    Required to create ExecutionPlan rows (plans belong to a conversation).
+    Note: Conversation has a unique constraint on (user, project), so one
+    fixture instance per test is safe with function-scoped DB transactions.
+    """
+    return Conversation.objects.create(
+        user=commander_user,
+        project=atlas_project,
+        conversation_type="sitrep",
     )
 
 
@@ -557,4 +573,138 @@ def test_sitrep_list_find_22_generate_button_a11y_label(commander_client, atlas_
     snippet = body[start:end]
     assert 'aria-label="Generate SitRep"' in snippet, (
         "generate-sitrep-btn must carry aria-label='Generate SitRep' as its accessible name"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Generating and failed ExecutionPlan rows (scenarios 03–05)
+# ---------------------------------------------------------------------------
+
+
+def test_sitrep_list_find_03_generating_row_appears(
+    commander_client, atlas_project, atlas_conversation
+):
+    """# SCENARIO: SITREP-LIST+FIND-03
+
+    Scenario: SITREP-LIST+FIND-03 A generating row appears at the top of the list while a plan is running
+      Given an ExecutionPlan for "atlas-backend" has status "running" with sitrep_from_dt
+            "2026-05-11 13:15" and sitrep_to_dt "2026-05-11 17:00"
+      And no SitRep exists for that plan
+      When I view the SitRep list
+      Then I see a row with data-testid "sitrep-row-generating" above any completed SitRep rows
+      And that row shows the assessed period "13:15 → 17:00"
+      And that row does not have a "View" action
+    """
+    from_dt = timezone.make_aware(timezone.datetime(2026, 5, 11, 13, 15))
+    to_dt = timezone.make_aware(timezone.datetime(2026, 5, 11, 17, 0))
+    ExecutionPlan.objects.create(
+        conversation=atlas_conversation,
+        goal="Generate SitRep",
+        status="running",
+        sitrep_from_dt=from_dt,
+        sitrep_to_dt=to_dt,
+        sitrep_trigger="manual",
+    )
+    # A completed SitRep must appear BELOW the generating row.
+    completed = _make_sitrep(atlas_project, headline="Completed SitRep 03")
+
+    response = commander_client.get(_list_url(atlas_project))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    assert 'data-testid="sitrep-row-generating"' in body, (
+        "expected data-testid='sitrep-row-generating' in response body"
+    )
+    # Generating row must appear before the completed SitRep row.
+    gen_pos = body.index('data-testid="sitrep-row-generating"')
+    completed_pos = body.index(f'data-testid="sitrep-row-{completed.pk}"')
+    assert gen_pos < completed_pos, "generating row must float above completed rows"
+
+    # Assessed period times must be visible (localtime rendering may vary by tz).
+    assert "13:15" in body
+    assert "17:00" in body
+
+    # The generating row has no "View" action — confirmed by checking the row's
+    # HTML slice contains no sitrep-row-view-* testid.
+    gen_row_end = body.index("</tr>", gen_pos)
+    gen_row_html = body[gen_pos:gen_row_end]
+    assert 'data-testid="sitrep-row-view-' not in gen_row_html, (
+        "generating row must not expose a View action link"
+    )
+
+
+def test_sitrep_list_find_04_generating_row_shows_progress(
+    commander_client, atlas_project, atlas_conversation
+):
+    """# SCENARIO: SITREP-LIST+FIND-04
+
+    Scenario: SITREP-LIST+FIND-04 The generating row shows step progress from the ExecutionPlan
+      Given an ExecutionPlan for "atlas-backend" has status "running" with progress 3 of 9 steps
+      And no SitRep exists for that plan
+      When I view the SitRep list
+      Then the generating row status cell contains "3 / 9"
+      And the status badge has data-testid "sitrep-row-generating-badge"
+    """
+    now = timezone.now()
+    ExecutionPlan.objects.create(
+        conversation=atlas_conversation,
+        goal="Generate SitRep",
+        status="running",
+        sitrep_from_dt=now - timedelta(hours=4),
+        sitrep_to_dt=now,
+        sitrep_trigger="automatic",
+        progress_current=3,
+        progress_total=9,
+    )
+
+    response = commander_client.get(_list_url(atlas_project))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    assert "3 / 9" in body, "generating row must display progress as '3 / 9'"
+    assert 'data-testid="sitrep-row-generating-badge"' in body, (
+        "generating row must have data-testid='sitrep-row-generating-badge' on the status badge"
+    )
+
+
+def test_sitrep_list_find_05_failed_row_appears(
+    commander_client, atlas_project, atlas_conversation
+):
+    """# SCENARIO: SITREP-LIST+FIND-05
+
+    Scenario: SITREP-LIST+FIND-05 A failed row appears in the list with the error reason when generation fails
+      Given an ExecutionPlan for "atlas-backend" has status "failed"
+      And the plan's last_error is "GitLab API unreachable after 3 retries"
+      And no SitRep exists for that plan
+      When I view the SitRep list
+      Then I see a row with data-testid "sitrep-row-failed"
+      And that row's status badge shows "Failed" with data-testid "sitrep-row-failed-badge"
+      And that row shows the text "GitLab API unreachable after 3 retries"
+      And that row has a "View in Chat" action with data-testid "sitrep-row-failed-chat-link"
+    """
+    error_msg = "GitLab API unreachable after 3 retries"
+    now = timezone.now()
+    ExecutionPlan.objects.create(
+        conversation=atlas_conversation,
+        goal="Generate SitRep",
+        status="failed",
+        sitrep_from_dt=now - timedelta(hours=4),
+        sitrep_to_dt=now,
+        sitrep_trigger="automatic",
+        last_error=error_msg,
+    )
+
+    response = commander_client.get(_list_url(atlas_project))
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    assert 'data-testid="sitrep-row-failed"' in body, (
+        "expected data-testid='sitrep-row-failed' in response body"
+    )
+    assert 'data-testid="sitrep-row-failed-badge"' in body, (
+        "failed row must have data-testid='sitrep-row-failed-badge' on its status badge"
+    )
+    assert error_msg in body, f"failed row must display the error message: {error_msg!r}"
+    assert 'data-testid="sitrep-row-failed-chat-link"' in body, (
+        "failed row must have a 'View in Chat' link with data-testid='sitrep-row-failed-chat-link'"
     )

@@ -22,3 +22,6 @@ python_files = ["tests.py", "test_*.py", "*_tests.py"]
 addopts = "-v --tb=short"
 log_cli = true
 log_cli_level = "INFO"
+markers = [
+    "slow: marks tests that hit real external APIs and take > 30 s (deselect with -m 'not slow')",
+]

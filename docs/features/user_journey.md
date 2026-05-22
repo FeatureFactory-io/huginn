@@ -719,9 +719,11 @@ Donland clicks a Project card on the Dashboard, or **SitReps** from the Project 
 - **Header**: "SitReps — atlas-backend"
 - **Top Actions**: **[Generate SitRep ▾]** — same period-picker dropdown as on `PROJECTS-VIEW_PROJECT-1` (see Act 2). Provides a shortcut so the Commander can trigger generation without navigating away from the SitRep list.
 - **History table** (newest first by default; there is **no** separate pinned "latest SitRep" card — the first row is the latest):
-  - Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
+  - Columns: Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
   - Filter: status, date range, Playbook version, trigger type
-- **Row Actions**: [View]
+  - **Generating row** — when an `ExecutionPlan` for this project has `sitrep_from_dt` set and `status ∈ {pending, running, waiting_retry}` and no corresponding `SitRep` exists yet, a row floats at the top of the table (above completed rows): `Generated at = "—"`, assessed period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = amber spinner badge "Generating… (N/M steps)"** where N/M come from `progress_current/progress_total`, `Headline = "—"`. No View action — generation is in progress.
+  - **Failed row** — when a plan terminates with `status=failed` and no `SitRep` was written, the row remains in the table: `Generated at = plan.created_at`, period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = red "Failed" badge**, error reason from `ExecutionPlan.last_error` truncated to ~80 chars in the Headline cell. **Row Actions = [View in Chat]** linking to that plan's `Conversation` (where `_notify_ai_of_plan_failure` posted the recovery analysis with partial results and next-step options).
+  - **Completed SitRep row** — the normal case once a `SitRep` record exists: all columns populated. **Row Actions = [View]** → `SITREP-VIEW_SITREP-1`.
 - **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Playbook is assigned. You can also generate one manually using [Generate SitRep ▾] above."
 
 #### Screen: SITREP-VIEW_SITREP-1

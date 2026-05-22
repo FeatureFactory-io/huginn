@@ -39,7 +39,9 @@ def plan_3_steps(db):
     conv = Conversation.objects.create(user=user, project=project, conversation_type="sitrep_generation")
     plan = ExecutionPlan.objects.create(conversation=conv, goal="test", progress_total=3)
     for i in range(1, 4):
-        PlanStep.objects.create(plan=plan, order=i, action=f"Step {i}", reasoning_why_needed="r", expected_outcome="o")
+        PlanStep.objects.create(
+            plan=plan, order=i, action=f"Step {i}", reasoning_why_needed="r", expected_outcome="o", is_planning=True
+        )
     return plan
 
 

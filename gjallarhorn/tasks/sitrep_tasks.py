@@ -60,10 +60,12 @@ def generate_sitrep_for_project(
     project = Project.objects.get(pk=project_id)
 
     if not project.assigned_playbook:
+        logger.info("generate_sitrep: project=%s has no assigned playbook — skipping", project_id)
         return None
 
     user = project.imported_by
     if user is None:
+        logger.info("generate_sitrep: project=%s has no imported_by user — skipping", project_id)
         return None
 
     from_dt_obj = parse_datetime(from_dt) if isinstance(from_dt, str) else from_dt
@@ -98,12 +100,22 @@ def generate_sitrep_for_project(
                 plan=plan,
                 order=s["order"],
                 action=s["action"],
+                tool=s.get("tool", ""),
                 reasoning_why_needed=s["reasoning_why_needed"],
                 expected_outcome=s["expected_outcome"],
                 status="pending",
                 is_planning=s.get("is_planning", False),
             )
 
+    logger.info(
+        "generate_sitrep: project=%s plan=%s created (%s steps, trigger=%s, %s → %s)",
+        project_id,
+        plan.plan_id,
+        len(steps),
+        trigger,
+        from_dt,
+        to_dt,
+    )
     execute_plan.delay(str(plan.plan_id))
     # TODO(chat-milestone): publish plan_started to Redis
     return str(plan.plan_id)

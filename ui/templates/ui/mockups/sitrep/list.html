@@ -37,12 +37,20 @@
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="generate-sitrep-dropdown">
         <li>
+          {% if since_last_disabled %}
           <span class="dropdown-item disabled text-muted"
                 data-bs-toggle="tooltip"
                 title="No previous SitRep — use a custom period"
                 data-testid="sitrep-period-since-last">
-            Since last SitRep (3h 20m ago)
+            {{ since_last_label }}
           </span>
+          {% else %}
+          <a class="dropdown-item"
+             href="?generated=1&period=since_last"
+             data-testid="sitrep-period-since-last">
+            {{ since_last_label }}
+          </a>
+          {% endif %}
         </li>
         <li><hr class="dropdown-divider"></li>
         <li>
@@ -68,7 +76,10 @@
         </li>
         <li><hr class="dropdown-divider"></li>
         <li>
-          <a class="dropdown-item" href="?generated=1&period=custom" data-testid="sitrep-period-custom">
+          <a class="dropdown-item"
+             href="#sitrep-custom-period-form"
+             data-bs-toggle="collapse"
+             data-testid="sitrep-period-custom">
             <i class="fa-solid fa-calendar-range fa-fw me-2 text-muted" aria-hidden="true"></i>Custom…
           </a>
         </li>
@@ -76,6 +87,34 @@
     </div>
   </div>
 </section>
+
+{# ── Custom period form (collapsed by default) ────────────────────────────── #}
+<div id="sitrep-custom-period-form" class="collapse mb-3">
+  <div class="card card-body border-0 shadow-sm rounded-3">
+    <form method="get" action="{% url 'mockup-sitrep-list' %}" class="row g-3 align-items-end">
+      <input type="hidden" name="state" value="{{ request.GET.state|default:'done' }}">
+      <div class="col-12 col-md-5">
+        <label class="form-label hg-label-caps mb-1" for="sitrep-custom-from-input">From</label>
+        <input type="datetime-local"
+               id="sitrep-custom-from-input"
+               name="from_dt"
+               class="form-control form-control-sm"
+               data-testid="sitrep-custom-from">
+      </div>
+      <div class="col-12 col-md-5">
+        <label class="form-label hg-label-caps mb-1" for="sitrep-custom-to-input">To</label>
+        <input type="datetime-local"
+               id="sitrep-custom-to-input"
+               name="to_dt"
+               class="form-control form-control-sm"
+               data-testid="sitrep-custom-to">
+      </div>
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100">Generate</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 {# ── Toast (stub: shown when ?generated=1 is present) ────────────────────── #}
 {% if show_toast %}
@@ -124,6 +163,24 @@
       {% endfor %}
     </select>
   </div>
+  <div class="col-12 col-md-6 col-xl-2">
+    <label class="form-label hg-label-caps mb-1" for="sitrep-filter-from">From</label>
+    <input type="date"
+           id="sitrep-filter-from"
+           name="from"
+           class="form-control form-control-sm hg-filter-control rounded-2"
+           value="{{ filter_from }}"
+           data-testid="sitrep-filter-from">
+  </div>
+  <div class="col-12 col-md-6 col-xl-2">
+    <label class="form-label hg-label-caps mb-1" for="sitrep-filter-to">To</label>
+    <input type="date"
+           id="sitrep-filter-to"
+           name="to"
+           class="form-control form-control-sm hg-filter-control rounded-2"
+           value="{{ filter_to }}"
+           data-testid="sitrep-filter-to">
+  </div>
 </form>
 
 {# ── History table ────────────────────────────────────────────────────────── #}
@@ -147,6 +204,62 @@
           </tr>
         </thead>
         <tbody>
+          {# ── Generating row (ExecutionPlan pending/running/waiting_retry, no SitRep yet) ── #}
+          {% if in_progress_row %}
+          <tr data-testid="sitrep-row-generating">
+            <td class="text-nowrap small text-muted">—</td>
+            <td class="text-nowrap small">{{ in_progress_row.assessed_period }}</td>
+            <td>
+              <span class="badge {% if in_progress_row.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ in_progress_row.trigger_label }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-warning text-dark d-inline-flex align-items-center gap-1"
+                    data-testid="sitrep-row-generating-badge"
+                    aria-label="Generating">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Generating… ({{ in_progress_row.progress_current }} / {{ in_progress_row.progress_total }})
+              </span>
+            </td>
+            <td class="text-muted small fst-italic">In progress</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-muted small">—</td>
+            <td class="text-end ps-3"></td>
+          </tr>
+          {% endif %}
+
+          {# ── Failed rows (ExecutionPlan failed, no SitRep written) ── #}
+          {% for f in failed_rows %}
+          <tr data-testid="sitrep-row-failed" class="table-danger">
+            <td class="text-nowrap small">{{ f.created_at }}</td>
+            <td class="text-nowrap small">{{ f.assessed_period }}</td>
+            <td>
+              <span class="badge {% if f.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
+                {{ f.trigger_label }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-danger"
+                    data-testid="sitrep-row-failed-badge"
+                    aria-label="Status: Failed">Failed</span>
+            </td>
+            <td class="small text-danger">{{ f.last_error|truncatechars:80 }}</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-center text-muted">—</td>
+            <td class="text-muted small">—</td>
+            <td class="text-end ps-3 align-middle">
+              <a href="/chat/"
+                 class="btn btn-sm btn-outline-danger border-0 px-2"
+                 data-testid="sitrep-row-failed-chat-link"
+                 aria-label="View in Chat">
+                <i class="fa-solid fa-comments fa-fw" aria-hidden="true"></i> View in Chat
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+
           {% for r in rows %}
             <tr data-testid="sitrep-row-{{ r.id }}">
               <td class="text-nowrap small">{{ r.generated_at }}</td>

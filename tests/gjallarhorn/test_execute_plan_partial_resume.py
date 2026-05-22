@@ -33,6 +33,7 @@ def plan_5_steps_two_done(db):
             expected_outcome="o",
             status=status,
             result=result,
+            is_planning=True,
         )
     return plan
 
