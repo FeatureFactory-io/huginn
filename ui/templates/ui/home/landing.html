@@ -8,39 +8,27 @@
 {% block content %}
 <div data-testid="landing-loaded" class="visually-hidden">Landing</div>
 
-<section class="hg-landing-hero rounded-3 shadow-sm mb-4" data-testid="landing-hero">
-  <div class="d-flex align-items-center gap-3 gap-md-4 flex-wrap">
-    <img src="{% static 'img/Huginn.jpeg' %}"
-         alt="Huginn"
-         width="96"
-         height="96"
-         class="rounded-2 bg-white p-2 shadow-sm flex-shrink-0"
-         data-testid="landing-brand-mark">
-    <div class="flex-grow-1 min-w-0">
-      <h1 class="hg-landing-title mb-1" data-testid="landing-title">Welcome to Huginn</h1>
-      <p class="hg-landing-tagline text-muted mb-0">Human-AI Command Composite for Engineering Project Managers</p>
+<section class="hg-landing-hero" data-testid="landing-hero">
+  <div class="hg-landing-overlay" aria-hidden="true"></div>
+  <div class="hg-landing-hero-inner">
+    <h1 class="hg-landing-title mb-4" data-testid="landing-title">
+      AI co-pilot for engineering leadership.
+    </h1>
+    <p class="hg-landing-tagline mb-5" data-testid="landing-tagline">
+      Unprecedented operational tempo of data-driven decision making with Human-AI Command Composite
+    </p>
+    <div class="d-flex gap-4 flex-wrap justify-content-center align-items-center">
+      <a href="{% url 'auth-login' %}" class="btn btn-primary btn-lg px-5" data-testid="landing-cta-signin">
+        Sign In
+      </a>
+      <a href="#landing-features" class="hg-landing-link" data-testid="landing-cta-learn">Learn more</a>
+      <span class="hg-landing-link hg-landing-link--disabled" aria-disabled="true" data-testid="landing-cta-register">Register</span>
     </div>
-  </div>
-
-  <hr class="my-3">
-
-  <p class="hg-landing-pitch mb-3" data-testid="landing-pitch">
-    Huginn ingests development signals from GitLab and Jira hourly, computes Master Variables —
-    <strong>TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION</strong> —
-    and produces a daily SitRep at morning planning so you know exactly where to spend your attention.
-  </p>
-
-  <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'auth-login' %}" class="btn btn-primary" data-testid="landing-cta-signin">
-      <i class="fa-solid fa-right-to-bracket me-1" aria-hidden="true"></i> Sign In
-    </a>
-    <a href="{% url 'welcome' %}" class="btn btn-outline-secondary" data-testid="landing-cta-status">
-      <i class="fa-solid fa-heart-pulse me-1" aria-hidden="true"></i> Service Status
-    </a>
   </div>
 </section>
 
-<section class="card border-0 shadow-sm rounded-3 mb-4" data-testid="landing-features">
+<div class="hg-landing-features-wrap">
+<section class="card border-0 shadow-sm rounded-3 mb-4" id="landing-features" data-testid="landing-features">
   <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold d-flex align-items-center">
     <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
     <span>What's inside</span>
@@ -104,4 +92,5 @@
     </div>
   </div>
 </section>
+</div>
 {% endblock %}

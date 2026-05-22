@@ -753,29 +753,94 @@ input.form-control-sm.hg-filter-control {
   border: 0;
 }
 
-/* Marketing landing — hero + features section for anonymous users at `/`. */
+/* Marketing landing — full-viewport hero (Taciturn-style) + features below. */
+
+/* Navbar floats transparently over the hero image. */
+body.hg-landing .hg-navbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: transparent;
+  border-bottom: none;
+}
+
+/* Main loses its padding so the hero fills from the very top of the viewport. */
+body.hg-landing main.hg-main {
+  padding: 0;
+}
+
+/* Full-viewport hero exactly like Taciturn's fixed inset-0 h-screen. */
 .hg-landing-hero {
-  background: linear-gradient(180deg, #ffffff 0%, var(--hg-primary-100) 100%);
-  border: 1px solid var(--hg-border);
-  padding: 2rem 1.75rem;
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-image: url('../img/cic2.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* 50% black overlay, same as Taciturn. */
+.hg-landing-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.50);
+  z-index: 0;
+}
+
+.hg-landing-hero-inner {
+  position: relative;
+  z-index: 10;
+  max-width: 700px;
+  padding: 0 1.25rem;
+  color: #ffffff;
 }
 
 .hg-landing-title {
-  color: var(--hg-primary);
-  font-size: clamp(1.75rem, 2.4vw + 1rem, 2.75rem);
+  font-size: 4rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
   line-height: 1.1;
+  color: #ffffff;
+  margin: 0;
 }
 
 .hg-landing-tagline {
-  font-size: clamp(0.95rem, 0.4vw + 0.85rem, 1.15rem);
+  font-size: 1.5rem;
+  color: #ffffff;
 }
 
-.hg-landing-pitch {
-  font-size: 1.0625rem;
-  line-height: 1.55;
-  max-width: 64rem;
+/* Ghost link buttons — white, no underline, no background. */
+.hg-landing-link {
+  color: #ffffff;
+  font-size: 1.125rem;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline;
+}
+
+.hg-landing-link:hover {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+}
+
+.hg-landing-link--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.hg-landing-features-wrap {
+  padding: 1.5rem 1.5rem 0;
 }
 
 .hg-landing-feature {
