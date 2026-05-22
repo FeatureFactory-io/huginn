@@ -1,5 +1,24 @@
 from django.shortcuts import render
 
+_IN_PROGRESS_ROW = {
+    "plan_id": "plan-abc-123",
+    "assessed_period": "Fri 17:00 → 21:00",
+    "trigger": "manual",
+    "trigger_label": "Manual",
+    "progress_current": 3,
+    "progress_total": 9,
+}
+
+_FAILED_ROW = {
+    "plan_id": "plan-xyz-456",
+    "assessed_period": "Thu 09:00 → 13:00",
+    "trigger": "automatic",
+    "trigger_label": "Auto",
+    "last_error": "GitLab API unreachable after 3 retries",
+    "created_at": "2026-05-11 09:00",
+    "conversation_id": 999,
+}
+
 _ALL_ROWS = [
     {
         "id": 2001,
@@ -50,13 +69,27 @@ def sitrep_list(request):
     proj = request.GET.get("project", "atlas-backend")
     filter_trigger = request.GET.get("trigger", "")
     filter_pb_version = request.GET.get("pb_version", "")
+    filter_from = request.GET.get("from", "")
+    filter_to = request.GET.get("to", "")
     show_toast = request.GET.get("generated") == "1"
+    # ?state=generating  → show in-progress row (default when ?generated=1)
+    # ?state=failed       → show failed row
+    # ?state=done         → show only completed rows
+    state = request.GET.get("state", "generating" if show_toast else "done")
 
     rows = _ALL_ROWS
     if filter_trigger:
         rows = [r for r in rows if r["trigger"] == filter_trigger]
     if filter_pb_version:
         rows = [r for r in rows if str(r["pb_version"]) == filter_pb_version]
+
+    in_progress_row = _IN_PROGRESS_ROW if state == "generating" else None
+    failed_rows = [_FAILED_ROW] if state == "failed" else []
+
+    since_last_disabled = len(rows) == 0
+    since_last_label = (
+        "Since last SitRep (3h 20m ago)" if not since_last_disabled else "Since last SitRep"
+    )
 
     return render(
         request,
@@ -67,9 +100,15 @@ def sitrep_list(request):
             "rows": rows,
             "filter_trigger": filter_trigger,
             "filter_pb_version": filter_pb_version,
+            "filter_from": filter_from,
+            "filter_to": filter_to,
             "trigger_choices": _TRIGGER_CHOICES,
             "pb_version_choices": _PB_VERSION_CHOICES,
             "show_toast": show_toast,
+            "in_progress_row": in_progress_row,
+            "failed_rows": failed_rows,
+            "since_last_disabled": since_last_disabled,
+            "since_last_label": since_last_label,
         },
     )
 
