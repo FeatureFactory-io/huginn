@@ -15,6 +15,7 @@
                 "POSTGRES_HOST": "localhost",
                 "REDIS_URL": "redis://localhost:6379/0"
             },
+            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 10
@@ -95,6 +96,7 @@
             "name": "Huginn: Django + Celery (worker + beat)",
             "configurations": ["Django: Run Server", "Celery: Worker", "Celery: Beat"],
             "stopAll": true,
+            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 1
@@ -104,6 +106,7 @@
             "name": "Huginn: Django + Celery worker only",
             "configurations": ["Django: Run Server", "Celery: Worker"],
             "stopAll": true,
+            "preLaunchTask": "Docker: Start db + redis",
             "presentation": {
                 "group": "Huginn",
                 "order": 2

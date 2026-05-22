@@ -977,6 +977,8 @@ Sync Complete
 
 `VariableDatapoint` is written once per Variable per SitRep — the timestamped record powering the Variables tab charts. The SitRep record itself stores `from_dt`, `to_dt`, `trigger` (`'automatic'` / `'manual'`), and `mode_at_generation`.
 
+**`SITREP-LIST+FIND-1` generation-state rows:** `SitRepListView` additionally queries `ExecutionPlan` rows for the Project where `sitrep_from_dt IS NOT NULL` (i.e., plans created by `generate_sitrep_for_project`) and no `SitRep` with `source_plan = plan` exists yet. Plans with `status ∈ {pending, running, waiting_retry}` render as a **Generating** row (amber spinner + `N/M steps` from `progress_current/progress_total`) floated above completed rows. Plans with `status = failed` render as a **Failed** row (`last_error` reason + [View in Chat] → the plan's `Conversation`, which holds the `_notify_ai_of_plan_failure` recovery analysis). This gives the Commander a persistent order-book view of ongoing and failed generations — not just the ephemeral toast on trigger.
+
 ---
 
 ### 17.8 Decision Lifecycle

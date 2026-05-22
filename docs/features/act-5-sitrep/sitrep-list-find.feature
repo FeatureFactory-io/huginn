@@ -24,6 +24,31 @@ Feature: SITREP-LIST+FIND-1 Browse and trigger SitReps for a Project
   # History table
   # ---------------------------------------------------------------------------
 
+  Scenario: SITREP-LIST+FIND-03 A generating row appears at the top of the list while a plan is running
+    Given an ExecutionPlan for "atlas-backend" has status "running" with sitrep_from_dt "2026-05-11 13:15" and sitrep_to_dt "2026-05-11 17:00"
+    And no SitRep exists for that plan
+    When I view the SitRep list
+    Then I see a row with data-testid "sitrep-row-generating" above any completed SitRep rows
+    And that row shows the assessed period "13:15 → 17:00"
+    And that row does not have a "View" action
+
+  Scenario: SITREP-LIST+FIND-04 The generating row shows step progress from the ExecutionPlan
+    Given an ExecutionPlan for "atlas-backend" has status "running" with progress 3 of 9 steps
+    And no SitRep exists for that plan
+    When I view the SitRep list
+    Then the generating row status cell contains "3 / 9"
+    And the status badge has data-testid "sitrep-row-generating-badge"
+
+  Scenario: SITREP-LIST+FIND-05 A failed row appears in the list with the error reason when generation fails
+    Given an ExecutionPlan for "atlas-backend" has status "failed"
+    And the plan's last_error is "GitLab API unreachable after 3 retries"
+    And no SitRep exists for that plan
+    When I view the SitRep list
+    Then I see a row with data-testid "sitrep-row-failed"
+    And that row's status badge shows "Failed" with data-testid "sitrep-row-failed-badge"
+    And that row shows the text "GitLab API unreachable after 3 retries"
+    And that row has a "View in Chat" action with data-testid "sitrep-row-failed-chat-link"
+
   Scenario: SITREP-LIST+FIND-06 History table has the required columns
     Given at least one SitRep exists for "atlas-backend"
     When I view the SitRep list
