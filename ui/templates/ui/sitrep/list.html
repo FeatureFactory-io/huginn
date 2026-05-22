@@ -186,25 +186,6 @@
   </div>
 </div>
 
-{# ── Flash messages (consumed by Django messages framework after first render) ── #}
-{% if messages %}
-<div class="toast-container position-static mb-3" aria-live="polite">
-  {% for message in messages %}
-  <div class="toast show align-items-center text-bg-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning text-dark{% else %}success{% endif %} border-0"
-       role="status" aria-atomic="true" data-testid="sitrep-generation-toast"
-       data-bs-autohide="true" data-bs-delay="5000">
-    <div class="d-flex">
-      <div class="toast-body">
-        <i class="fa-solid fa-circle-check me-2" aria-hidden="true"></i>
-        {{ message }}
-      </div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
 {# ── Auto-refresh while a plan is in-progress ────────────────────────────── #}
 {% if in_progress_rows %}
 <script>
