@@ -28,9 +28,19 @@ from constructs import Construct
 #   --query 'SolutionStacks[?contains(@,`Docker`) && contains(@,`2023`)]'
 EB_SOLUTION_STACK = "64bit Amazon Linux 2023 v4.12.1 running Docker"
 
-# EB log group written by the Docker Compose worker container via CloudWatch agent.
-# Verify exact name in CloudWatch Logs console after first worker deployment.
-CELERY_LOG_GROUP = "/huginn/celery/worker"
+EB_ENVS = ["huginn-blue", "huginn-green"]
+
+# Log file paths that EB log streaming creates under /aws/elasticbeanstalk/{env}/.
+# Matches the paths already live on mimir-prod/mimir-idle (verified 2026-05-22).
+EB_LOG_SUFFIXES = [
+    "var/log/eb-docker/containers/eb-current-app/stdouterr.log",
+    "var/log/docker",
+    "var/log/docker-events.log",
+    "var/log/docker-compose-events.log",
+    "var/log/nginx/access.log",
+    "var/log/nginx/error.log",
+    "var/log/eb-engine.log",
+]
 
 
 class AppStack(Stack):
@@ -147,6 +157,11 @@ class AppStack(Stack):
                     ],
                     resources=["*"],
                 ),
+                iam.PolicyStatement(
+                    sid="SSMSecrets",
+                    actions=["ssm:GetParameter", "ssm:GetParameters"],
+                    resources=[f"arn:aws:ssm:{self.region}:{self.account}:parameter/huginn/*"],
+                ),
             ],
         )
         deploy_user.add_managed_policy(deploy_policy)
@@ -162,7 +177,7 @@ class AppStack(Stack):
         # ── EB Environments (blue/green) ──────────────────────────────────────
         public_subnet_ids = vpc.select_subnets(subnet_type=ec2.SubnetType.PUBLIC).subnet_ids
 
-        for env_name in ["huginn-blue", "huginn-green"]:
+        for env_name in EB_ENVS:
             env_resource = eb.CfnEnvironment(
                 self,
                 f"EbEnv{env_name.replace('-', '').title()}",
@@ -222,36 +237,75 @@ class AppStack(Stack):
                         option_name="Application Healthcheck URL",
                         value="/health/",
                     ),
+                    # CloudWatch log streaming — streams all container stdout/stderr
+                    # and platform logs to /aws/elasticbeanstalk/{env}/var/log/...
+                    eb.CfnEnvironment.OptionSettingProperty(
+                        namespace="aws:elasticbeanstalk:cloudwatch:logs",
+                        option_name="StreamLogs",
+                        value="true",
+                    ),
+                    eb.CfnEnvironment.OptionSettingProperty(
+                        namespace="aws:elasticbeanstalk:cloudwatch:logs",
+                        option_name="RetentionInDays",
+                        value="30",
+                    ),
+                    eb.CfnEnvironment.OptionSettingProperty(
+                        namespace="aws:elasticbeanstalk:cloudwatch:logs",
+                        option_name="DeleteOnTerminate",
+                        value="false",
+                    ),
                 ],
             )
             env_resource.add_dependency(eb_app)
 
-        # ── CloudWatch: Celery error alarm ────────────────────────────────────
-        # Log group written by the worker container. Verify exact name in the
-        # CloudWatch Logs console after the worker container first runs.
-        celery_log_group = logs.LogGroup.from_log_group_name(
-            self,
-            "CeleryLogGroup",
-            log_group_name=CELERY_LOG_GROUP,
-        )
+        # ── CloudWatch: log groups for both EB environments ───────────────────
+        # Pre-create all log groups that EB streaming populates so CDK controls
+        # retention policy. EB reuses existing groups rather than creating new ones.
+        # Names match the fixed paths the AL2023/Docker platform uses (verified
+        # against mimir-prod which uses the same platform).
+        stdouterr_log_groups: list[logs.LogGroup] = []
 
-        metric_filter = logs.MetricFilter(
-            self,
-            "CeleryErrorFilter",
-            log_group=celery_log_group,
-            filter_pattern=logs.FilterPattern.literal("[ERROR]"),
-            metric_namespace="Huginn",
-            metric_name="CeleryErrors",
-            metric_value="1",
-            default_value=0,
-        )
+        for env_name in EB_ENVS:
+            env_slug = env_name.replace("-", "")  # e.g. "huginnblue"
+            for suffix in EB_LOG_SUFFIXES:
+                # Build a unique CDK construct ID from env + suffix path components.
+                suffix_slug = suffix.replace("/", "").replace(".", "").replace("-", "")
+                lg = logs.LogGroup(
+                    self,
+                    f"LG{env_slug}{suffix_slug}",
+                    log_group_name=f"/aws/elasticbeanstalk/{env_name}/{suffix}",
+                    retention=logs.RetentionDays.ONE_MONTH,
+                    removal_policy=RemovalPolicy.RETAIN,
+                )
+                if suffix == "var/log/eb-docker/containers/eb-current-app/stdouterr.log":
+                    stdouterr_log_groups.append(lg)
+
+        # ── CloudWatch: application error alarm ───────────────────────────────
+        # One MetricFilter per env; both publish to Huginn/AppErrors so a single
+        # alarm covers blue and green. Logs are JSON-structured with "level" key.
+        for idx, lg in enumerate(stdouterr_log_groups):
+            logs.MetricFilter(
+                self,
+                f"AppErrorFilter{idx}",
+                log_group=lg,
+                filter_pattern=logs.FilterPattern.literal('{ $.level = "ERROR" }'),
+                metric_namespace="Huginn",
+                metric_name="AppErrors",
+                metric_value="1",
+                default_value=0,
+            )
 
         cw.Alarm(
             self,
-            "CeleryErrorAlarm",
-            alarm_name="huginn-celery-error-rate",
-            alarm_description="More than 2 Celery ERROR log entries in 1 hour",
-            metric=metric_filter.metric(period=Duration.hours(1)),
+            "AppErrorAlarm",
+            alarm_name="huginn-app-error-rate",
+            alarm_description="More than 2 ERROR log entries in 1 hour across either EB env",
+            metric=cw.Metric(
+                namespace="Huginn",
+                metric_name="AppErrors",
+                period=Duration.hours(1),
+                statistic="Sum",
+            ),
             threshold=2,
             evaluation_periods=1,
             comparison_operator=cw.ComparisonOperator.GREATER_THAN_THRESHOLD,

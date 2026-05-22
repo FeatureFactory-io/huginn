@@ -537,10 +537,10 @@ To reconstruct a full SitRep generation trace: `grep "plan_id=<uuid>" logs/app.l
 | `JIRA_URL` | Jira instance URL | EB env property |
 | `JIRA_USER` | Jira username/email | EB env property |
 | `JIRA_TOKEN` | Jira API token | SSM → EB env property |
-| `LLM_API_KEY` | LLM API key for Gjallarhorn | SSM → EB env property |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Gjallarhorn LLM calls | SSM `/huginn/ANTHROPIC_API_KEY` → EB env property (injected by `deploy-staging.sh`) |
 | `DEBUG` | `False` in prod | EB env property |
 
-**Sync engine on EB:** ensure `0007_beat_sync_due_projects` has run (`web` runs `migrate` on deploy) so `PeriodicTask` `ingestion-sync-due-projects` exists; `beat` reads it from RDS via `DatabaseScheduler`. Set connector env vars on **both** `huginn-blue` and `huginn-green` (`GITLAB_*`, `JIRA_*`, `LLM_API_KEY`, etc.) so either env is valid after a swap. A single `t3.small` runs web + worker + beat + redis — heavy GitLab sync may warrant a larger instance later.
+**Sync engine on EB:** ensure `0007_beat_sync_due_projects` has run (`web` runs `migrate` on deploy) so `PeriodicTask` `ingestion-sync-due-projects` exists; `beat` reads it from RDS via `DatabaseScheduler`. Set connector env vars on **both** `huginn-blue` and `huginn-green` (`GITLAB_*`, `JIRA_*`, `ANTHROPIC_API_KEY`, etc.) so either env is valid after a swap. A single `t3.small` runs web + worker + beat + redis — heavy GitLab sync may warrant a larger instance later.
 
 **Feature flags:** not needed for v1.
 

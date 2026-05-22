@@ -37,6 +37,14 @@ echo "Live env:     $LIVE_ENV"
 echo "Inactive env: $INACTIVE_ENV  ← deploying here (staging for review)"
 echo "Image:        $ECR_IMAGE"
 
+# Fetch secrets from SSM (SecureString, --with-decryption required).
+# These are injected as EB environment properties so Docker Compose picks them up.
+echo "Fetching secrets from SSM..."
+ANTHROPIC_API_KEY=$(aws ssm get-parameter \
+  --name "/huginn/ANTHROPIC_API_KEY" \
+  --with-decryption \
+  --query 'Parameter.Value' --output text)
+
 cd "$ROOT_DIR"
 envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.yml
 zip -q deploy.zip docker-compose.yml
@@ -64,6 +72,8 @@ aws elasticbeanstalk update-environment \
   --application-name "$EB_APP_NAME" \
   --environment-name "$INACTIVE_ENV" \
   --version-label "$CI_COMMIT_SHORT_SHA" \
+  --option-settings \
+    "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ANTHROPIC_API_KEY,Value=${ANTHROPIC_API_KEY}" \
   --output text > /dev/null
 echo "Deployment triggered on $INACTIVE_ENV — waiting..."
 
