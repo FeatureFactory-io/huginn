@@ -87,9 +87,7 @@ def sitrep_list(request):
     failed_rows = [_FAILED_ROW] if state == "failed" else []
 
     since_last_disabled = len(rows) == 0
-    since_last_label = (
-        "Since last SitRep (3h 20m ago)" if not since_last_disabled else "Since last SitRep"
-    )
+    since_last_label = "Since last SitRep (3h 20m ago)" if not since_last_disabled else "Since last SitRep"
 
     return render(
         request,
