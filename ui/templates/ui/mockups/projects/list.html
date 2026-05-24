@@ -37,7 +37,7 @@
       <table class="table table-hover align-middle mb-0" data-testid="projects-table">
         <thead class="table-light">
           <tr>
-            <th scope="col">Name</th><th scope="col">DataSource</th><th scope="col">Playbook</th>
+            <th scope="col">Name</th><th scope="col">DataSource</th><th scope="col">RoE</th>
             <th scope="col">Last sync</th>
             <th scope="col">Last SitRep</th>
             <th scope="col">Last SitRep generated</th>
@@ -52,7 +52,7 @@
                 <a href="{% url 'mockup-projects-view' r.id %}"
                    class="hg-list-name-link fw-semibold d-inline-block"
                    data-testid="projects-row-name-{{ r.id }}">{{ r.name }}</a>
-              </td><td>{{ r.datasource }}</td><td>{{ r.playbook }}</td>
+              </td><td>{{ r.datasource }}</td><td>{{ r.roe }}</td>
               <td>{{ r.last_sync }}</td>
               <td data-testid="projects-row-last-sitrep-{{ r.id }}">
                 {% if r.last_sitrep_pk %}

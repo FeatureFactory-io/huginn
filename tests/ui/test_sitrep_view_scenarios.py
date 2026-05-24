@@ -24,7 +24,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ingestion.models import Project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import Frago, SitRep
 
 pytestmark = [pytest.mark.django_db]
@@ -40,15 +40,15 @@ def atlas_project(commander_user):
     """Background fixture matching the .feature Background block.
 
     Mirrors:
-        Given Project "atlas-backend" exists with assigned Playbook
-              "Atlas Engineering Playbook" v1
+        Given Project "atlas-backend" exists with assigned Rules of Engagement
+              "Atlas Engineering RoE" v1
     """
-    pb = Playbook.objects.create(
-        slug="atlas-engineering-playbook",
-        name="Atlas Engineering Playbook",
+    roe = RulesOfEngagement.objects.create(
+        slug="atlas-engineering-roe",
+        name="Atlas Engineering RoE",
     )
-    PlaybookVersion.objects.create(
-        playbook=pb,
+    RulesOfEngagementVersion.objects.create(
+        roe=roe,
         version_number=1,
         workflow_md="## v1",
     )
@@ -56,7 +56,7 @@ def atlas_project(commander_user):
         name="atlas-backend",
         slug="atlas-backend",
         imported_by=commander_user,
-        assigned_playbook=pb,
+        assigned_roe=roe,
     )
 
 
@@ -75,7 +75,7 @@ def _make_sitrep(
     trigger="automatic",
     mode_at_generation="semi_auto",
     headline="Delivery pace steady — no blockers detected",
-    playbook_version=1,
+    roe_version=1,
     situation_assessment="The team shipped 12 commits in the assessed period",
     notable_activity=None,
 ):
@@ -91,7 +91,7 @@ def _make_sitrep(
         trigger=trigger,
         mode_at_generation=mode_at_generation,
         headline=headline,
-        playbook_version=playbook_version,
+        roe_version=roe_version,
         situation_assessment=situation_assessment,
         notable_activity=notable_activity if notable_activity is not None else [],
     )
@@ -103,7 +103,7 @@ def _make_sitrep(
 
 @pytest.fixture
 def auto_sitrep(atlas_project):
-    """The Background SitRep — automatic trigger, semi_auto mode, v1 playbook."""
+    """The Background SitRep — automatic trigger, semi_auto mode, v1 roe."""
     return _make_sitrep(atlas_project, generated_at=BG_GENERATED_AT)
 
 
@@ -215,16 +215,16 @@ def test_sitrep_view_04_trigger_badge_manual(commander_client, atlas_project, ma
     assert "Manual" in body
 
 
-def test_sitrep_view_05_playbook_version(commander_client, atlas_project, auto_sitrep):
+def test_sitrep_view_05_roe_version(commander_client, atlas_project, auto_sitrep):
     """# SCENARIO: SITREP-VIEW-05
 
-    Scenario: SITREP-VIEW-05 Header shows Playbook version evaluated against
-      Then I see the Playbook version "v1" in the header
+    Scenario: SITREP-VIEW-05 Header shows RoE version evaluated against
+      Then I see the RoE version "v1" in the header
     """
     response = commander_client.get(_view_url(atlas_project, auto_sitrep))
     assert response.status_code == 200
     body = response.content.decode()
-    assert "Playbook" in body
+    assert "RoE" in body
     assert "v1" in body or ">1<" in body
 
 

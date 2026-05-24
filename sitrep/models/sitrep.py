@@ -23,7 +23,7 @@ class SitRep(models.Model):
         choices=[("semi_auto", "Semi-Auto"), ("auto", "Auto")],
         default="semi_auto",
     )
-    playbook_version = models.IntegerField(null=True, blank=True)
+    roe_version = models.IntegerField(null=True, blank=True)
     headline = models.CharField(max_length=200)
     situation_assessment = models.TextField()
     fragos_applied = models.ManyToManyField(

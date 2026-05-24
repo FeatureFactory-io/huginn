@@ -49,7 +49,7 @@ class SitRepAdmin(admin.ModelAdmin):
         "to_dt",
         "trigger",
         "mode_at_generation",
-        "playbook_version",
+        "roe_version",
         "headline",
         "situation_assessment",
         "notable_activity",

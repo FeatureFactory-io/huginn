@@ -33,11 +33,21 @@ class ExecutionPlan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def mark_started(self) -> None:
-        """Transition to 'running'. Valid from 'pending' or 'waiting_retry' only."""
-        if self.status in ("completed", "failed"):
-            raise InvalidStateTransitionError(f"Cannot start a plan with status '{self.status}'")
+        """Transition to 'running'. Valid from 'pending' or 'waiting_retry' only.
+
+        Uses an atomic UPDATE … WHERE to prevent two concurrent workers from
+        both starting the same plan.  If another worker already transitioned
+        the plan (e.g. to 'running', 'completed', or 'failed') this raises
+        InvalidStateTransitionError so the caller can treat it as a no-op.
+        """
+        updated = ExecutionPlan.objects.filter(
+            plan_id=self.plan_id,
+            status__in=("pending", "waiting_retry"),
+        ).update(status="running")
+        if updated == 0:
+            self.refresh_from_db()
+            raise InvalidStateTransitionError(f"Cannot start plan {self.plan_id}: current status is '{self.status}'")
         self.status = "running"
-        self.save(update_fields=["status"])
 
     def mark_completed(self, result=None) -> None:
         self.status = "completed"

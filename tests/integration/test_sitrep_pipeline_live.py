@@ -32,7 +32,7 @@ from gjallarhorn.models import ExecutionPlan, PlanStep
 from gjallarhorn.tasks.plan_tasks import execute_plan
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from ingestion.models import Contributor, Increment
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import Frago, SitRep, SituationalAwareness, SituationalAwarenessVersion
 from tests.factories import DataSourceFactory, ProjectFactory, UserFactory
 
@@ -42,10 +42,10 @@ _SKIP_NO_KEY = pytest.mark.skipif(
 )
 
 # ---------------------------------------------------------------------------
-# Realistic playbook content
+# Realistic roe content
 # ---------------------------------------------------------------------------
 
-_PLAYBOOK_MD = """\
+_ROE_MD = """\
 # Software Team Health Assessment Playbook
 
 ## Purpose
@@ -119,15 +119,15 @@ _COMMITS = [
 
 @pytest.fixture()
 def live_world(db):
-    """Build a realistic project with playbook, commits, SA, and one FRAGO."""
+    """Build a realistic project with roe, commits, SA, and one FRAGO."""
     # --- user & project ---
     user = UserFactory()
     ds = DataSourceFactory()
-    playbook = Playbook.objects.create(slug="team-health-v1", name="Team Health Assessment")
-    PlaybookVersion.objects.create(
-        playbook=playbook,
+    roe = RulesOfEngagement.objects.create(slug="team-health-v1", name="Team Health Assessment")
+    RulesOfEngagementVersion.objects.create(
+        roe=roe,
         version_number=1,
-        workflow_md=_PLAYBOOK_MD,
+        workflow_md=_ROE_MD,
         change_summary="Initial version",
     )
     project = ProjectFactory(
@@ -135,7 +135,7 @@ def live_world(db):
         slug="atlas-backend",
         datasource=ds,
         imported_by=user,
-        assigned_playbook=playbook,
+        assigned_roe=roe,
     )
 
     # --- time window: last 8 hours ---
@@ -286,7 +286,7 @@ def test_sitrep_full_pipeline_with_real_ai(live_world, caplog):
         for item in sitrep.notable_activity:
             print(f"  • {item}")
     print(f"\nFRAGOs applied : {sitrep.fragos_applied.count()}")
-    print(f"Playbook v      : {sitrep.playbook_version}")
+    print(f"RoE v           : {sitrep.roe_version}")
     print(separator)
 
     # ── Token usage from steps ────────────────────────────────────────────────

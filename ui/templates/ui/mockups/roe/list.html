@@ -1,0 +1,147 @@
+{% extends "base_mockups.html" %}
+{% load static %}
+
+{% block title %}Rules of Engagement · Huginn{% endblock %}
+
+{% block content %}
+{% include "ui/mockups/_screen_anchor.html" with screen_id="ROE-LIST+FIND-1" screen_testid="roe-list-find-loaded" %}
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-ballot-check hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Rules of Engagement</span>
+    </h1>
+    <p class="text-muted small mb-0"><span data-testid="roe-count-badge">{{ row_count }} rules of engagement</span> · Versioned doctrine — Variables, Tables, and Workflow for assigned Projects.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Rules of Engagement list actions">
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 hg-btn-disabled-visible"
+            disabled
+            data-bs-toggle="tooltip"
+            title="Coming soon"
+            data-testid="roe-import-mimir-btn">
+      <img src="{% static 'images/mimir-logo.png' %}" alt="" class="hg-mimir-btn-icon" aria-hidden="true">
+      <span>Get RoE from Mimir</span>
+    </button>
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'mockup-roe-create' %}"
+       data-bs-toggle="tooltip" title="Create new Rules of Engagement"
+       data-testid="roe-new-btn">
+      <i class="fa-solid fa-plus me-1"></i> New Rules of Engagement
+    </a>
+  </div>
+</section>
+
+<div class="row g-3 mb-3" role="search" aria-label="Rules of Engagement filters">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-author">Author</label>
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-author" data-testid="roe-filter-author">
+      <option>All</option>
+      <option>donland@example.com</option>
+      <option>stark@example.com</option>
+      <option>system@huginn</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-used">Used by Project</label>
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-used" data-testid="roe-filter-used-by-project">
+      <option>All</option>
+      <option>Yes</option>
+      <option>No</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-updated">Updated within</label>
+    <select class="form-select form-select-sm hg-filter-control rounded-2" id="pb-filter-updated" data-testid="roe-filter-updated-within">
+      <option>Any time</option>
+      <option>Last 7 days</option>
+      <option>Last 30 days</option>
+    </select>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body p-0">
+    {% if rows %}
+      <div class="table-responsive" data-testid="roe-table-wrap">
+        <table class="table table-hover align-middle mb-0" data-testid="roe-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Author</th>
+              <th scope="col">Latest ver.</th>
+              <th scope="col">Used by</th>
+              <th scope="col">Updated</th>
+              <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr data-testid="roe-row-{{ r.id }}">
+                <td>
+                  <a href="{% url 'mockup-roe-view' r.id %}"
+                     class="hg-list-name-link fw-semibold d-inline-block"
+                     data-testid="roe-row-name-{{ r.id }}">{{ r.name }}</a>
+                </td>
+                <td class="small text-muted">{{ r.author }}</td>
+                <td><span class="badge bg-light text-dark border">v{{ r.latest_version }}</span></td>
+                <td class="small">{{ r.used_by_label }}</td>
+                <td class="small text-muted">{{ r.updated }}</td>
+                <td class="text-end ps-3 align-middle">
+                  <div class="dropdown d-inline-block">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary border-0 px-2"
+                            id="roe-row-menu-{{ r.id }}"
+                            data-bs-toggle="dropdown"
+                            data-bs-popper-config='{"strategy":"fixed"}'
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-label="Actions for {{ r.name }}"
+                            data-testid="roe-row-actions-{{ r.id }}">
+                      <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="roe-row-menu-{{ r.id }}">
+                      <li>
+                        <a class="dropdown-item" href="{% url 'mockup-roe-edit' r.id %}" data-testid="roe-row-edit-{{ r.id }}">
+                          <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="{% url 'mockup-roe-create' %}?clone={{ r.id }}" data-testid="roe-row-clone-{{ r.id }}">
+                          <i class="fa-solid fa-copy fa-fw me-2 text-muted" aria-hidden="true"></i>Clone to new RoE
+                        </a>
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        {% if r.delete_disabled %}
+                          <span class="dropdown-item disabled small text-muted" aria-disabled="true" data-testid="roe-row-delete-{{ r.id }}-disabled">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete (in use)
+                          </span>
+                        {% else %}
+                          <a class="dropdown-item text-danger" href="{% url 'mockup-roe-delete' r.id %}" data-testid="roe-row-delete-{{ r.id }}">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete
+                          </a>
+                        {% endif %}
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted" data-testid="roe-empty-state">
+        <i class="fa-solid fa-ballot-check fa-2x mb-3 d-block" style="color:var(--hg-border)"></i>
+        <p class="mb-1 fw-medium">No Rules of Engagement yet</p>
+        <p class="small mb-3">Write one to define expectations for your Projects.</p>
+        <a href="{% url 'mockup-roe-create' %}" class="btn btn-primary btn-sm" data-testid="roe-empty-cta">
+          <i class="fa-solid fa-plus me-1"></i> New Rules of Engagement
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 
 from ingestion.models import DataSource, Project
-from tests.factories import PlaybookFactory, PlaybookVersionFactory, ProjectFactory
+from tests.factories import ProjectFactory, RulesOfEngagementFactory, RulesOfEngagementVersionFactory
 
 
 def _csrf(client):
@@ -48,8 +48,8 @@ def test_project_edit_post_updates_display_name(commander_client):
             "csrfmiddlewaretoken": _csrf(commander_client),
             "display_name": "Atlas Backend (Core)",
             "sync_schedule": "daily",
-            "assigned_playbook": "",
-            "pinned_playbook_version": "",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
         },
         follow=False,
     )
@@ -87,8 +87,8 @@ def test_edit_11_empty_display_name_rejected(commander_client):
             "csrfmiddlewaretoken": _csrf(commander_client),
             "display_name": "",
             "sync_schedule": "hourly",
-            "assigned_playbook": "",
-            "pinned_playbook_version": "",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
         },
         follow=False,
     )
@@ -113,54 +113,54 @@ def test_edit_13_all_inputs_have_labels(commander_client):
     body = r.content.decode()
     assert 'for="id_display_name"' in body
     assert 'for="id_sync_schedule"' in body
-    assert 'for="id_assigned_playbook"' in body
+    assert 'for="id_assigned_roe"' in body
     assert 'for="id_pinned_version"' in body
 
 
 @pytest.mark.django_db
-def test_project_edit_post_assigns_playbook_and_slug(commander_client):
-    p = ProjectFactory(name="pb-assign", slug="pb-assign", playbook_slug="")
-    pb = PlaybookFactory(name="Roadmap PB", slug="roadmap-pb")
-    PlaybookVersionFactory(playbook=pb, version_number=1)
+def test_project_edit_post_assigns_roe_and_slug(commander_client):
+    p = ProjectFactory(name="roe-assign", slug="roe-assign", roe_slug="")
+    roe = RulesOfEngagementFactory(name="Roadmap RoE", slug="roadmap-roe")
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
     commander_client.get(reverse("projects-edit", args=[p.pk]))
     r = commander_client.post(
         reverse("projects-edit", args=[p.pk]),
         {
             "csrfmiddlewaretoken": _csrf(commander_client),
-            "display_name": "PB Assign",
+            "display_name": "RoE Assign",
             "sync_schedule": "hourly",
-            "assigned_playbook": str(pb.pk),
-            "pinned_playbook_version": "",
+            "assigned_roe": str(roe.pk),
+            "pinned_roe_version": "",
         },
         follow=False,
     )
     assert r.status_code == 302
     p.refresh_from_db()
-    assert p.assigned_playbook_id == pb.pk
-    assert p.playbook_slug == "roadmap-pb"
-    assert p.pinned_playbook_version_id is None
+    assert p.assigned_roe_id == roe.pk
+    assert p.roe_slug == "roadmap-roe"
+    assert p.pinned_roe_version_id is None
 
 
 @pytest.mark.django_db
 def test_project_edit_post_pins_version_when_valid(commander_client):
-    p = ProjectFactory(name="pb-pin", slug="pb-pin")
-    pb = PlaybookFactory(slug="pin-pb")
-    v1 = PlaybookVersionFactory(playbook=pb, version_number=1)
+    p = ProjectFactory(name="roe-pin", slug="roe-pin")
+    roe = RulesOfEngagementFactory(slug="pin-roe")
+    v1 = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
     commander_client.get(reverse("projects-edit", args=[p.pk]))
     r = commander_client.post(
         reverse("projects-edit", args=[p.pk]),
         {
             "csrfmiddlewaretoken": _csrf(commander_client),
-            "display_name": "PB Pin",
+            "display_name": "RoE Pin",
             "sync_schedule": "hourly",
-            "assigned_playbook": str(pb.pk),
-            "pinned_playbook_version": str(v1.pk),
+            "assigned_roe": str(roe.pk),
+            "pinned_roe_version": str(v1.pk),
         },
         follow=False,
     )
     assert r.status_code == 302
     p.refresh_from_db()
-    assert p.pinned_playbook_version_id == v1.pk
+    assert p.pinned_roe_version_id == v1.pk
 
 
 @pytest.mark.django_db
@@ -173,8 +173,8 @@ def test_project_edit_post_every_6h(commander_client):
             "csrfmiddlewaretoken": _csrf(commander_client),
             "display_name": "Six hour",
             "sync_schedule": "every_6h",
-            "assigned_playbook": "",
-            "pinned_playbook_version": "",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
         },
         follow=False,
     )

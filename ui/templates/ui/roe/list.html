@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Rules of Engagement · Huginn{% endblock %}
+
+{% block content %}
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title d-flex align-items-center gap-2 flex-wrap mb-1" data-testid="page-title">
+      <i class="fa-solid fa-ballot-check hg-page-title-icon text-primary" aria-hidden="true"></i>
+      <span>Rules of Engagement</span>
+    </h1>
+    <p class="text-muted small mb-0"><span data-testid="roe-count-badge">{{ row_count }} rules of engagement</span> · Versioned doctrine — Variables, Tables, and Workflow for assigned Projects.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Rules of Engagement list actions">
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 hg-btn-disabled-visible"
+            disabled
+            data-bs-toggle="tooltip"
+            title="Coming soon"
+            data-testid="roe-import-mimir-btn">
+      <img src="{% static 'images/mimir-logo.png' %}" alt="" class="hg-mimir-btn-icon" aria-hidden="true">
+      <span>Get RoE from Mimir</span>
+    </button>
+    <a class="btn btn-primary btn-sm"
+       href="{% url 'roe-create' %}"
+       data-bs-toggle="tooltip" title="Create new Rules of Engagement"
+       data-testid="roe-new-btn">
+      <i class="fa-solid fa-plus me-1"></i> New Rules of Engagement
+    </a>
+  </div>
+</section>
+
+<form method="get"
+      id="roe-filter-form"
+      class="row g-3 mb-3"
+      role="search"
+      aria-label="Rules of Engagement filters"
+      data-testid="roe-filter-form"
+      data-hg-list-find-auto
+      data-hg-list-find-debounce="300">
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-author">Author</label>
+    <input type="text"
+           class="form-control form-control-sm hg-filter-control rounded-2 hg-filter-on-input-submit"
+           id="pb-filter-author"
+           name="author"
+           value="{{ filter_author }}"
+           placeholder="Email contains"
+           autocomplete="off"
+           data-testid="roe-filter-author">
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-used">Used by Project</label>
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="pb-filter-used"
+            name="used_by"
+            data-testid="roe-filter-used-by-project">
+      <option value="" {% if not filter_used_by %}selected{% endif %}>All</option>
+      <option value="yes" {% if filter_used_by == "yes" %}selected{% endif %}>Yes</option>
+      <option value="no" {% if filter_used_by == "no" %}selected{% endif %}>No</option>
+    </select>
+  </div>
+  <div class="col-md-4">
+    <label class="form-label hg-label-caps mb-1" for="pb-filter-updated">Updated within</label>
+    <select class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
+            id="pb-filter-updated"
+            name="updated_within"
+            data-testid="roe-filter-updated-within">
+      <option value="" {% if not filter_updated_within %}selected{% endif %}>Any time</option>
+      <option value="7" {% if filter_updated_within == "7" %}selected{% endif %}>Last 7 days</option>
+      <option value="30" {% if filter_updated_within == "30" %}selected{% endif %}>Last 30 days</option>
+    </select>
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-body p-0">
+    {% if roes %}
+      <div class="table-responsive" data-testid="roe-table-wrap">
+        <table class="table table-hover align-middle mb-0" data-testid="roe-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Author</th>
+              <th scope="col">Latest ver.</th>
+              <th scope="col">Used by</th>
+              <th scope="col">Updated</th>
+              <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pb in roes %}
+              <tr data-testid="roe-row-{{ pb.pk }}">
+                <td>
+                  <a href="{% url 'roe-detail' pb.pk %}"
+                     class="hg-list-name-link fw-semibold d-inline-block"
+                     data-testid="roe-row-name-{{ pb.pk }}">{{ pb.name }}</a>
+                </td>
+                <td class="small text-muted">{% if pb.created_by %}{{ pb.created_by.email }}{% elif pb.is_system_seed %}system@huginn{% else %}—{% endif %}</td>
+                <td><span class="badge bg-light text-dark border">v{{ pb.latest_version_number|default:"—" }}</span></td>
+                <td class="small">{% if pb.used_by_count %}{{ pb.used_by_count }} project(s){% else %}0 projects{% endif %}</td>
+                <td class="small text-muted">
+                  {% if pb.latest_snapshot_at %}{{ pb.latest_snapshot_at|naturaltime }}{% else %}—{% endif %}
+                </td>
+                <td class="text-end ps-3 align-middle">
+                  <div class="dropdown d-inline-block">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary border-0 px-2"
+                            id="roe-row-menu-{{ pb.pk }}"
+                            data-bs-toggle="dropdown"
+                            data-bs-popper-config='{"strategy":"fixed"}'
+                            aria-expanded="false"
+                            aria-haspopup="true"
+                            aria-label="Actions for {{ pb.name }}"
+                            data-testid="roe-row-actions-{{ pb.pk }}">
+                      <i class="fa-solid fa-ellipsis-vertical" aria-hidden="true"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="roe-row-menu-{{ pb.pk }}">
+                      <li>
+                        <a class="dropdown-item" href="{% url 'roe-edit' pb.pk %}" data-testid="roe-row-edit-{{ pb.pk }}">
+                          <i class="fa-solid fa-pen fa-fw me-2 text-muted" aria-hidden="true"></i>Edit
+                        </a>
+                      </li>
+                      <li>
+                        <a class="dropdown-item" href="{% url 'roe-create' %}?clone={{ pb.pk }}" data-testid="roe-row-clone-{{ pb.pk }}">
+                          <i class="fa-solid fa-copy fa-fw me-2 text-muted" aria-hidden="true"></i>Clone to new RoE
+                        </a>
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li>
+                        {% if pb.used_by_count or pb.is_system_seed %}
+                          <span class="dropdown-item disabled small text-muted" aria-disabled="true" data-testid="roe-row-delete-{{ pb.pk }}-disabled">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete (in use)
+                          </span>
+                        {% else %}
+                          <a class="dropdown-item text-danger" href="{% url 'roe-delete' pb.pk %}" data-testid="roe-row-delete-{{ pb.pk }}">
+                            <i class="fa-solid fa-trash fa-fw me-2" aria-hidden="true"></i>Delete
+                          </a>
+                        {% endif %}
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted" data-testid="roe-empty-state">
+        <i class="fa-solid fa-ballot-check fa-2x mb-3 d-block" style="color:var(--hg-border)"></i>
+        <p class="mb-1 fw-medium">No Rules of Engagement yet</p>
+        <p class="small mb-3">Write one to define expectations for your Projects.</p>
+        <a href="{% url 'roe-create' %}" class="btn btn-primary btn-sm" data-testid="roe-empty-cta">
+          <i class="fa-solid fa-plus me-1"></i> New Rules of Engagement
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

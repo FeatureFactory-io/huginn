@@ -25,3 +25,6 @@ CSRF_TRUSTED_ORIGINS = ["https://huginn.featurefactory.io"] + _extra_csrf
 # of stable HTTPS operation.
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+# PLAN_ORPHAN_PENDING_SECONDS and PLAN_ORPHAN_RUNNING_SECONDS inherit base.py
+# defaults (300 s / 1800 s).  Override via EB env properties if needed.

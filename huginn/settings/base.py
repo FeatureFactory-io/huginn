@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     # Huginn apps
     "accounts",
-    "playbooks",
+    "roe",
     "ingestion",
     "analytics",
     "sitrep",
@@ -80,6 +80,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# visibility_timeout must be >= worst-case execute_plan duration (acks_late=True)
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 7200}  # 2 h
 
 # Cache
 CACHES = {
@@ -143,6 +146,7 @@ LOGGING = {
         "analytics": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "sitrep": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "gjallarhorn": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "huginn.auth": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
@@ -157,3 +161,8 @@ JIRA_TOKEN = os.environ.get("JIRA_TOKEN", "")
 
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
+# Gjallarhorn plan orphan recovery thresholds (seconds).
+# Override via EB env properties PLAN_ORPHAN_PENDING_SECONDS / PLAN_ORPHAN_RUNNING_SECONDS.
+PLAN_ORPHAN_PENDING_SECONDS = int(os.environ.get("PLAN_ORPHAN_PENDING_SECONDS", "300"))  # 5 min
+PLAN_ORPHAN_RUNNING_SECONDS = int(os.environ.get("PLAN_ORPHAN_RUNNING_SECONDS", "1800"))  # 30 min

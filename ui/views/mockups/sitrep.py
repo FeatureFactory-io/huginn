@@ -124,7 +124,7 @@ def sitrep_view(request, pk: int):  # noqa: ARG001
         "mode_at_generation": "Semi-Auto",
         "situation_assessment": (
             "The team shipped 14 commits in the assessed period. "
-            "Delivery pace is steady with no anomalies detected against the Playbook workflow. "
+            "Delivery pace is steady with no anomalies detected against the RoE workflow. "
             "Sprint 47 is on track for the Friday handoff. "
             "No FRAGOs modified this assessment."
         ),

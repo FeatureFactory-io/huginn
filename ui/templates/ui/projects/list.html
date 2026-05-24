@@ -55,15 +55,15 @@
     </select>
   </div>
   <div class="col-12 col-md-4">
-    <label class="form-label hg-label-caps mb-1" for="flt_pb">Playbook</label>
+    <label class="form-label hg-label-caps mb-1" for="flt_roe">RoE</label>
     <input type="search"
-           name="playbook"
-           id="flt_pb"
-           value="{{ filter_playbook }}"
+           name="roe"
+           id="flt_roe"
+           value="{{ filter_roe }}"
            class="form-control form-control-sm hg-filter-control rounded-2 hg-filter-on-input-submit"
            placeholder="Name or slug"
            autocomplete="off"
-           data-testid="projects-filter-playbook">
+           data-testid="projects-filter-roe">
   </div>
 </form>
 
@@ -84,7 +84,7 @@
             <tr>
               <th scope="col">Name</th>
               <th scope="col">Data source</th>
-              <th scope="col">Playbook</th>
+              <th scope="col">RoE</th>
               <th scope="col">Last sync</th>
               <th scope="col">Last SitRep</th>
               <th scope="col">Last SitRep generated</th>
@@ -104,9 +104,9 @@
               </td>
               <td>{{ p.datasource.name|default:"—" }}</td>
               <td>
-                {% if p.assigned_playbook %}
-                  <a href="{% url 'playbooks-detail' p.assigned_playbook.pk %}">{{ p.assigned_playbook.name }}</a>
-                {% elif p.playbook_slug %}{{ p.playbook_slug }}{% else %}Not assigned{% endif %}
+                {% if p.assigned_roe %}
+                  <a href="{% url 'roe-detail' p.assigned_roe.pk %}">{{ p.assigned_roe.name }}</a>
+                {% elif p.roe_slug %}{{ p.roe_slug }}{% else %}Not assigned{% endif %}
               </td>
               <td>{% if p.last_sync_at %}{{ p.last_sync_at }}{% else %}Never{% endif %}</td>
               <td data-testid="projects-row-last-sitrep-{{ p.pk }}">

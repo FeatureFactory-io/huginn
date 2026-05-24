@@ -16,7 +16,7 @@ class Frago(models.Model):
     title = models.CharField(max_length=255)
     body_md = models.TextField(blank=True, default="")
     affected_variable = models.ForeignKey(
-        "playbooks.PlaybookVariable",
+        "playbooks.RulesOfEngagementVariable",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

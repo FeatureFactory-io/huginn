@@ -13,7 +13,7 @@ from gjallarhorn.models import Conversation, ExecutionPlan
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from ingestion.models import Increment, Project
 from ingestion.signals import sync_project_completed
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import Frago, SitRep
 
 User = get_user_model()
@@ -50,9 +50,9 @@ def _run_generate(scripted_llm_factory, project, from_dt, to_dt, trigger="automa
 def atlas(db):
     user = User.objects.create_user(email="atlas@example.com", password="test")
     project = Project.objects.create(name="atlas-backend", slug="atlas-backend", imported_by=user)
-    pb = Playbook.objects.create(slug="default-pb", name="Default PB")
-    PlaybookVersion.objects.create(playbook=pb, version_number=1, workflow_md="## workflow")
-    project.assigned_playbook = pb
+    roe = RulesOfEngagement.objects.create(slug="default-roe", name="Default RoE")
+    RulesOfEngagementVersion.objects.create(roe=roe, version_number=1, workflow_md="## workflow")
+    project.assigned_roe = roe
     project.save()
     now = timezone.now()
     return project, user, now
@@ -124,7 +124,7 @@ class TestSitRepGenerateScenarios:
 
     def test_sitrep_gen_05_since_last_sitrep_disabled_when_no_prior(self, db):
         """
-        Project with no playbook → task returns None, no plan created.
+        Project with no RoE → task returns None, no plan created.
         (UI 'Since last SitRep' disabled state deferred to T-62/T-63 view layer)
         """
         user = User.objects.create_user(email="nopb-gen05@example.com", password="test")
@@ -152,7 +152,7 @@ class TestSitRepGenerateScenarios:
         assert abs((plan.sitrep_to_dt - to_dt).total_seconds()) < 2
         assert SitRep.objects.get(source_plan=plan).trigger == "manual"
 
-    def test_sitrep_gen_07_context_includes_playbook_and_enabled_fragos(self, scripted_llm_factory, atlas):
+    def test_sitrep_gen_07_context_includes_roe_and_enabled_fragos(self, scripted_llm_factory, atlas):
         """
         Enabled in-window FRAGO included in SitRep fragos_applied; disabled excluded.
         (LLM system-block content verified by _build_system_blocks unit tests in T-66)
@@ -230,7 +230,7 @@ class TestSitRepGenerateScenarios:
 
     def test_sitrep_gen_13_completed_plan_writes_sitrep_with_required_fields(self, scripted_llm_factory, atlas):
         """
-        Completed plan produces SitRep with headline, situation_assessment, playbook_version.
+        Completed plan produces SitRep with headline, situation_assessment, roe_version.
         """
         project, user, now = atlas
         from_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
@@ -239,7 +239,7 @@ class TestSitRepGenerateScenarios:
         sitrep = SitRep.objects.get(source_plan__plan_id=plan_id)
         assert sitrep.headline
         assert sitrep.situation_assessment
-        assert sitrep.playbook_version == 1
+        assert sitrep.roe_version == 1
 
     def test_sitrep_gen_14_no_variable_datapoint_rows_in_narrative_phase(self, scripted_llm_factory, atlas):
         """
@@ -251,7 +251,7 @@ class TestSitRepGenerateScenarios:
         to_dt = now.replace(hour=13, minute=0, second=0, microsecond=0)
         _run_generate(scripted_llm_factory, project, from_dt, to_dt)
         try:
-            from playbooks.models import VariableDatapoint
+            from roe.models import VariableDatapoint
 
             assert VariableDatapoint.objects.count() == 0
         except ImportError:

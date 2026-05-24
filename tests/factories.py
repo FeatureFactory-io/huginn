@@ -7,7 +7,7 @@ import factory
 from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
-from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVariable, RulesOfEngagementVersion
 from sitrep.models import Frago, SituationalAwareness, SituationalAwarenessVersion
 
 
@@ -18,31 +18,31 @@ class UserFactory(DjangoModelFactory):
     email = factory.Sequence(lambda n: f"user{n}@example.com")
 
 
-class PlaybookFactory(DjangoModelFactory):
+class RulesOfEngagementFactory(DjangoModelFactory):
     class Meta:
-        model = Playbook
+        model = RulesOfEngagement
 
-    name = factory.Sequence(lambda n: f"Playbook {n}")
-    slug = factory.Sequence(lambda n: f"playbook-{n}")
+    name = factory.Sequence(lambda n: f"RoE {n}")
+    slug = factory.Sequence(lambda n: f"roe-{n}")
     description = ""
     is_system_seed = False
 
 
-class PlaybookVersionFactory(DjangoModelFactory):
+class RulesOfEngagementVersionFactory(DjangoModelFactory):
     class Meta:
-        model = PlaybookVersion
+        model = RulesOfEngagementVersion
 
-    playbook = factory.SubFactory(PlaybookFactory)
+    roe = factory.SubFactory(RulesOfEngagementFactory)
     version_number = 1
     workflow_md = ""
     change_summary = ""
 
 
-class PlaybookVariableFactory(DjangoModelFactory):
+class RulesOfEngagementVariableFactory(DjangoModelFactory):
     class Meta:
-        model = PlaybookVariable
+        model = RulesOfEngagementVariable
 
-    playbook_version = factory.SubFactory(PlaybookVersionFactory)
+    roe_version = factory.SubFactory(RulesOfEngagementVersionFactory)
     sort_order = factory.Sequence(lambda n: n)
     name = factory.Sequence(lambda n: f"Variable {n}")
     abbrev = factory.Sequence(lambda n: f"V{n}")

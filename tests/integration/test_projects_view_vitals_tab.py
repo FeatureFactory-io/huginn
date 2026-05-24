@@ -154,11 +154,11 @@ def test_view_02_import_metadata_preserved_detail_loads(commander_client, comman
 
 
 @pytest.mark.django_db
-def test_view_03_no_playbook_shows_informer_empty(commander_client):
-    p = ProjectFactory(name="npb", slug="npb", playbook_slug="", sync_state=Project.SyncState.ACTIVE)
+def test_view_03_no_roe_shows_informer_empty(commander_client):
+    p = ProjectFactory(name="npb", slug="npb", roe_slug="", sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(reverse("projects-detail", args=[p.pk])).content.decode()
     assert 'data-testid="informer-bar-empty"' in body
-    assert "No Playbook assigned" in body
+    assert "No RoE assigned" in body
 
 
 @pytest.mark.django_db

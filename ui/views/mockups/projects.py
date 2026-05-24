@@ -12,7 +12,7 @@ MOCK_PROJECT = {
 MOCK_LIST = [
     {
         **MOCK_PROJECT,
-        "playbook": "FeatureFactory Playbook · v12 (auto-track)",
+        "roe": "FeatureFactory RoE · v12 (auto-track)",
         "last_sync": "8 min ago",
         "sync_status": "Active",
         "row_status": "Active",
@@ -25,7 +25,7 @@ MOCK_LIST = [
         "name": "billing-service",
         "datasource": "company-gitlab",
         "source_path": "company-gitlab/billing-service",
-        "playbook": "Not assigned",
+        "roe": "Not assigned",
         "last_sync": "never",
         "sync_status": "Initial sync queued",
         "row_status": "Active",
@@ -119,7 +119,7 @@ def projects_view(request, pk: int):  # noqa: ARG001
             "imported_on": "2026-05-01",
             "imported_by": "donland@example.com",
             "source_url": "https://gitlab.example.com/atlas/backend",
-            "playbook_display": "FeatureFactory Playbook · v12 (auto-track latest)",
+            "roe_display": "FeatureFactory RoE · v12 (auto-track latest)",
             "sync_last": "8 min ago",
             "sync_next": "scheduled hourly",
             "sync_schedule_display": "Hourly",

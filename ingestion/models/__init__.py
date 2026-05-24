@@ -133,16 +133,16 @@ class Project(models.Model):
     slug = models.SlugField(max_length=255, unique=True)
     display_name = models.CharField(max_length=255, blank=True)
     source_path = models.CharField(max_length=512, blank=True)
-    playbook_slug = models.CharField(max_length=255, blank=True)
-    assigned_playbook = models.ForeignKey(
-        "playbooks.Playbook",
+    roe_slug = models.CharField(max_length=255, blank=True)
+    assigned_roe = models.ForeignKey(
+        "playbooks.RulesOfEngagement",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="assigned_projects",
     )
-    pinned_playbook_version = models.ForeignKey(
-        "playbooks.PlaybookVersion",
+    pinned_roe_version = models.ForeignKey(
+        "playbooks.RulesOfEngagementVersion",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

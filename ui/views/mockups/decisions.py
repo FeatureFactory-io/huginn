@@ -39,6 +39,6 @@ def decisions_view(request, pk: int):  # noqa: ARG001
         "pk": pk,
         "d": row,
         "proposal_status": "Proposed",
-        "proposed_body": ("Gjallarhorn proposes belaying the playbook expectation…",),
+        "proposed_body": ("Gjallarhorn proposes belaying the RoE expectation…",),
     }
     return render(request, "ui/mockups/decisions/view.html", ctx)

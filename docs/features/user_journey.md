@@ -9,7 +9,7 @@
 **Screen ID convention**: every screen is identified by `{ENTITY}-{OPERATION}-{VERSION}` (e.g., `PROJECTS-LIST+FIND-1`). Used in this document, in screen-flow diagrams, in feature files, and as HTML comments / hidden divs in templates for grep-able traceability.
 
 **Gjallarhorn** — the AI component. Three surfaces:
-1. **Background**: event-driven — fires on `Sync Complete` (generates SitRep, evaluating Variables against the active Playbook + FRAGOs + Situational Awareness). In **Autonomous** mode, approved outcomes for auto-generated Decisions execute via the SitRep / `execute_decision_outcome` Celery chain. **Semi-Auto** Commander approvals **do not enqueue that path** — FRAGO / SA / Jira branches run **synchronously inside the Decision review HTTP request** (SAO §17.8 / Flow C). Plan creation and final narrative synthesis use the **planning model** (Opus); per-Variable execution steps use the **execution model** (Sonnet); plan success/failure notifications use the **notification model** (Haiku) — see SAO §17.3 Model Assignment Policy.
+1. **Background**: event-driven — fires on `Sync Complete` (generates SitRep, evaluating Variables against the active RoE + FRAGOs + Situational Awareness). In **Autonomous** mode, approved outcomes for auto-generated Decisions execute via the SitRep / `execute_decision_outcome` Celery chain. **Semi-Auto** Commander approvals **do not enqueue that path** — FRAGO / SA / Jira branches run **synchronously inside the Decision review HTTP request** (SAO §17.8 / Flow C). Plan creation and final narrative synthesis use the **planning model** (Opus); per-Variable execution steps use the **execution model** (Sonnet); plan success/failure notifications use the **notification model** (Haiku) — see SAO §17.3 Model Assignment Policy.
 2. **Chat — full-screen** (`CHAT-FULLSCREEN-1`, Act 8): two-pane interactive surface that exposes platform CRUDL via `services.py` / `tool_executor.py`. `find_*` tools provide full-text search; list operations support pagination, page size, filters.
 3. **Chat — sidebar** (`CHAT-SIDEBAR-1`): collapsible right rail mounted in the global layout, visible on every screen. **One Conversation per authenticated user + Project** — navigation switches threads when the anchored Project changes; the context chip auto-updates from the current screen within that scope. `[Expand to full screen]` opens `CHAT-FULLSCREEN-1` preserving the active Project conversation and pinned context (`docs/architecture/SAO.md` §17.11).
 
@@ -18,21 +18,21 @@
 - **Autonomous**: Gjallarhorn auto-approves its own Decisions (with machine-generated Reasoning attributed to `"Gjallarhorn"`) and executes outcomes. The Commander observes via audit log.
 - Toggle is a pill `[Semi-Auto | Auto]` on the `PROJECTS-VIEW_PROJECT-1` top action bar.
 
-**Decisions Logic FRAGO** (per-Project, system-managed): **one dedicated FRAGO** per Project (`kind = decisions_logic`) — Donland maintains **judgment memory in that single body**: the system **contributes structured lines by default from most Completed reviews** (**Approved**, **Auto-approved**, and materially recorded **Rejected** — see Act 9); exceptions include e.g. a **bare dismiss** with nothing to remember. Commander **extends**, **modifies**, or **removes** bullets via **`FRAGOS-EDIT_FRAGO-1`**. Automatic contributions use the **canonical markdown-bullet template** in SAO §17.8 (` · `-separated inline fields — one bullet per qualifying review). Auto-created when the **first** such line lands. Not revocable, not toggleable, always Active. Playbook stays the canonical definition of **what good looks like**; this FRAGO captures **how reasoning has evolved** for that Project. Gjallarhorn reads its current body when proposing new Decisions.
+**Decisions Logic FRAGO** (per-Project, system-managed): **one dedicated FRAGO** per Project (`kind = decisions_logic`) — Donland maintains **judgment memory in that single body**: the system **contributes structured lines by default from most Completed reviews** (**Approved**, **Auto-approved**, and materially recorded **Rejected** — see Act 9); exceptions include e.g. a **bare dismiss** with nothing to remember. Commander **extends**, **modifies**, or **removes** bullets via **`FRAGOS-EDIT_FRAGO-1`**. Automatic contributions use the **canonical markdown-bullet template** in SAO §17.8 (` · `-separated inline fields — one bullet per qualifying review). Auto-created when the **first** such line lands. Not revocable, not toggleable, always Active. The Rules of Engagement stays the canonical definition of **what good looks like**; this FRAGO captures **how reasoning has evolved** for that Project. Gjallarhorn reads its current body when proposing new Decisions.
 
-**Plans**: Gjallarhorn's internal async execution engine. When any multi-step task is needed — primarily SitRep generation (translating the Playbook Workflow into concrete tool calls: get commits, assess Variable, assign color, save Datapoint…) or occasionally a complex Decision implementation — Gjallarhorn creates an `ExecutionPlan` and runs it step-by-step via Celery. Plans are **visible in the Chat** as a collapsible `PlanProgressCard` (goal + progress bar + live step list). Each step records pre-execution reasoning (`why needed`, `expected outcome`) and post-execution reflection (`actual result`, `outcome assessment`), and stores the `model_used` field from `LLMResponse.model` so the model used for each step is auditable. Plans always start automatically — there is no Commander approval gate on a Plan. The Commander only gates the *Decisions* that a SitRep Plan produces (in Semi-Auto mode). On permanent step failure, Gjallarhorn posts a recovery analysis message in Chat with partial results and next-step options (see PlanProgressCard spec in Act 8). On transient failure (Claude 429), the step pauses for exponential-backoff retry (30 s → 60 s → 120 s) before resuming — completed steps are never re-executed.
+**Plans**: Gjallarhorn's internal async execution engine. When any multi-step task is needed — primarily SitRep generation (translating the RoE Workflow into concrete tool calls: get commits, assess Variable, assign color, save Datapoint…) or occasionally a complex Decision implementation — Gjallarhorn creates an `ExecutionPlan` and runs it step-by-step via Celery. Plans are **visible in the Chat** as a collapsible `PlanProgressCard` (goal + progress bar + live step list). Each step records pre-execution reasoning (`why needed`, `expected outcome`) and post-execution reflection (`actual result`, `outcome assessment`), and stores the `model_used` field from `LLMResponse.model` so the model used for each step is auditable. Plans always start automatically — there is no Commander approval gate on a Plan. The Commander only gates the *Decisions* that a SitRep Plan produces (in Semi-Auto mode). On permanent step failure, Gjallarhorn posts a recovery analysis message in Chat with partial results and next-step options (see PlanProgressCard spec in Act 8). On transient failure (Claude 429), the step pauses for exponential-backoff retry (30 s → 60 s → 120 s) before resuming — completed steps are never re-executed.
 
 **Jira / GitLab / etc.** — systems of record for raw work data. Huginn ingests via DataSources. **Huginn writes one thing back to Jira: issues created from accepted Decisions, tagged `HUGINN`.** No comment write-back, no annotation write-back.
 
 **Project lifecycle**: Projects are **import-only**. They are never created from a blank form — only by selecting from the list of projects a connected DataSource's token can see.
 
-**Playbook lifecycle**: Playbooks are versioned. A Playbook is metadata + a Workflow (markdown) + an ordered list of `PlaybookVariable` (structured). A Project auto-tracks the latest version of its assigned Playbook unless explicitly pinned to a specific version. Editing a Playbook (Workflow markdown OR any PlaybookVariable) creates a new version; Projects on auto-track receive the new expectations on their next SitRep. (In the future version you can import Playbook/Workflow from Mimir Server.)
+**RoE lifecycle**: Rules of Engagement are versioned. An RoE is metadata + a Workflow (markdown) + an ordered list of `RulesOfEngagementVariable` (structured). A Project auto-tracks the latest version of its assigned RoE unless explicitly pinned to a specific version. Editing an RoE (Workflow markdown OR any RulesOfEngagementVariable) creates a new version; Projects on auto-track receive the new expectations on their next SitRep. (In the future version you can import RoE/Workflow from Mimir Server.)
 
 **Time period granularity (systemwide)**: periods in Huginn span hours or days, not just calendar days. Sync can run as frequently as every hour; SitReps can cover sub-day windows ("last 2 hours", "last 4 hours", "today"). Period selectors throughout the UI offer both day-level and hour-level presets. Custom periods use datetime pickers (`from_date` / `to_date`) resolved to the minute. All timestamps and period bounds are stored and displayed in the user's local timezone.
 
-**Project view tabs**: tabs on the Project view are **system-defined**, not Playbook-derived:
-- **Vitals** — hardcoded, present on every Project. Contains: Identity / Playbook / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `PlaybookVariable` on the active PlaybookVersion (in declared order), showing `name (abbrev)` with value and color on hover.
-- **Variables** — one diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history for the selected period. Period filter supports both hour-level and day-level presets plus a custom datetime range.
+**Project view tabs**: tabs on the Project view are **system-defined**, not RoE-derived:
+- **Vitals** — hardcoded, present on every Project. Contains: Identity / RoE / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `RulesOfEngagementVariable` on the active RoE version (in declared order), showing `name (abbrev)` with value and color on hover.
+- **Variables** — one diagram per `RulesOfEngagementVariable` on the active RoE version, showing `VariableDatapoint` history for the selected period. Period filter supports both hour-level and day-level presets plus a custom datetime range.
 - **Adapter-driven tabs** — one tab per registered ingestion adapter. Today: the **Increments** tab, contributed by `ingestion/adapters/gitlab_commits.py`. New adapters add new tabs as they land.
 
 **DataSource credentials**: PATs (GitLab) are user-set and may have an expiry; Jira API tokens generally don't. Huginn tracks an `expires_at` per DataSource and surfaces a warning before expiry. No automatic refresh — the API doesn't support it for PATs.
@@ -99,7 +99,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 | 0 | Authentication | Register + Verify + Admin-gated Login | `AUTH-LOGIN-1` |
 | 1 | DataSource | CRUDLF | `DATASOURCES-LIST+FIND-1` |
 | 2 | Project Import | LIST+FIND + IMPORT + VIEW + ARCHIVE | `PROJECTS-LIST+FIND-1` |
-| 3 | Playbook | CRUDLF (versioned) | `PLAYBOOKS-LIST+FIND-1` |
+| 3 | Rules of Engagement | CRUDLF (versioned) | `ROE-LIST+FIND-1` |
 
 ### CALIBRATION — read the situation, tune expectations
 
@@ -107,7 +107,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 |-----|---------|---------|----------------|
 | 4 | Projects Dashboard (Tactical Plot) | Landing — color-coded health | `DASHBOARD-PROJECTS-1` |
 | 5 | SitRep / Status Report | LIST+FIND + VIEW (per Project) | `SITREP-LIST+FIND-1` |
-| 6 | FRAGO | CRUDLF (Playbook adjustment) | `FRAGOS-LIST+FIND-1` |
+| 6 | FRAGO | CRUDLF (RoE adjustment) | `FRAGOS-LIST+FIND-1` |
 | 7 | Variables Deep-Dive | VIEW with filters | `VARIABLES-VIEW-1` |
 | 8 | Gjallarhorn Chat | CHAT-FULLSCREEN + CHAT-SIDEBAR | `CHAT-FULLSCREEN-1` / `CHAT-SIDEBAR-1` |
 
@@ -124,7 +124,7 @@ The journey divides into three phases. Inception is one-time per install (or per
 
 # INCEPTION
 
-The one-time setup: connect a data source, import the projects you care about, write the Playbook that defines what "good" looks like for each project. By the end of Inception, Huginn has data flowing in and Gjallarhorn has produced its first SitRep.
+The one-time setup: connect a data source, import the projects you care about, write the Rules of Engagement that defines what "good" looks like for each project. By the end of Inception, Huginn has data flowing in and Gjallarhorn has produced its first SitRep.
 
 ---
 
@@ -451,17 +451,17 @@ Confirmation modal:
 
 #### Screen: PROJECTS-LIST+FIND-1
 
-This is the **Huginn-side** Project list (different from the Tactical Plot in Act 4 — that is the daily landing). This screen is for management: assign Playbook, archive, view sync status, and **see the latest SitRep headline + generated time** per row.
+This is the **Huginn-side** Project list (different from the Tactical Plot in Act 4 — that is the daily landing). This screen is for management: assign RoE, archive, view sync status, and **see the latest SitRep headline + generated time** per row.
 
 **Layout**:
 - **Header**: "Projects" with count badge
 - **Top Actions**:
   - **[Import Projects]** button (primary; download icon + label text `Import Projects`, no leading `+`) → `PROJECTS-IMPORT-1`
 - **Filters**:
-  - **Operational** list (`ui/templates/ui/projects/list.html`): Data source | Row status (Active / Archived / Orphaned) | Playbook (search).
-  - **HTML mock** (`ui/templates/ui/mockups/projects/list.html`): DataSource | Status — Playbook filter is omitted in the stub; columns still include Playbook assignment per row.
+  - **Operational** list (`ui/templates/ui/projects/list.html`): Data source | Row status (Active / Archived / Orphaned) | RoE (search).
+  - **HTML mock** (`ui/templates/ui/mockups/projects/list.html`): DataSource | Status — Rules of Engagement filter is omitted in the stub; columns still include RoE assignment per row.
 - **Table** with columns:
-  - Name | DataSource | Playbook (name + version) | Last sync | **Last SitRep** (latest headline → link to `SITREP-VIEW_SITREP-1` when known) | **Last SitRep generated** (timestamp; **`—`** when none yet) | Status
+  - Name | DataSource | RoE (name + version) | Last sync | **Last SitRep** (latest headline → link to `SITREP-VIEW_SITREP-1` when known) | **Last SitRep generated** (timestamp; **`—`** when none yet) | Status
   - No visible **Actions** column; each row ends with a single overflow menu (⋯) for secondary commands (see `docs/ux/IA_guidelines.md` §5.2 — LIST+FIND Table).
 - **Row navigation**:
   - **Name** links to `PROJECTS-VIEW_PROJECT-1`
@@ -491,29 +491,29 @@ Donland clicks **[Import Projects]** (from this screen, Act 1's shortcut, or Act
   - For each imported Project:
     - Project record created in Huginn with status "Initial sync queued"
     - A Celery `initial_sync` job is dispatched
-    - Default Playbook = none (must be assigned in Act 3 / via Edit)
-  - Banner on redirect: "N projects imported. Sync started. Assign a Playbook to receive SitReps."
+    - Default RoE = none (must be assigned in Act 3 / via Edit)
+  - Banner on redirect: "N projects imported. Sync started. Assign a Rules of Engagement to receive SitReps."
   - Redirect → `PROJECTS-LIST+FIND-1`
 
 **Re-import behavior**: Selecting an already-imported project is a no-op (checkbox disabled, "Already imported" badge shown).
 
 #### Screen: PROJECTS-VIEW_PROJECT-1
 
-**Layout** — tabbed page. Tabs are **system-defined** (not Playbook-derived).
+**Layout** — tabbed page. Tabs are **system-defined** (not RoE-derived).
 
 - **Header**: Project name + status badge + DataSource + **mode badge** (pill: `Semi-Auto` or `Auto`, matches the current `Project.gjallarhorn_mode`)
 - **Vitals tab** (hardcoded, present on every Project):
   - **Identity**: source path, source URL, imported on, imported by
-  - **Playbook**: name + version (or "Not assigned" — link to assign)
+  - **RoE**: name + version (or "Not assigned" — link to assign)
   - **Sync**: last sync time, next scheduled, current status (idle / syncing / error); **Last SitRep generated**: timestamp + link to `SITREP-VIEW_SITREP-1` for the latest SitRep (shown as "—" when no SitRep exists yet). This is a separate line from "Last sync" — ingestion timing and AI evaluation timing are intentionally distinct.
   - **Transparency card**: hardcoded system-wide health signal — how stale are updates? (See `ingestion/adapters/` for the metric definition.)
-  - **Informer bar**: one colored dot per `PlaybookVariable` on the active PlaybookVersion, in declared order. Hover shows `name (abbrev): value`. When no Playbook is assigned, the bar is empty.
+  - **Informer bar**: one colored dot per `RulesOfEngagementVariable` on the active RoE version, in declared order. Hover shows `name (abbrev): value`. When no RoE is assigned, the bar is empty.
 - **Variables tab**:
-  - One diagram per `PlaybookVariable` on the active PlaybookVersion, showing `VariableDatapoint` history.
+  - One diagram per `RulesOfEngagementVariable` on the active RoE version, showing `VariableDatapoint` history.
   - **Period selector** (top-right, persistent): Last 2h / Last 4h / Last 8h / Today / Yesterday / This week / Previous week / 30 days / Custom datetime range. Default adapts to the project's sync cadence (see Act 7 for full spec).
   - Each diagram: Variable name + abbrev as title; Y-axis = value; X-axis = time over the selected period. Color of each data point reflects the `interpreting` rule at that time.
   - Per-card affordances: [View in Chat] (Act 8) with Variable + period pre-loaded | [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with Variable pre-selected | reasoning-trace drilldown (click a data point to open a right-rail panel showing the originating `VariableDatapoint` row + SitRep + originating **`PlanStep`** from the SitRep `ExecutionPlan`, collapsed by default).
-  - Empty states: no Playbook assigned → "No Playbook assigned. Assign one in the Project view." | Playbook has no Variables → "This Playbook defines no Variables." | Variable has no history yet → "No SitReps yet" in place of the chart.
+  - Empty states: no RoE assigned → "No RoE assigned. Assign one in the Project view." | Rules of Engagement has no Variables → "This Rules of Engagement defines no Variables." | Variable has no history yet → "No SitReps yet" in place of the chart.
 - **Increments tab** (contributed by `ingestion/adapters/gitlab_commits.py`): system-defined view of ingested commit/increment data. Layout and content defined by the adapter. Further adapter-driven tabs will appear here as new adapters land.
 - Deep-link: `?tab=vitals` | `?tab=variables` | `?tab=increments` (or the adapter slug).
 - Sync engine behavior (beat, idempotency, error states) is specified in `docs/features/act-2-projects/projects-sync-engine.feature`; architecture in `docs/architecture/SAO.md` §1 (Ingestion sync engine), §4, §7.
@@ -529,7 +529,7 @@ Donland clicks **[Import Projects]** (from this screen, Act 1's shortcut, or Act
 
 Editable fields:
 - Display name (Huginn-side label; source path is immutable)
-- Assigned Playbook (dropdown of Playbooks; can also pick a specific version, default is "auto-track latest")
+- Assigned RoE (dropdown of Rules of Engagement; can also pick a specific version, default is "auto-track latest")
 - Sync schedule: **`hourly` | `every 6h` | `daily`** — matches `Project.sync_schedule` in code (Celery fan-out every 15 minutes checks whether the project is due). Default: **hourly**.
 - SitRep cadence: defaults to "match sync"; may be set to a coarser cadence when LLM cost must be bounded. *(Open question — see vision.md.)*
 - [Save Changes] | [Cancel]
@@ -543,40 +543,40 @@ Confirmation modal:
 
 ---
 
-## Act 3: Playbook — CRUDLF (versioned)
+## Act 3: Rules of Engagement — CRUDLF (versioned)
 
-**Context**: While the initial sync is running, Donland writes a Playbook. A Playbook is **metadata** (name, description) + a **Workflow** (free-form markdown describing the OO/DA narrative — roles, who is who, what to look for) + an ordered list of **PlaybookVariables** (structured: `name`, `abbreviation`, `calculating`, `interpreting`, `hover`). **One Playbook can be assigned to many Projects.** Each Project pins a (Playbook, version); auto-tracks the latest version by default. Editing the Workflow OR any Variable creates a new version.
+**Context**: While the initial sync is running, Donland writes a Rules of Engagement. An RoE is **metadata** (name, description) + a **Workflow** (free-form markdown describing the OO/DA narrative — roles, who is who, what to look for) + an ordered list of **RulesOfEngagementVariables** (structured: `name`, `abbreviation`, `calculating`, `interpreting`, `hover`). **One Rules of Engagement can be assigned to many Projects.** Each Project pins a (Rules of Engagement, version); auto-tracks the latest version by default. Editing the Workflow OR any Variable creates a new version.
 
-**Seed Playbook** (`FeatureFactory Playbook`): Huginn ships a default seed Playbook named **FeatureFactory Playbook**, pre-populated with:
+**Seed Rules of Engagement** (`FeatureFactory Rules of Engagement`): Huginn ships a default seed Rules of Engagement named **FeatureFactory Rules of Engagement**, pre-populated with:
 - **Seven starter Variables** (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution), each with default `calculating`, `interpreting`, and `hover`.
 
-Cloning **FeatureFactory Playbook** is the recommended starting point.
+Cloning **FeatureFactory Rules of Engagement** is the recommended starting point.
 
-**Decisions Logic FRAGO relationship**: the Playbook defines what "good" looks like (authoritative expectations, Workflow, Variables). The per-Project **`Decisions Logic` FRAGO** (Act 6) is **one living document**: **most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected** where memory is warranted) deposit a structured line by default; Donland routinely **extends, merges, rewrites, or deletes** entries in that same FRAGO so future proposals reflect curated judgment—not a frozen append-only log. Playbook stays the stable template; Decisions Logic is **mutable** Commander–Gjallarhorn memory.
+**Decisions Logic FRAGO relationship**: the Rules of Engagement defines what "good" looks like (authoritative expectations, Workflow, Variables). The per-Project **`Decisions Logic` FRAGO** (Act 6) is **one living document**: **most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected** where memory is warranted) deposit a structured line by default; Donland routinely **extends, merges, rewrites, or deletes** entries in that same FRAGO so future proposals reflect curated judgment—not a frozen append-only log. Rules of Engagement stays the stable template; Decisions Logic is **mutable** Commander–Gjallarhorn memory.
 
-**Pattern**: CRUDLF, with version history per Playbook.
+**Pattern**: CRUDLF, with version history per Rules of Engagement.
 
-#### Screen: PLAYBOOKS-LIST+FIND-1
+#### Screen: ROE-LIST+FIND-1
 
-Donland clicks **Playbooks** in the main nav.
+Donland clicks **Rules of Engagement** in the main nav.
 
 **Layout**:
-- **Header**: "Playbooks" with count badge
-- **Top Actions**: **[Import from Mimir]** (secondary outline, Mimir icon, disabled — MVP stub; IA toolbar) | **[+ New Playbook]** (primary → CREATE)
+- **Header**: "Rules of Engagement" with count badge
+- **Top Actions**: **[Import from Mimir]** (secondary outline, Mimir icon, disabled — MVP stub; IA toolbar) | **[+ New Rules of Engagement]** (primary → CREATE)
 - **Filter**: Author | Used by Project (yes / no) | Updated within
 - **Table**:
   - Name | Author | Latest version | Used by N projects | Updated
   - No visible **Actions** column; each row ends with a single overflow menu (⋯) for secondary commands (see `docs/ux/IA_guidelines.md` §5.2 — LIST+FIND Table).
 - **Row navigation**:
-  - **Name** links to `PLAYBOOKS-VIEW_PLAYBOOK-1`
-  - Overflow menu: **Edit** → `PLAYBOOKS-EDIT_PLAYBOOK-1` (creates a new version on save) | **Clone to new Playbook** → `PLAYBOOKS-CREATE_PLAYBOOK-1` pre-filled | **Delete** → `PLAYBOOKS-DELETE_PLAYBOOK-1` when unused (disabled with reason when any Project uses this Playbook)
-- **Empty State**: "No Playbooks yet. Write one to define expectations for your Projects."
+  - **Name** links to `ROE-VIEW_ROE-1`
+  - Overflow menu: **Edit** → `ROE-EDIT_ROE-1` (creates a new version on save) | **Clone to new Rules of Engagement** → `ROE-CREATE_ROE-1` pre-filled | **Delete** → `ROE-DELETE_ROE-1` when unused (disabled with reason when any Project uses this Rules of Engagement)
+- **Empty State**: "No Rules of Engagement yet. Write one to define expectations for your Projects."
 
-#### Screen: PLAYBOOKS-CREATE_PLAYBOOK-1
+#### Screen: ROE-CREATE_ROE-1
 
 **Layout** — three regions, top to bottom:
 
-- **Header**: "New Playbook" | [Clone from seed Playbook] (shortcut)
+- **Header**: "New Rules of Engagement" | [Clone from seed Rules of Engagement] (shortcut)
 
 - **1. Metadata**:
   - Name (required)
@@ -584,7 +584,7 @@ Donland clicks **Playbooks** in the main nav.
 
 - **2. Workflow** (markdown):
   - Markdown editor (full-height, monospace) with side-by-side rendered preview
-  - Describes the OO/DA narrative for projects on this Playbook — who is who, what good looks like, what to look out for
+  - Describes the OO/DA narrative for projects on this Rules of Engagement — who is who, what good looks like, what to look out for
   - Read by Gjallarhorn alongside the structured Variables when generating SitReps
   - **Future**: [Import from Mimir] (out of MVP)
 
@@ -601,17 +601,17 @@ Donland clicks **Playbooks** in the main nav.
 
 - **Top Actions**: [Save as v1] (primary) | [Cancel]
 
-#### Screen: PLAYBOOKS-VIEW_PLAYBOOK-1
+#### Screen: ROE-VIEW_ROE-1
 
 **Layout** (matches Project detail tab pattern — `hg-detail-tabs-card` + `nav-tabs card-header-tabs`):
 
 - **Tabs**
-  - **Playbook** — read-only snapshot for the version in focus (default: **latest**): Metadata, Workflow (rendered markdown), Variables table, **Used by** (Projects + tracking indicator with links to `PROJECTS-VIEW_PROJECT-1`).
-  - **Versions** — immutable version log: vN, date, author, change summary (newest first); **[Compare with current]** when wired (diff across Workflow and Variables). Selecting a prior version to hydrate the Playbook tab is product wiring (navigation may use query params or in-page state).
+  - **Rules of Engagement** — read-only snapshot for the version in focus (default: **latest**): Metadata, Workflow (rendered markdown), Variables table, **Used by** (Projects + tracking indicator with links to `PROJECTS-VIEW_PROJECT-1`).
+  - **Versions** — immutable version log: vN, date, author, change summary (newest first); **[Compare with current]** when wired (diff across Workflow and Variables). Selecting a prior version to hydrate the Rules of Engagement tab is product wiring (navigation may use query params or in-page state).
 
 - **Top Actions** (header toolbar): **[Clone]** | **[Edit]**
 
-#### Screen: PLAYBOOKS-EDIT_PLAYBOOK-1
+#### Screen: ROE-EDIT_ROE-1
 
 Same three-region form as CREATE (Metadata, Workflow, Variables), pre-populated with the latest version's content. Adds:
 - "Change summary" field (required) — shown in version log
@@ -623,14 +623,14 @@ Editing semantics:
 
 On save:
 - New version becomes "latest"
-- Projects auto-tracking this Playbook will use the new Variables and Workflow on their **next SitRep generation** (does not re-run past SitReps; existing SitReps keep their `variables_snapshot`)
+- Projects auto-tracking this Rules of Engagement will use the new Variables and Workflow on their **next SitRep generation** (does not re-run past SitReps; existing SitReps keep their `variables_snapshot`)
 - Pinned Projects keep their pinned version
 - Removing a Variable does **not** delete its existing `VariableDatapoint` history — the trend is preserved for audit but the Variable simply stops appearing on new SitReps and on the Variables tab.
 
-#### Screen: PLAYBOOKS-DELETE_PLAYBOOK-1
+#### Screen: ROE-DELETE_ROE-1
 
 Confirmation modal:
-- "Delete 'FeatureFactory Playbook'?"
+- "Delete 'FeatureFactory Rules of Engagement'?"
 - If used by 0 Projects: [Delete] available
 - If used by N Projects: "Used by N project(s). Reassign or archive those projects first." (Delete disabled)
 
@@ -641,20 +641,20 @@ Confirmation modal:
 After Inception:
 - ≥1 DataSource connected
 - ≥1 Project imported and synced (initial dump complete)
-- ≥1 Playbook authored and assigned to each Project
-- **Trigger**: when a Project's initial sync completes AND it has a Playbook assigned, Gjallarhorn fires its first SitRep generation. The Project is now ready for Calibration (Act 4 onward).
+- ≥1 Rules of Engagement authored and assigned to each Project
+- **Trigger**: when a Project's initial sync completes AND it has a Rules of Engagement assigned, Gjallarhorn fires its first SitRep generation. The Project is now ready for Calibration (Act 4 onward).
 
 ---
 
 # CALIBRATION
 
-The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into anything red or orange. He reads the SitRep, adjusts expectations via FRAGOs when reality and Playbook diverge for legitimate reasons, browses Variables to understand the trend, and questions Gjallarhorn directly when he needs an answer the SitRep didn't provide.
+The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into anything red or orange. He reads the SitRep, adjusts expectations via FRAGOs when reality and Rules of Engagement diverge for legitimate reasons, browses Variables to understand the trend, and questions Gjallarhorn directly when he needs an answer the SitRep didn't provide.
 
 ---
 
 ## Act 4: Projects Dashboard (Tactical Plot)
 
-**Context**: This is the **daily landing screen** after login. Donland sees every active Project at a glance: dominant **health** colour, latest **SitRep** access, variable strip, and sync/playbook footers. **Two presentations exist today:**
+**Context**: This is the **daily landing screen** after login. Donland sees every active Project at a glance: dominant **health** colour, latest **SitRep** access, variable strip, and sync/RoE footers. **Two presentations exist today:**
 - **HTML mock** (`ui/templates/ui/mockups/dashboard/projects.html`): title **Tactical Plot**; **card grid** (main) + **right sidebar** (Situational Awareness list, FRAGOs in effect, **Manage projects →**). Specified in `docs/features/act-4-dashboard/dashboard-projects.feature`.
 - **Operational Tactical Plot** (`ui/templates/ui/dashboard/projects.html`): **four-column** xl layout (Situational Awareness | FRAGOs | compact **Projects** list | Decisions/Tasks stubs). Card-grid affordances below are the **target** for per-project richness on the shipped plot as parity improves.
 
@@ -674,7 +674,7 @@ The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into a
 - **Headline**: one line under the title (latest SitRep narrative summary, e.g. "All monitored expectations met").
 - **SitRep micro-subcard** (`data-testid="project-card-{id}-sitrep-pill"`): compact **list-item style** block — left **primary accent** bar, soft **icon tile** (`fa-display-chart-up-circle-currency`), stacked **title** (latest SitRep headline as link → `SITREP-VIEW_SITREP-1`) and **meta row** (“Last SitRep” kicker + generation time). `z-2` above the card stretched link so the title link stays clickable. When none: muted icon tile + **No SitRep yet** (no link).
 - **Variables mini-strip**: abbreviations + coloured dots (tooltips); mock uses master-variable keys Tr, Tp, C, R, Q, X, Co.
-- **Footer**: last sync line (icon OK/warn) + playbook name + auto-track ⟳ vs pinned 📌 icon.
+- **Footer**: last sync line (icon OK/warn) + RoE name + auto-track ⟳ vs pinned 📌 icon.
 
 **Navigation**:
 - **Card stretched link** (mock): opens `PROJECTS-VIEW_PROJECT-1` for that project (whole card except intractable inner controls).
@@ -688,9 +688,9 @@ The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into a
 **Future / operational rails** (not in the HTML card mock): aggregated **DataSource connection issues** and **FRAGOs triggered since last visit** may appear on the shipped Tactical Plot or global workspace chrome as those surfaces land.
 
 **Colour semantics** (unchanged intent):
-- **Red**: ≥1 PlaybookVariable's `interpreting` rule yielded red at the latest SitRep (with active FRAGOs applied), OR Project has no SitRep yet (initial sync incomplete or no Playbook assigned)
-- **Orange**: ≥1 PlaybookVariable's `interpreting` yielded orange at the latest SitRep, no red
-- **Yellow**: ≥1 PlaybookVariable's `interpreting` yielded yellow at the latest SitRep, no orange/red
+- **Red**: ≥1 RulesOfEngagementVariable's `interpreting` rule yielded red at the latest SitRep (with active FRAGOs applied), OR Project has no SitRep yet (initial sync incomplete or no Rules of Engagement assigned)
+- **Orange**: ≥1 RulesOfEngagementVariable's `interpreting` yielded orange at the latest SitRep, no red
+- **Yellow**: ≥1 RulesOfEngagementVariable's `interpreting` yielded yellow at the latest SitRep, no orange/red
 - **Green**: all monitored expectations met
 
 **Empty state** (no Projects imported): CTA toward Act 2 import (wording may differ mock vs operational).
@@ -701,13 +701,13 @@ The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into a
 
 ## Act 5: SitRep / Status Report
 
-**Context**: A SitRep is what Gjallarhorn produces after a sync completes or when requested manually. It is **per Project, per assessed period**. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw over `period: [from_dt, to_dt]` against Playbook version V.
+**Context**: A SitRep is what Gjallarhorn produces after a sync completes or when requested manually. It is **per Project, per assessed period**. SitReps are read-only once finalized — they are a frozen record of what Gjallarhorn saw over `period: [from_dt, to_dt]` against Rules of Engagement version V.
 
 **Generation triggers**:
 - **Automatic**: fired by the `Sync Complete` event after each successful ingestion run, using a default period of `last_sitrep.generated_at → sync_completed_at` (i.e., everything new since the previous SitRep). If no prior SitRep exists, the default period is the full ingestion history.
 - **Manual**: Commander clicks [Generate SitRep ▾] on `PROJECTS-VIEW_PROJECT-1` and selects a period — either the "Since last SitRep" default or a custom `from_dt → to_dt` window (supports hour-level granularity: "last 2 hours", "last 4 hours", "today", "yesterday", or a custom datetime range).
 
-**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Playbook workflow + variables, enabled in-window FRAGOs, data: {period: [from_dt, to_dt], …})` and runs a **multi-step `ExecutionPlan`** — one LLM invocation per `PlanStep`, using the **planning model** (Opus) for plan creation and the final narrative-compose step, and the **execution model** (Sonnet) for all per-Variable data-gather and assessment steps. The `period` is stored on the `SitRep` record and displayed in the view header. The final composition steps produce the situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams); each datapoint links to its producing **`PlanStep`** where applicable. Within a plan run, tool results are cached by argument hash so the same data source (e.g. `list_commits`) is fetched only once across all steps (SAO §17.6).
+**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Rules of Engagement workflow + variables, enabled in-window FRAGOs, data: {period: [from_dt, to_dt], …})` and runs a **multi-step `ExecutionPlan`** — one LLM invocation per `PlanStep`, using the **planning model** (Opus) for plan creation and the final narrative-compose step, and the **execution model** (Sonnet) for all per-Variable data-gather and assessment steps. The `period` is stored on the `SitRep` record and displayed in the view header. The final composition steps produce the situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams); each datapoint links to its producing **`PlanStep`** where applicable. Within a plan run, tool results are cached by argument hash so the same data source (e.g. `list_commits`) is fetched only once across all steps (SAO §17.6).
 
 **Pattern**: LIST+FIND + VIEW. No user-initiated CREATE form (generation is triggered via [Generate SitRep] on the Project view), no EDIT (frozen), no DELETE (audit log).
 
@@ -719,12 +719,12 @@ Donland clicks a Project card on the Dashboard, or **SitReps** from the Project 
 - **Header**: "SitReps — atlas-backend"
 - **Top Actions**: **[Generate SitRep ▾]** — same period-picker dropdown as on `PROJECTS-VIEW_PROJECT-1` (see Act 2). Provides a shortcut so the Commander can trigger generation without navigating away from the SitRep list.
 - **History table** (newest first by default; there is **no** separate pinned "latest SitRep" card — the first row is the latest):
-  - Columns: Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions
-  - Filter: status, date range, Playbook version, trigger type
+  - Columns: Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Rules of Engagement version | Actions
+  - Filter: status, date range, Rules of Engagement version, trigger type
   - **Generating row** — when an `ExecutionPlan` for this project has `sitrep_from_dt` set and `status ∈ {pending, running, waiting_retry}` and no corresponding `SitRep` exists yet, a row floats at the top of the table (above completed rows): `Generated at = "—"`, assessed period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = amber spinner badge "Generating… (N/M steps)"** where N/M come from `progress_current/progress_total`, `Headline = "—"`. No View action — generation is in progress.
   - **Failed row** — when a plan terminates with `status=failed` and no `SitRep` was written, the row remains in the table: `Generated at = plan.created_at`, period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = red "Failed" badge**, error reason from `ExecutionPlan.last_error` truncated to ~80 chars in the Headline cell. **Row Actions = [View in Chat]** linking to that plan's `Conversation` (where `_notify_ai_of_plan_failure` posted the recovery analysis with partial results and next-step options).
   - **Completed SitRep row** — the normal case once a `SitRep` record exists: all columns populated. **Row Actions = [View]** → `SITREP-VIEW_SITREP-1`.
-- **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Playbook is assigned. You can also generate one manually using [Generate SitRep ▾] above."
+- **Empty State**: "No SitReps yet. Gjallarhorn generates the first SitRep when initial sync completes and a Rules of Engagement is assigned. You can also generate one manually using [Generate SitRep ▾] above."
 
 #### Screen: SITREP-VIEW_SITREP-1
 
@@ -733,16 +733,16 @@ Donland opens a SitRep from the list (headline link or row **View**), or follows
 **Layout** (read-only document, multi-section):
 
 - **Header**:
-  - Project | Date generated | **Assessed period** (`from_dt → to_dt`, displayed in local timezone; e.g., "Mon 09:00 → 13:15" for a 4-hour window, or "2026-04-19 09:00 → 2026-04-20 09:00" for a daily window) | **Trigger** badge (Auto / Manual) | Playbook version evaluated against | Overall status badge | **Mode at generation** indicator (Semi-Auto / Auto — records which mode was active when Gjallarhorn ran; explains whether Decisions were proposed or already auto-approved)
+  - Project | Date generated | **Assessed period** (`from_dt → to_dt`, displayed in local timezone; e.g., "Mon 09:00 → 13:15" for a 4-hour window, or "2026-04-19 09:00 → 2026-04-20 09:00" for a daily window) | **Trigger** badge (Auto / Manual) | Rules of Engagement version evaluated against | Overall status badge | **Mode at generation** indicator (Semi-Auto / Auto — records which mode was active when Gjallarhorn ran; explains whether Decisions were proposed or already auto-approved)
   - [Open Decisions] (primary, jumps to Decisions section) | [Open Variables] (jumps to Variables section) | [Generate SitRep for another period ▾] (secondary — same period picker, pre-selects "Since this SitRep")
 
 - **Section 1 — Situation Assessment**:
   - Overall status (red/orange/yellow/green) with one-paragraph narrative
-  - Example: *"RED — Milestone v1.21 supposed to ship Monday, but still 3 critical bugs open. Playbook expects Active Bug Count = 0 at all times; current value is 3."*
+  - Example: *"RED — Milestone v1.21 supposed to ship Monday, but still 3 critical bugs open. Rules of Engagement expects Active Bug Count = 0 at all times; current value is 3."*
   - Key breaches list: each shows Variable name → expected vs. actual → severity badge → link to Variable deep-dive (Act 7)
 
 - **Section 2 — Variables Snapshot**:
-  - One row per PlaybookVariable on the evaluated PlaybookVersion, rendered from the SitRep's embedded `variables_snapshot` JSON (canonical, immutable record of what Gjallarhorn saw at generation time).
+  - One row per RulesOfEngagementVariable on the evaluated RoE version, rendered from the SitRep's embedded `variables_snapshot` JSON (canonical, immutable record of what Gjallarhorn saw at generation time).
   - Columns: **Name (abbrev)** | **Value** | **Color** (traffic light) | **Hover** | Δ vs. previous SitRep
   - When a Variable's value could not be computed by the Agent, the row renders with `value = —` and `color = grey`.
   - Each row links to `VARIABLES-VIEW-1` (Act 7 / Variables tab) filtered to that Variable.
@@ -766,14 +766,14 @@ Donland opens a SitRep from the list (headline link or row **View**), or follows
 
 ---
 
-## Act 6: FRAGO — CRUDLF (Playbook adjustment)
+## Act 6: FRAGO — CRUDLF (Rules of Engagement adjustment)
 
-**Context**: A FRAGO is an **in-flight adjustment to the Playbook** that the active Playbook version doesn't capture. When reality and Playbook disagree for a legitimate reason, Donland creates a FRAGO instead of editing the Playbook itself. Examples:
+**Context**: A FRAGO is an **in-flight adjustment to the Rules of Engagement** that the active Rules of Engagement version doesn't capture. When reality and Rules of Engagement disagree for a legitimate reason, Donland creates a FRAGO instead of editing the Rules of Engagement itself. Examples:
 - *"Active Bug Count expected to be 0 — belay that on Fridays; up to 3 bugs OK on Fri."*
 - *"Disregard broken builds tomorrow — known infra outage."*
 - *"Cycle time threshold ≤ 5 days suspended for Sprint 47 (holiday week)."*
 
-A FRAGO is **a short markdown body** scoped to one Project, with an optional time/scope filter (day-of-week, date range, Sprint/Milestone) and an optional **Affects** designation (Narrative or Variable(s)). When set to Variable(s), the FRAGO retunes that Variable's `interpreting` rule for the effective window; it cannot introduce new variables. When Gjallarhorn generates a SitRep, it reads **enabled FRAGOs that are currently in their effective window** alongside the Playbook (Workflow + Variables) and reconciles them in the assessment — both human-authored, both natural language.
+A FRAGO is **a short markdown body** scoped to one Project, with an optional time/scope filter (day-of-week, date range, Sprint/Milestone) and an optional **Affects** designation (Narrative or Variable(s)). When set to Variable(s), the FRAGO retunes that Variable's `interpreting` rule for the effective window; it cannot introduce new variables. When Gjallarhorn generates a SitRep, it reads **enabled FRAGOs that are currently in their effective window** alongside the Rules of Engagement (Workflow + Variables) and reconciles them in the assessment — both human-authored, both natural language.
 
 **Activate / Deactivate**: each FRAGO has an `enabled` flag the Commander can toggle from the list or detail screen. **Deactivated FRAGOs are not consumed by Gjallarhorn** when producing SitReps, regardless of their effective window. Useful for short-term suspension without losing the FRAGO's context — re-enable to resume. Distinct from **Revoke** (which is soft-delete; revoked FRAGOs cannot be re-enabled).
 
@@ -821,7 +821,7 @@ Donland clicks **FRAGOs** in the main nav (or [+ New FRAGO from this expectation
   - [Edit] → `FRAGOS-EDIT_FRAGO-1`
   - [Activate] / [Deactivate] (mirrors the toggle, redundant for accessibility / keyboard users)
   - [Revoke] → `FRAGOS-REVOKE_FRAGO-1` (labelled Revoke, not Delete; soft-delete)
-- **Empty State**: "No FRAGOs. Create one to override Playbook expectations for known temporary conditions."
+- **Empty State**: "No FRAGOs. Create one to override Rules of Engagement expectations for known temporary conditions."
 
 #### Screen: FRAGOS-CREATE_FRAGO-1
 
@@ -834,8 +834,8 @@ Note: the **"Decisions Logic"** FRAGO (`kind = decisions_logic`) is system-manag
 - **Form**:
   - **Project** (required, **dropdown**) — choose target Project; pre-filled when `?project=` is present
   - Title (required) — e.g., "Belay Active Bug Count = 0 on Fridays"
-  - **Body** (markdown) — the FRAGO content. Free-form natural language. Gjallarhorn reads this alongside the Playbook when generating SitReps.
-  - **Affects** (optional, single-select): **Narrative** — global context override, Gjallarhorn reads it alongside the Workflow; **Variable(s)** — retunes the interpreting rule for one or more Playbook Variables for the effective window.
+  - **Body** (markdown) — the FRAGO content. Free-form natural language. Gjallarhorn reads this alongside the Rules of Engagement when generating SitReps.
+  - **Affects** (optional, single-select): **Narrative** — global context override, Gjallarhorn reads it alongside the Workflow; **Variable(s)** — retunes the interpreting rule for one or more Rules of Engagement Variables for the effective window.
   - **Scope filter** (optional):
     - Day-of-week: any combination of Mon–Sun
     - Date range: from / to (either or both optional)
@@ -861,27 +861,27 @@ Same form as CREATE, pre-populated. Editing is allowed — change is timestamped
 
 Confirmation modal:
 - "Revoke 'Belay Active Bug Count = 0 on Fridays'?"
-- "Future SitReps will evaluate the underlying Playbook expectation as written. Existing SitReps that referenced this FRAGO are unchanged."
+- "Future SitReps will evaluate the underlying Rules of Engagement expectation as written. Existing SitReps that referenced this FRAGO are unchanged."
 - [Revoke] (warning) | [Cancel]
 
 ---
 
 ## Act 7: Variables Tab
 
-**Context**: The Variables tab lives on `PROJECTS-VIEW_PROJECT-1` (Act 2). Donland arrives here from a SitRep breach link, from the informer bar on Vitals, or directly by clicking the Variables tab on a Project. This tab shows every PlaybookVariable on the active PlaybookVersion as a time-series diagram derived from `VariableDatapoint` history. Read-only — values come from SitReps, history from VariableDatapoint rows.
+**Context**: The Variables tab lives on `PROJECTS-VIEW_PROJECT-1` (Act 2). Donland arrives here from a SitRep breach link, from the informer bar on Vitals, or directly by clicking the Variables tab on a Project. This tab shows every RulesOfEngagementVariable on the active RoE version as a time-series diagram derived from `VariableDatapoint` history. Read-only — values come from SitReps, history from VariableDatapoint rows.
 
 **Pattern**: VIEW with period filter. No CREATE/EDIT/DELETE. Screen ID `VARIABLES-VIEW-1` is retained for cross-references.
 
 #### Screen: VARIABLES-VIEW-1
 
 **Layout**:
-- **Header**: "Variables" (within the Project page header — "Variables — atlas-backend") + active PlaybookVersion indicator
+- **Header**: "Variables" (within the Project page header — "Variables — atlas-backend") + active RoE version indicator
 - **Period selector** (top-right, persistent):
   - **Sub-day**: Last 2 hours | Last 4 hours | Last 8 hours
   - **Day-level**: Today | Yesterday | This week | Previous week | 30 days
   - **Custom…**: datetime range picker (`from_dt` / `to_dt`, resolved to the minute)
   - Default: Today (switches automatically to **Last 4 hours** when the project sync cadence is **hourly** so sub-day resolution stays meaningful — `every 6h`/daily presets still favor day-scale windows unless the Commander picks sub-day manually)
-- **Variable diagrams** (grid, one card per PlaybookVariable on the active PlaybookVersion, in declared order):
+- **Variable diagrams** (grid, one card per RulesOfEngagementVariable on the active RoE version, in declared order):
   - **Card header**: Name (abbrev) + current value + color band + status badge (with active FRAGO overrides applied)
   - **Diagram**: line chart — Y-axis = value, X-axis = time over the selected period; color of each data point reflects the `interpreting` rule at that time
   - **Calculating** (collapsed by default): the Variable's `calculating` text — JQL, expression, or prompt
@@ -890,12 +890,12 @@ Confirmation modal:
 - **Per-card affordances**:
   - Click a data point → drill-down panel (right rail) showing that datapoint's `VariableDatapoint` row (with its `from_dt → to_dt` period) + the originating SitRep + the originating **`PlanStep`** (collapsed by default; expands to pre/post reasoning + tool trace for that SitRep execution step)
   - [View in Chat] → opens `CHAT-FULLSCREEN-1` with the Variable + period pre-loaded as context
-  - [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with this PlaybookVariable pre-selected as the tag
+  - [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with this RulesOfEngagementVariable pre-selected as the tag
 - **Variable-level affordances**:
-  - "Edit Variable in Playbook" link → `PLAYBOOKS-EDIT_PLAYBOOK-1` (or pin warning if Project pins an old version)
+  - "Edit Variable in Rules of Engagement" link → `ROE-EDIT_ROE-1` (or pin warning if Project pins an old version)
 - **Empty states**:
-  - Project has no assigned Playbook → "No Playbook assigned. Assign one in the Project view."
-  - Playbook has no Variables → "This Playbook defines no Variables. Add some in `PLAYBOOKS-EDIT_PLAYBOOK-1`."
+  - Project has no assigned Rules of Engagement → "No Rules of Engagement assigned. Assign one in the Project view."
+  - Rules of Engagement has no Variables → "This Rules of Engagement defines no Variables. Add some in `ROE-EDIT_ROE-1`."
   - A Variable has no VariableDatapoint history yet → diagram area shows "No SitReps yet" instead of an empty chart.
 
 ---
@@ -948,7 +948,7 @@ Confirmation modal:
 - Input box at bottom: textarea + [Send] button + [Attach context] dropdown (manually pin a SitRep, FRAGO, etc. as additional context)
 
 **Right — Context panel** (collapsible):
-- **Active Project**: name, status, Playbook
+- **Active Project**: name, status, Rules of Engagement
 - **Pinned context**: items the user attached (SitRep, Variable view, etc.)
 - **Recent entities seen in this conversation** (auto-tracked) — quick-jump links
 - **Tool inventory** — list of tools available to Gjallarhorn (collapsible reference) so Donland understands what's possible. Examples: `list_uows`, `find_uows` (full-text), `get_contributor`, `list_increments`, `get_sitrep`, `list_decisions`, `find_artifacts`, etc.
@@ -1157,7 +1157,7 @@ Donland clicks **Situational Awareness** in the main nav (or arrives from a Deci
   - Click to view a past version; [Compare with current] for diff view
 - **Top Actions**: [Edit] → `SITAWARENESS-EDIT-1`
 
-**Gjallarhorn behavior**: when generating **any** SitRep, Gjallarhorn reads this single active Situational Awareness alongside that Project's Playbook and **that Project's** FRAGOs. SitRep narratives may reference SA explicitly ("Per Situational Awareness 2026-04-19: GitLab outage in progress, sync gaps expected").
+**Gjallarhorn behavior**: when generating **any** SitRep, Gjallarhorn reads this single active Situational Awareness alongside that Project's Rules of Engagement and **that Project's** FRAGOs. SitRep narratives may reference SA explicitly ("Per Situational Awareness 2026-04-19: GitLab outage in progress, sync gaps expected").
 
 #### Screen: SITAWARENESS-EDIT-1
 
@@ -1172,10 +1172,10 @@ Same layout as VIEW but document is editable (rich text per section).
 
 The following are deliberately deferred — captured here so they aren't silently lost between this artefact and ESM Activity 04 / implementation:
 
-1. **Seed Playbook starter Variables.** Exact `name / abbreviation / calculating / interpreting / hover` values for each of the seven starters (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution). Tracked in a separate doc: `docs/features/playbooks-seed.md` (to be authored).
+1. **Seed Rules of Engagement starter Variables.** Exact `name / abbreviation / calculating / interpreting / hover` values for each of the seven starters (Transparency, Throughput, Cycle & Lead Time, Rework, Quality, Complexity, Contribution). Tracked in a separate doc: `docs/features/roe-seed.md` (to be authored).
 2. **SitRep cadence vs sync cadence default policy.** **MVP ingestion sync** is capped at **`hourly` \| `every_6h` \| `daily`** (`Project.sync_schedule`). SitRep generation is still LLM-expensive; optional coarser-than-sync SitRep beats may be desirable. See `docs/ideation/vision.md` Open Questions about future finer-grained ingest cadences vs LLM budgets. *Partially resolved*: the **period model** is explicit — each SitRep stores `from_dt → to_dt`; manual on-demand generation with any period (including sub-day) is specified. What remains open is the **default automatic** SitRep throttle when/if sync becomes more frequent post-MVP.
-3. **Per-Variable rich subchart enrichment.** The Variables tab renders one diagram per Variable (Y = value, X = time, fixed period filter). Richer auxiliary panels — burndown, churn quadrant, contributor scatter — don't fit the single-value-per-Variable model. Options: declare them as additional Variables on **FeatureFactory Playbook**; attach auxiliary chart specs to a `PlaybookVariable`; or move them to a dedicated post-MVP "Project Analytics" surface.
-4. **PlaybookVariable.calculating typing.** Currently free text — the Agent decides whether to evaluate deterministically (JQL, count expression) or interpret + estimate. Open whether to add an explicit `calc_kind` hint to make Agent routing cheaper.
+3. **Per-Variable rich subchart enrichment.** The Variables tab renders one diagram per Variable (Y = value, X = time, fixed period filter). Richer auxiliary panels — burndown, churn quadrant, contributor scatter — don't fit the single-value-per-Variable model. Options: declare them as additional Variables on **FeatureFactory Rules of Engagement**; attach auxiliary chart specs to a `RulesOfEngagementVariable`; or move them to a dedicated post-MVP "Project Analytics" surface.
+4. **RulesOfEngagementVariable.calculating typing.** Currently free text — the Agent decides whether to evaluate deterministically (JQL, count expression) or interpret + estimate. Open whether to add an explicit `calc_kind` hint to make Agent routing cheaper.
 5. ~~**Situational Awareness scope — journey vs vision.**~~ **Resolved:** persistence and UI use one **workspace-global** SA capsule (singleton). FRAGOs stay per-Project. If `docs/ideation/vision.md` still mentions per-Project SA, treat it as superseded by Act 12 unless an ADR says otherwise.
 6. **Chat sidebar keyboard shortcut.** Global keyboard shortcut to expand/collapse `CHAT-SIDEBAR-1` (e.g., `⌘+Shift+G`). Deferred — needs keybinding UX design and conflict resolution with browser shortcuts.
 7. **Auto-approved Decision reversal.** In Autonomous mode, `Auto-approved` Decisions are audit-only in MVP — no UI to reverse the outcome after the fact. Post-MVP: define a "Revert Decision" flow that creates compensating artefacts (e.g., deactivate the auto-created FRAGO, reverse the Jira issue) and records a Reversal Reasoning. Deferred.

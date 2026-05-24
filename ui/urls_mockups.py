@@ -30,19 +30,19 @@ from .views.mockups.fragos import (
     fragos_revoke,
     fragos_view,
 )
-from .views.mockups.playbooks import (
-    playbooks_create,
-    playbooks_delete,
-    playbooks_edit,
-    playbooks_list,
-    playbooks_view,
-)
 from .views.mockups.projects import (
     projects_archive,
     projects_edit,
     projects_import,
     projects_list,
     projects_view,
+)
+from .views.mockups.roe import (
+    roe_create,
+    roe_delete,
+    roe_edit,
+    roe_list,
+    roe_view,
 )
 from .views.mockups.sitawareness import sitawareness_edit, sitawareness_view
 from .views.mockups.sitrep import sitrep_list, sitrep_view
@@ -67,11 +67,11 @@ urlpatterns = [
     path("projects/<int:pk>/", projects_view, name="mockup-projects-view"),
     path("projects/<int:pk>/edit/", projects_edit, name="mockup-projects-edit"),
     path("projects/<int:pk>/archive/", projects_archive, name="mockup-projects-archive"),
-    path("playbooks/", playbooks_list, name="mockup-playbooks-list"),
-    path("playbooks/create/", playbooks_create, name="mockup-playbooks-create"),
-    path("playbooks/<int:pk>/", playbooks_view, name="mockup-playbooks-view"),
-    path("playbooks/<int:pk>/edit/", playbooks_edit, name="mockup-playbooks-edit"),
-    path("playbooks/<int:pk>/delete/", playbooks_delete, name="mockup-playbooks-delete"),
+    path("roe/", roe_list, name="mockup-roe-list"),
+    path("roe/create/", roe_create, name="mockup-roe-create"),
+    path("roe/<int:pk>/", roe_view, name="mockup-roe-view"),
+    path("roe/<int:pk>/edit/", roe_edit, name="mockup-roe-edit"),
+    path("roe/<int:pk>/delete/", roe_delete, name="mockup-roe-delete"),
     path("sitrep/", sitrep_list, name="mockup-sitrep-list"),
     path("sitrep/<int:pk>/", sitrep_view, name="mockup-sitrep-view"),
     path("fragos/", fragos_list, name="mockup-fragos-list"),

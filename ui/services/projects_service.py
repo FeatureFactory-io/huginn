@@ -8,7 +8,7 @@ from django.utils.text import slugify
 from ingestion.integrations.gitlab_client import GitlabClient
 from ingestion.models import DataSource, Project
 from ingestion.tasks import sync_project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 
 
 class ProjectsService:
@@ -150,24 +150,24 @@ class ProjectsService:
             if val in choices:
                 updates["sync_schedule"] = val
 
-        if {"assigned_playbook", "pinned_playbook_version"} & fields.keys():
-            apb_raw = (fields.get("assigned_playbook") or "").strip()
-            pin_raw = (fields.get("pinned_playbook_version") or "").strip()
+        if {"assigned_roe", "pinned_roe_version"} & fields.keys():
+            apb_raw = (fields.get("assigned_roe") or "").strip()
+            pin_raw = (fields.get("pinned_roe_version") or "").strip()
             if not apb_raw:
-                updates["assigned_playbook_id"] = None
-                updates["pinned_playbook_version_id"] = None
-                updates["playbook_slug"] = ""
+                updates["assigned_roe_id"] = None
+                updates["pinned_roe_version_id"] = None
+                updates["roe_slug"] = ""
             elif apb_raw.isdigit():
-                pb = Playbook.objects.filter(pk=int(apb_raw)).first()
-                if pb:
-                    updates["assigned_playbook_id"] = pb.pk
-                    updates["playbook_slug"] = pb.slug
+                roe = RulesOfEngagement.objects.filter(pk=int(apb_raw)).first()
+                if roe:
+                    updates["assigned_roe_id"] = roe.pk
+                    updates["roe_slug"] = roe.slug
                     pin_pk = None
                     if pin_raw.isdigit():
-                        pv = PlaybookVersion.objects.filter(pk=int(pin_raw), playbook_id=pb.pk).first()
+                        pv = RulesOfEngagementVersion.objects.filter(pk=int(pin_raw), roe_id=roe.pk).first()
                         if pv:
                             pin_pk = pv.pk
-                    updates["pinned_playbook_version_id"] = pin_pk
+                    updates["pinned_roe_version_id"] = pin_pk
 
         if updates:
             qs.update(**updates)

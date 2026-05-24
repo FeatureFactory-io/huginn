@@ -155,11 +155,11 @@ def _persist_sitrep_from_plan(plan):
 
     fragos = Frago.objects.filter(project=project, enabled=True)
 
-    playbook_version = None
-    if project.assigned_playbook:
-        pv = project.assigned_playbook.versions.first()
+    roe_version = None
+    if project.assigned_roe:
+        pv = project.assigned_roe.versions.first()
         if pv:
-            playbook_version = pv.version_number
+            roe_version = pv.version_number
 
     mode = getattr(project, "gjallarhorn_mode", "semi_auto") or "semi_auto"
 
@@ -169,7 +169,7 @@ def _persist_sitrep_from_plan(plan):
         to_dt=plan.sitrep_to_dt,
         trigger=plan.sitrep_trigger or "automatic",
         mode_at_generation=mode,
-        playbook_version=playbook_version,
+        roe_version=roe_version,
         headline=result["headline"],
         situation_assessment=result["situation_assessment"],
         notable_activity=result.get("notable_activity", []),
