@@ -13,7 +13,7 @@ from gjallarhorn.llm.base import LLMResponse
 from gjallarhorn.models import ExecutionPlan
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from ingestion.models import Increment, Project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import SitRep
 
 User = get_user_model()
@@ -42,20 +42,20 @@ def _agent_patches(agent):
 
 
 @pytest.fixture
-def project_with_playbook(db):
+def project_with_roe(db):
     user = User.objects.create_user(email="gen-test@example.com", password="test")
     project = Project.objects.create(name="atlas-backend", slug="atlas-backend", imported_by=user)
-    pb = Playbook.objects.create(slug="default-pb", name="Default PB")
-    PlaybookVersion.objects.create(playbook=pb, version_number=1, workflow_md="workflow")
-    project.assigned_playbook = pb
+    roe = RulesOfEngagement.objects.create(slug="default-roe", name="Default RoE")
+    RulesOfEngagementVersion.objects.create(roe=roe, version_number=1, workflow_md="workflow")
+    project.assigned_roe = roe
     project.save()
     return project, user
 
 
 @pytest.mark.django_db
 class TestGenerateSitRepTask:
-    def test_generate_from_dt_no_prior(self, scripted_llm_factory, project_with_playbook):
-        project, user = project_with_playbook
+    def test_generate_from_dt_no_prior(self, scripted_llm_factory, project_with_roe):
+        project, user = project_with_roe
         now = timezone.now()
         earliest = now.replace(hour=0, minute=0, second=0, microsecond=0)
         Increment.objects.create(
@@ -76,8 +76,8 @@ class TestGenerateSitRepTask:
         plan = ExecutionPlan.objects.get(plan_id=plan_id)
         assert abs((plan.sitrep_from_dt - earliest).total_seconds()) < 2
 
-    def test_generate_from_dt_prior_exists(self, scripted_llm_factory, project_with_playbook):
-        project, user = project_with_playbook
+    def test_generate_from_dt_prior_exists(self, scripted_llm_factory, project_with_roe):
+        project, user = project_with_roe
         now = timezone.now()
         prior_to_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
         to_dt = now.replace(hour=13, minute=15, second=0, microsecond=0)
@@ -93,8 +93,8 @@ class TestGenerateSitRepTask:
         plan = ExecutionPlan.objects.get(plan_id=plan_id)
         assert abs((plan.sitrep_from_dt - prior_to_dt).total_seconds()) < 2
 
-    def test_generate_idempotency(self, scripted_llm_factory, project_with_playbook):
-        project, user = project_with_playbook
+    def test_generate_idempotency(self, scripted_llm_factory, project_with_roe):
+        project, user = project_with_roe
         now = timezone.now()
         from_dt = now.replace(hour=9, minute=0, second=0, microsecond=0)
         to_dt = now.replace(hour=13, minute=0, second=0, microsecond=0)
@@ -118,7 +118,7 @@ class TestGenerateSitRepTask:
         assert SitRep.objects.filter(project=project, to_dt=to_dt).count() == 1
         assert str(plan_id_1) == str(plan_id_2)
 
-    def test_generate_no_playbook(self, db):
+    def test_generate_no_roe(self, db):
         user = User.objects.create_user(email="nopb@example.com", password="test")
         project = Project.objects.create(name="no-pb", slug="no-pb", imported_by=user)
         now = timezone.now()
@@ -131,8 +131,8 @@ class TestGenerateSitRepTask:
         assert result is None
         assert ExecutionPlan.objects.filter(conversation__project=project).count() == 0
 
-    def test_generate_manual_trigger(self, scripted_llm_factory, project_with_playbook):
-        project, user = project_with_playbook
+    def test_generate_manual_trigger(self, scripted_llm_factory, project_with_roe):
+        project, user = project_with_roe
         now = timezone.now()
         from_dt = now.replace(hour=8, minute=0, second=0, microsecond=0)
         to_dt_auto = now.replace(hour=14, minute=0, second=0, microsecond=0)

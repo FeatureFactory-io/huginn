@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — List page headers with entity icon (3.5); LIST+FIND data table shell (Playbooks-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (3.4).
+> Last updated: May 2026 — List page headers with entity icon (3.5); LIST+FIND data table shell (RoE-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (3.4).
 
 ---
 
@@ -205,7 +205,7 @@ Every page follows this structure:
 |---|---|---|
 | **3-column card grid** | Tactical Plot | `row g-3` / `col-md-6 col-xl-4` |
 | **9+3 split** (cards + rail) | Tactical Plot | `col-lg-9` / `col-lg-3` |
-| **Detail tabs card** | Playbook VIEW, SitAwareness VIEW | `hg-detail-tabs-card` + `nav-tabs` |
+| **Detail tabs card** | RoE VIEW, SitAwareness VIEW | `hg-detail-tabs-card` + `nav-tabs` |
 | **2-pane chat** (conversation + context) | Gjallarhorn Chat | custom flex, fixed height |
 | **Single-column form** | Create / Edit screens | `col-md-8 col-lg-6`, centred |
 | **Full-width table** | LIST+FIND screens | Card shell + `table-responsive` + `table-hover` (§5.2 LIST+FIND data table) |
@@ -238,12 +238,12 @@ On **VIEW**, **LIST+FIND** (when a single primary CTA sits beside the title), an
 |---|---|
 | **Horizontal** | Title and meta on the **left**; action buttons grouped on the **right** (`justify-content-between`). |
 | **Vertical** | The title block and the button group share **vertical center alignment** (`align-items-center` on the header row). Do **not** top-align the toolbar (`align-items-start`) unless there is an explicit layout exception. |
-| **Toolbar semantics** | Wrap actions in `role="toolbar"` with a specific `aria-label` (e.g. `"Project actions"`, `"Playbook actions"`). |
+| **Toolbar semantics** | Wrap actions in `role="toolbar"` with a specific `aria-label` (e.g. `"Project actions"`, `"RoE actions"`). |
 | **Responsive** | Use `flex-wrap` + `gap-3` so the toolbar wraps under the title on narrow viewports while preserving reading order. |
 
 **Canonical reference (production):** `ui/templates/ui/projects/detail.html` — Project VIEW header.
 
-Apply the same pattern to mockups and new surfaces (e.g. Playbook VIEW, Playbooks list header with **New Playbook**) so detail-adjacent headers stay visually consistent with Projects.
+Apply the same pattern to mockups and new surfaces (e.g. RoE VIEW, RoE list header with **New Rules of Engagement**) so detail-adjacent headers stay visually consistent with Projects.
 
 ### 3.5 List page headers — entity icon (default)
 
@@ -252,7 +252,7 @@ Apply the same pattern to mockups and new surfaces (e.g. Playbook VIEW, Playbook
 | Rule | Detail |
 |---|---|
 | **Icon + title** | The `<h1 class="hg-page-title">` is a flex row: leading Font Awesome icon + title text. Icon classes include **`hg-page-title-icon text-primary`** and **`aria-hidden="true"`** (decorative). Title words stay in a `<span>` when the `<h1>` is also `d-flex`. |
-| **Nav alignment** | Prefer the **same icon** as the primary navbar entry for that surface (e.g. Plot → `fa-sharp fa-solid fa-wave-pulse`, SA → `fa-map-location-dot`, FRAGOs → `fa-puzzle`, Playbooks → `fa-book`, Projects → `fa-folder-open`, Data Sources → `fa-plug`). |
+| **Nav alignment** | Prefer the **same icon** as the primary navbar entry for that surface (e.g. Plot → `fa-sharp fa-solid fa-wave-pulse`, SA → `fa-map-location-dot`, FRAGOs → `fa-puzzle`, RoE → `fa-ballot-check`, Projects → `fa-folder-open`, Data Sources → `fa-plug`). |
 | **No count pill on the title row** | Do **not** place **`badge rounded-pill`** (or similar) beside the `<h1>` for row counts. Counts belong in the **subtitle** line below (`<p class="text-muted small">`), optionally wrapped in a `<span data-testid="…-count-badge">` for tests. |
 | **Subtitle** | One muted line under the title: sync/meta text, count + short description, or both (e.g. `3 projects · Imported from…`). |
 
@@ -277,14 +277,14 @@ Screens that combine **filters → table** with **checkbox-driven bulk operation
 
 ### 4.1 Primary Nav Items
 
-**Production navbar order** (`templates/base.html`): Plot → SA → FRAGOs → Playbooks → Projects → Data Sources → Status.
+**Production navbar order** (`templates/base.html`): Plot → SA → FRAGOs → RoE → Projects → Data Sources → Status.
 
 | Nav item | Route | Phase | Icon |
 |---|---|---|---|
 | Plot (Tactical Plot) | `/` (post-login) | Calibration landing | `fa-sharp fa-solid fa-wave-pulse` (Font Awesome Kit) |
 | SA (Situational Awareness) | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-map-location-dot` |
 | FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-puzzle` |
-| Playbooks | `/playbooks/` | Inception | `fa-book` |
+| RoE | `/roe/` | Inception | `fa-ballot-check` |
 | Projects | `/projects/` | Inception / management | `fa-folder-open` |
 | Data Sources | `/datasources/` | Inception | `fa-plug` |
 | Status | `/welcome/` (health / welcome) | Calibration | `fa-heart-pulse` |
@@ -406,7 +406,7 @@ Bootstrap btn overrides to apply brand primary:
 
 #### LIST+FIND filter row
 
-Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a **single horizontal filter row** between the page header and the data table.
+Scoped lists (RoE, Data Sources, Projects, FRAGOs, Decisions, …) use a **single horizontal filter row** between the page header and the data table.
 
 **Behavior (app-wide)**
 
@@ -424,7 +424,7 @@ Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a *
 | **Placement** | Directly under **`hg-page-header`**, **`mb-3`** gap, then the table **`card`**. |
 | **Layout** | `row g-3` with one **`col-md-*`** per filter (equal-width columns when counts match; responsive wrap on small screens). |
 | **Labels** | **`label.form-label.hg-label-caps.mb-1`** above each control — small uppercase labels with letter-spacing (§2.4). |
-| **Dropdowns** | **`select.form-select.form-select-sm`** — Bootstrap chevron, compact height. On the global page background, give controls a **soft filled look** with **`bg-body-secondary`**, **`border-0`**, and **`rounded-2`** so they match the Playbooks LIST+FIND reference screenshot. |
+| **Dropdowns** | **`select.form-select.form-select-sm`** — Bootstrap chevron, compact height. On the global page background, give controls a **soft filled look** with **`bg-body-secondary`**, **`border-0`**, and **`rounded-2`** so they match the RoE LIST+FIND reference screenshot. |
 | **No trailing actions** | The filter row ends with the last filter control — **no** Apply, **no** Clear/Reset, **no** extra navigation disguised as filters (those belong in the page toolbar or breadcrumbs if truly needed). |
 
 **Markup sketch**
@@ -443,11 +443,11 @@ Scoped lists (Playbooks, Data Sources, Projects, FRAGOs, Decisions, …) use a *
 </div>
 ```
 
-**Canonical reference (mockup):** `ui/templates/ui/mockups/playbooks/list.html`.
+**Canonical reference (mockup):** `ui/templates/ui/mockups/roe/list.html`.
 
 #### LIST+FIND data table (card + table)
 
-Primary entity lists use one **visual system** so scanning columns and row actions feels the same app-wide. **Canonical mock:** Playbooks list (`ui/templates/ui/mockups/playbooks/list.html`). **Canonical production:** Playbooks list (`ui/templates/ui/playbooks/list.html`).
+Primary entity lists use one **visual system** so scanning columns and row actions feels the same app-wide. **Canonical mock:** RoE list (`ui/templates/ui/mockups/roe/list.html`). **Canonical production:** RoE list (`ui/templates/ui/roe/list.html`).
 
 **Structure**
 
@@ -463,7 +463,7 @@ Primary entity lists use one **visual system** so scanning columns and row actio
 
 | Rule | Detail |
 |---|---|
-| **Hover rows** | Use **`table-hover`**. Do **not** use **`table-striped`** on LIST+FIND entity lists — it fights the hover affordance and differs from the Playbooks reference. |
+| **Hover rows** | Use **`table-hover`**. Do **not** use **`table-striped`** on LIST+FIND entity lists — it fights the hover affordance and differs from the RoE reference. |
 | **Density** | Default lists use **full** `.table` (not `table-sm`) unless the screen is explicitly a dense matrix (e.g. contributors grid) where product asks for compact rows; still keep the same card / `p-0` / `table-responsive` shell. |
 | **Actions column** | Narrow `<th class="text-end ps-3" scope="col" style="width:3.25rem;">` with `<span class="visually-hidden">Row actions</span>` when the column holds kebab menus (§5.2 LIST+FIND Table — primary drill-down + kebab). |
 | **Secondary tables** | Detail screens, sync logs, editor grids (`table-sm`, bordered variants) are **out of scope** for this pattern unless they are the main list for an entity. |
@@ -515,7 +515,7 @@ Primary entity lists use one **visual system** so scanning columns and row actio
       <i class="fa-solid fa-circle-check"></i> synced {N} ago
     </span>
     <span>
-      <i class="fa-solid fa-book"></i> {playbook-name}
+      <i class="fa-solid fa-ballot-check"></i> {roe-name}
       <i class="fa-solid fa-arrows-rotate" title="Auto-tracking latest"></i>
       <!-- or: <i class="fa-solid fa-thumbtack" title="Pinned to v{N}"></i> -->
     </span>
@@ -613,9 +613,9 @@ Do **not** use a permanent strip of icon-only buttons in the Actions column (har
 **Exceptions:**
 
 - **Dense authoring grids** (e.g. Variables / Tables rows inside CREATE/EDIT forms) may keep **inline duplicate/remove** icon pairs — that is not LIST+FIND.
-- Choose whichever column is the stable human identifier per entity (Playbook **Name**, FRAGO **Title**, SitRep **Headline**, …).
+- Choose whichever column is the stable human identifier per entity (RoE **Name**, FRAGO **Title**, SitRep **Headline**, …).
 
-#### Detail VIEW — primary tabs (Playbook, Project, …)
+#### Detail VIEW — primary tabs (RoE, Project, …)
 
 For entity VIEW screens with multiple large regions, use the **same card + tabs pattern** as Project detail (`ui/templates/ui/projects/detail.html`):
 
@@ -623,7 +623,7 @@ For entity VIEW screens with multiple large regions, use the **same card + tabs 
 - Tabs: **`ul.nav.nav-tabs.card-header-tabs`** with **`role="tablist"`**; each tab is an **`a.nav-link`** (full-page navigation via query string is fine for MVP).
 - Panels: **`div.card-body`** with **`role="tabpanel"`** / **`aria-labelledby`** matching tab ids.
 
-Example Playbook VIEW: tabs **Playbook** (current snapshot: Metadata, Workflow, Variables, Tables, Used by) and **Versions** (immutable version log). Top toolbar stays **above** the tab card (Validate, Clone, Edit).
+Example RoE VIEW: tabs **Rules of Engagement** (current snapshot: Metadata, Workflow, Variables, Tables, Used by) and **Versions** (immutable version log). Top toolbar stays **above** the tab card (Validate, Clone, Edit).
 
 #### Empty State
 
@@ -675,7 +675,7 @@ Example Playbook VIEW: tabs **Playbook** (current snapshot: Metadata, Workflow, 
 
 #### Page Header
 
-Use **`rounded-2`** on the header panel where the shell matches Projects / Playbooks (white bar inside `main`). Primary actions follow **§3.4** (right-aligned group, **vertically centered** with the title block).
+Use **`rounded-2`** on the header panel where the shell matches Projects / RoE (white bar inside `main`). Primary actions follow **§3.4** (right-aligned group, **vertically centered** with the title block).
 
 ```html
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -841,7 +841,7 @@ Every list and data section must handle all three:
 | Import | `fa-file-import` | |
 | Tactical Plot | `fa-grip-vertical` | |
 | Project | `fa-folder-open` | |
-| Playbook | `fa-book` | |
+| RoE | `fa-ballot-check` | |
 | Data Source | `fa-plug` | |
 | FRAGO | `fa-flag` | |
 | Decision | `fa-gavel` | |

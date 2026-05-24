@@ -1,0 +1,131 @@
+{% load static %}
+{% if banner %}
+  <div class="alert alert-info border-0 shadow-sm mb-4" role="status" data-testid="roe-clone-banner">
+    <i class="fa-solid fa-copy me-2"></i>{{ banner }}
+  </div>
+{% endif %}
+
+{% if form_errors %}
+  <div class="alert alert-danger" role="alert" data-testid="roe-form-errors">
+    <ul class="mb-0 small">
+      {% for e in form_errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<section class="card border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-header bg-white py-3 border-bottom">
+    <h2 class="h6 fw-semibold mb-0"><span class="badge bg-secondary me-2">1</span> Metadata</h2>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label" for="roe-name">Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="roe-name" name="name"
+               value="{{ form.name }}"
+               placeholder="e.g. Atlas Engineering RoE"
+               data-testid="roe-name-input">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label" for="roe-desc">Description</label>
+        <input type="text" class="form-control" id="roe-desc" name="description"
+               value="{{ form.description }}"
+               placeholder="Single line elevator pitch"
+               data-testid="roe-desc-input">
+      </div>
+    </div>
+  </div>
+</section>
+
+{% if mode == "edit" %}
+  <section class="card border-0 shadow-sm rounded-3 mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h2 class="h6 fw-semibold mb-0">Change summary <span class="text-danger">*</span></h2>
+    </div>
+    <div class="card-body">
+      <label class="form-label visually-hidden" for="roe-change-summary">Change summary</label>
+      <input type="text" class="form-control" id="roe-change-summary" name="change_summary"
+             placeholder="Shown in version log (required on save)"
+             data-testid="roe-change-summary-input">
+    </div>
+  </section>
+{% endif %}
+
+<section class="card border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-sm-3 gap-1 flex-grow-1 min-w-0">
+      <h2 class="h6 fw-semibold mb-0 text-nowrap"><span class="badge bg-secondary me-2">2</span> Workflow</h2>
+      <span class="small text-muted">Markdown · read by Gjallarhorn at SitRep time</span>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-shrink-0 flex-wrap justify-content-end" role="toolbar" aria-label="Workflow import actions">
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 hg-btn-disabled-visible"
+              disabled
+              data-bs-toggle="tooltip" title="Coming soon"
+              data-testid="roe-import-mimir-btn">
+        <img src="{% static 'images/mimir-logo.png' %}" alt="" class="hg-mimir-btn-icon" aria-hidden="true">
+        <span>Get RoE from Mimir</span>
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <label class="form-label font-monospace small" for="roe-workflow">Source</label>
+        <textarea class="form-control font-monospace small" id="roe-workflow" rows="16" spellcheck="false"
+                  name="workflow_md"
+                  data-testid="roe-workflow-editor">{{ form.workflow_md }}</textarea>
+      </div>
+      <div class="col-lg-6">
+        <label class="form-label small text-muted">Preview</label>
+        <div class="border rounded-3 bg-light p-3 h-100" style="min-height:12rem;border-color:var(--hg-border);" data-testid="roe-workflow-preview">
+          <div class="small hg-markdown-workflow">{{ form.workflow_html|safe }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-header bg-white py-3 border-bottom">
+    <h2 class="h6 fw-semibold mb-0"><span class="badge bg-secondary me-2">3</span> Variables</h2>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0" data-testid="roe-variables-table">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Abbrev</th>
+            <th scope="col">Calculating</th>
+            <th scope="col">Interpreting</th>
+            <th scope="col">Hover</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for idx, v in variable_slots %}
+            <tr data-testid="roe-variable-row-{{ idx|add:1 }}">
+              <td class="text-muted small">{{ idx }}</td>
+              <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_name" value="{{ v.name|default:'' }}"></td>
+              <td style="width:5rem;"><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_abbrev" value="{{ v.abbrev|default:'' }}"></td>
+              <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_calculating" value="{{ v.calculating|default:'' }}"></td>
+              <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_interpreting" value="{{ v.interpreting|default:'' }}"></td>
+              <td><input type="text" class="form-control form-control-sm" name="var_{{ idx }}_hover" value="{{ v.hover|default:'' }}"></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-4">
+  <a class="btn btn-outline-secondary" href="{{ cancel_url }}" data-testid="roe-form-cancel-btn">
+    <i class="fa-solid fa-xmark me-1"></i> Cancel
+  </a>
+  <button type="submit" class="btn btn-primary"
+          data-testid="roe-form-save-btn">
+    <i class="fa-solid fa-floppy-disk me-1"></i> {{ save_button_label }}
+  </button>
+</div>

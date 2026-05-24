@@ -75,8 +75,8 @@ body {
   padding: 0.4rem 0.75rem;
   border-radius: 4px;
   transition: background 0.12s;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 400;
 }
 
 .hg-navbar .navbar-text {

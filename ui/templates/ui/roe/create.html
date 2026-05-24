@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} · Huginn{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb small mb-2">
+    <li class="breadcrumb-item"><a href="{% url 'roe-list' %}">Rules of Engagement</a></li>
+    <li class="breadcrumb-item active" aria-current="page">New</li>
+  </ol>
+</nav>
+
+<section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+  <div class="flex-grow-1">
+    <h1 class="hg-page-title mb-1" data-testid="page-title">{{ page_title }}</h1>
+    <p class="text-muted small mb-0">Metadata, Workflow markdown, and Variables — saved as <strong>v1</strong>.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="New Rules of Engagement actions">
+    <a class="btn btn-outline-primary btn-sm"
+       href="{% url 'roe-create' %}?seed=1"
+       data-bs-toggle="tooltip" title="Pre-fill from FeatureFactory RoE"
+       data-testid="roe-clone-from-seed-btn">
+      <i class="fa-solid fa-seedling me-1"></i> Clone from seed RoE
+    </a>
+  </div>
+</section>
+
+<div class="row justify-content-center">
+  <div class="col-xl-11">
+    <form method="post" data-testid="roe-create-form">
+      {% csrf_token %}
+      {% include "ui/roe/_editor_form.html" %}
+    </form>
+  </div>
+</div>
+{% endblock %}

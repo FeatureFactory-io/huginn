@@ -55,9 +55,9 @@
           </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'playbooks' %}active{% endif %}"
-             href="{% url 'playbooks-list' %}" data-testid="nav-playbooks">
-            <i class="fa-solid fa-book me-1"></i> Playbooks
+          <a class="nav-link {% if active_nav == 'roe' %}active{% endif %}"
+             href="{% url 'roe-list' %}" data-testid="nav-roe">
+            <i class="fa-solid fa-ballot-check me-1"></i> RoE
           </a>
         </li>
         <li class="nav-item">
@@ -75,7 +75,7 @@
         <li class="nav-item">
           <a class="nav-link {% if active_nav == 'datasources' %}active{% endif %}"
              href="{% url 'datasources-list' %}" data-testid="nav-datasources">
-            <i class="fa-solid fa-plug me-1"></i> Data Sources
+            <i class="fa-solid fa-plug me-1"></i> Sources
           </a>
         </li>
         <li class="nav-item">
@@ -93,7 +93,7 @@
           </span>
           <form method="post" action="{% url 'auth-logout' %}" class="d-inline">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-outline-light" data-testid="navbar-logout">Logout</button>
+            <button type="submit" class="btn btn-sm btn-outline-light" data-testid="navbar-logout" aria-label="Logout"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></button>
           </form>
         {% else %}
           <a href="{% url 'auth-login' %}" class="btn btn-sm btn-outline-light" data-testid="navbar-login">

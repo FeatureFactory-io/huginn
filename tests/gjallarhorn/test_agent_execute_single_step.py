@@ -157,7 +157,7 @@ class TestExecuteSingleStep:
                     content="",
                     stop_reason="tool_use",
                     usage={},
-                    tool_calls=[{"name": "get_active_playbook", "input": {}}],
+                    tool_calls=[{"name": "get_active_roe", "input": {}}],
                     model="test",
                 )
             ]
@@ -166,7 +166,7 @@ class TestExecuteSingleStep:
         tool_executor.execute.return_value = {"success": True, "result": {"workflow_md": "..."}, "error": None}
         agent = make_agent(llm, tool_executor)
         agent.execute_single_step(plan, step2)
-        tool_executor.execute.assert_any_call("get_active_playbook")
+        tool_executor.execute.assert_any_call("get_active_roe")
 
     def test_planning_step_llm_tool_failure_raises(self, scripted_llm_factory, plan_with_steps):
         """If a tool call during the planning step fails, ToolExecutionError is raised."""
@@ -177,7 +177,7 @@ class TestExecuteSingleStep:
                     content="",
                     stop_reason="tool_use",
                     usage={},
-                    tool_calls=[{"name": "get_active_playbook", "input": {}}],
+                    tool_calls=[{"name": "get_active_roe", "input": {}}],
                     model="test",
                 )
             ]
@@ -185,7 +185,7 @@ class TestExecuteSingleStep:
         tool_executor = MagicMock()
         # First call (system block) succeeds; second call (LLM tool_call) fails
         tool_executor.execute.side_effect = [
-            {"success": True, "result": None, "error": None},  # get_active_playbook (system block)
+            {"success": True, "result": None, "error": None},  # get_active_roe (system block)
             {"success": True, "result": None, "error": None},  # list_active_fragos (system block)
             {"success": True, "result": None, "error": None},  # get_active_situational_awareness (system block)
             {"success": False, "result": None, "error": "Tool failed"},  # LLM tool_call

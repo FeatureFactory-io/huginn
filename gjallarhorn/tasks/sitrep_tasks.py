@@ -45,7 +45,7 @@ def generate_sitrep_for_project(
     """Create Conversation + ExecutionPlan + 5 PlanSteps and enqueue execute_plan.
 
     Returns the plan_id hex string, or None when generation is not applicable
-    (no playbook assigned, or no user associated with the project).
+    (no RoE assigned, or no user associated with the project).
 
     Idempotency: automatic triggers with an existing SitRep for the same to_dt
     return the existing plan_id without creating a new plan.
@@ -59,8 +59,8 @@ def generate_sitrep_for_project(
 
     project = Project.objects.get(pk=project_id)
 
-    if not project.assigned_playbook:
-        logger.info("generate_sitrep: project=%s has no assigned playbook — skipping", project_id)
+    if not project.assigned_roe:
+        logger.info("generate_sitrep: project=%s has no assigned RoE — skipping", project_id)
         return None
 
     user = project.imported_by
@@ -116,6 +116,14 @@ def generate_sitrep_for_project(
         from_dt,
         to_dt,
     )
-    execute_plan.delay(str(plan.plan_id))
+    result = execute_plan.delay(str(plan.plan_id))
+    _task_id = getattr(result, "id", None)
+    plan.celery_task_id = _task_id if isinstance(_task_id, str) else ""
+    plan.save(update_fields=["celery_task_id"])
+    logger.info(
+        "generate_sitrep: plan=%s dispatched as celery_task=%s",
+        plan.plan_id,
+        plan.celery_task_id,
+    )
     # TODO(chat-milestone): publish plan_started to Redis
     return str(plan.plan_id)

@@ -98,11 +98,11 @@
           </div>
           <div class="col">
             <article class="hg-metric-card">
-              {% include "ui/components/_metric_card_header.html" with title="Variables" help="Playbook variable indicators for this project (snapshot)." help_label="About Variables indicators" heading_id="vitals-variables-heading" %}
+              {% include "ui/components/_metric_card_header.html" with title="Variables" help="RoE variable indicators for this project (snapshot)." help_label="About Variables indicators" heading_id="vitals-variables-heading" %}
               <div class="hg-metric-card__body" data-testid="project-widget-variables">
                 <div data-testid="project-informer-bar">
-                  {% if not project.assigned_playbook %}
-                    <p class="text-muted small mb-0" data-testid="informer-bar-empty">No Playbook assigned</p>
+                  {% if not project.assigned_roe %}
+                    <p class="text-muted small mb-0" data-testid="informer-bar-empty">No RoE assigned</p>
                   {% elif informer_bar_dots %}
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                       {% for dot in informer_bar_dots %}
@@ -116,7 +116,7 @@
                       {% endfor %}
                     </div>
                   {% else %}
-                    <p class="text-muted small mb-0" data-testid="informer-bar-no-vars">No Variables defined on the assigned Playbook.</p>
+                    <p class="text-muted small mb-0" data-testid="informer-bar-no-vars">No Variables defined on the assigned RoE.</p>
                   {% endif %}
                 </div>
               </div>
@@ -139,9 +139,9 @@
           {% endfor %}
         </div>
       </div>
-      {% if playbook_variables %}
+      {% if roe_variables %}
       <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3" data-testid="variables-diagram-grid">
-        {% for var in playbook_variables %}
+        {% for var in roe_variables %}
         <div class="col">
           <div class="card border-0 shadow-sm rounded-3" data-testid="variables-diagram-{{ var.abbrev }}">
             <div class="card-header bg-white py-2 border-bottom">
@@ -160,7 +160,7 @@
         {% endfor %}
       </div>
       {% else %}
-      <p class="text-muted mb-0" data-testid="variables-empty-state">No Variables defined on the assigned Playbook.</p>
+      <p class="text-muted mb-0" data-testid="variables-empty-state">No Variables defined on the assigned RoE.</p>
       {% endif %}
     </div>
     {% else %}

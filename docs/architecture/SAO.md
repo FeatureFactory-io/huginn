@@ -540,7 +540,16 @@ To reconstruct a full SitRep generation trace: `grep "plan_id=<uuid>" logs/app.l
 | `ANTHROPIC_API_KEY` | Anthropic API key for Gjallarhorn LLM calls | SSM `/huginn/ANTHROPIC_API_KEY` → EB env property (injected by `deploy-staging.sh`) |
 | `DEBUG` | `False` in prod | EB env property |
 
+**Optional env vars (tuning):**
+
+| Variable | Description | Default | Source (prod) |
+|---|---|---|---|
+| `PLAN_ORPHAN_PENDING_SECONDS` | Seconds before a `pending` plan is considered orphaned and re-dispatched by the recovery beat task | `300` (5 min) | EB env property |
+| `PLAN_ORPHAN_RUNNING_SECONDS` | Seconds before a `running` plan is considered stuck (worker died mid-execution) and reset to `pending` for re-dispatch | `1800` (30 min) | EB env property |
+
 **Sync engine on EB:** ensure `0007_beat_sync_due_projects` has run (`web` runs `migrate` on deploy) so `PeriodicTask` `ingestion-sync-due-projects` exists; `beat` reads it from RDS via `DatabaseScheduler`. Set connector env vars on **both** `huginn-blue` and `huginn-green` (`GITLAB_*`, `JIRA_*`, `ANTHROPIC_API_KEY`, etc.) so either env is valid after a swap. A single `t3.small` runs web + worker + beat + redis — heavy GitLab sync may warrant a larger instance later.
+
+**Plan orphan recovery:** `gjallarhorn.recover_orphaned_plans` runs every **60 s** via `PeriodicTask` registered by migration `gjallarhorn.0002_recover_orphaned_plans_beat`. It re-dispatches plans stuck in `pending` longer than `PLAN_ORPHAN_PENDING_SECONDS` (default 5 min) and resets plans stuck in `running` longer than `PLAN_ORPHAN_RUNNING_SECONDS` (default 30 min) back to `pending` before re-dispatching. `execute_plan` uses `acks_late=True`; `CELERY_BROKER_TRANSPORT_OPTIONS visibility_timeout` is set to **7200 s** (2 h) in `base.py` — must exceed the worst-case task duration.
 
 **Feature flags:** not needed for v1.
 

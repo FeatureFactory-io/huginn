@@ -178,7 +178,7 @@ class GjallarhornAgent:
     def _build_system_blocks(self, plan: ExecutionPlan) -> list[dict]:
         """Assemble cached system prompt blocks for the planning step.
 
-        Provides: system prompt + static commander context (playbook, FRAGOs, SA).
+        Provides: system prompt + static commander context (RoE, FRAGOs, SA).
         Dynamic data (commits, activity) is injected via the user message in
         _execute_planning_step so it stays separate from the cached system context.
         """
@@ -191,7 +191,7 @@ class GjallarhornAgent:
         ]
 
         static_tools = [
-            ("get_active_playbook", "Active Playbook"),
+            ("get_active_roe", "Active Rules of Engagement"),
             ("list_active_fragos", "Active FRAGOs"),
             ("get_active_situational_awareness", "Situational Awareness"),
         ]

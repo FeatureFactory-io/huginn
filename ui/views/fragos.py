@@ -21,29 +21,29 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from ingestion.models import Project
-from playbooks.markdown_utils import workflow_md_to_html
-from playbooks.models import Playbook, PlaybookVariable, PlaybookVersion
+from roe.markdown_utils import workflow_md_to_html
+from roe.models import RulesOfEngagement, RulesOfEngagementVariable, RulesOfEngagementVersion
 from sitrep.models import Frago, FragoAuditEvent
 from ui.services.frago_audit_service import record_frago_audit
 from ui.services.fragos_service import apply_frago_list_filters, frago_list_queryset
 
 
-def _playbook_version_for_project(project: Project) -> PlaybookVersion | None:
-    if project.pinned_playbook_version_id:
-        return PlaybookVersion.objects.filter(pk=project.pinned_playbook_version_id).first()
-    if project.assigned_playbook_id:
+def _roe_version_for_project(project: Project) -> RulesOfEngagementVersion | None:
+    if project.pinned_roe_version_id:
+        return RulesOfEngagementVersion.objects.filter(pk=project.pinned_roe_version_id).first()
+    if project.assigned_roe_id:
         return (
-            PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by("-version_number").first()
+            RulesOfEngagementVersion.objects.filter(roe_id=project.assigned_roe_id).order_by("-version_number").first()
         )
-    if project.playbook_slug:
-        pb = Playbook.objects.filter(slug=project.playbook_slug).first()
-        if pb:
-            return pb.versions.order_by("-version_number").first()
+    if project.roe_slug:
+        roe = RulesOfEngagement.objects.filter(slug=project.roe_slug).first()
+        if roe:
+            return roe.versions.order_by("-version_number").first()
     return None
 
 
 def _variable_choices(project: Project) -> list[tuple[str, str]]:
-    ver = _playbook_version_for_project(project)
+    ver = _roe_version_for_project(project)
     if not ver:
         return []
     rows = list(
@@ -246,7 +246,7 @@ class FragoForm(forms.ModelForm):
     )
 
     affected_variable = forms.ModelChoiceField(
-        queryset=PlaybookVariable.objects.none(),
+        queryset=RulesOfEngagementVariable.objects.none(),
         required=False,
         empty_label="— Choose variable —",
         widget=forms.Select(
@@ -301,7 +301,7 @@ class FragoForm(forms.ModelForm):
         elif affects == "variables":
             if av is None:
                 raise ValidationError(
-                    {"affected_variable": "Select a Playbook Variable when Affects is Variable(s)."},
+                    {"affected_variable": "Select a RoE Variable when Affects is Variable(s)."},
                 )
         elif affects == "" and av is None:
             cleaned["affected_variable"] = None
@@ -309,7 +309,7 @@ class FragoForm(forms.ModelForm):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.fields["title"].help_text = "What shall we temporarily override in the playbook and why?"
+        self.fields["title"].help_text = "What shall we temporarily override in the RoE and why?"
 
 
 def _apply_frago_edit_widgets(form: FragoForm) -> None:
@@ -361,8 +361,8 @@ class FragosCreateView(View):
         slug = (request.GET.get("project") or "").strip()
         project = get_object_or_404(Project.objects.all(), slug=slug) if slug else None
         form = FragoForm()
-        variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(project) if project else None
+        variable_qs = RulesOfEngagementVariable.objects.none()
+        ver = _roe_version_for_project(project) if project else None
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs
@@ -383,8 +383,8 @@ class FragosCreateView(View):
         project_choices = _active_projects_choices()
         form = FragoForm(request.POST)
         project = get_object_or_404(Project.objects.all(), slug=slug) if slug else None
-        variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(project) if project else None
+        variable_qs = RulesOfEngagementVariable.objects.none()
+        ver = _roe_version_for_project(project) if project else None
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs
@@ -443,8 +443,8 @@ class FragosEditView(View):
         del pk
         initial_affects = "variables" if self.frago.affected_variable_id else "narrative"
         form = FragoForm(instance=self.frago, initial={"affects": initial_affects})
-        variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(self.frago.project)
+        variable_qs = RulesOfEngagementVariable.objects.none()
+        ver = _roe_version_for_project(self.frago.project)
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs
@@ -462,8 +462,8 @@ class FragosEditView(View):
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         del pk
         form = FragoForm(request.POST, instance=self.frago)
-        variable_qs = PlaybookVariable.objects.none()
-        ver = _playbook_version_for_project(self.frago.project)
+        variable_qs = RulesOfEngagementVariable.objects.none()
+        ver = _roe_version_for_project(self.frago.project)
         if ver:
             variable_qs = ver.variables.order_by("sort_order")
         form.fields["affected_variable"].queryset = variable_qs

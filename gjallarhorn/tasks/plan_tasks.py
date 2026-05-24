@@ -47,19 +47,42 @@ def _retry_countdown(plan: ExecutionPlan) -> int:
     return min(30 * 2 ** (plan.retry_count - 1), 120)
 
 
-@shared_task(bind=True, max_retries=5, name="gjallarhorn.execute_plan")
+@shared_task(bind=True, max_retries=5, name="gjallarhorn.execute_plan", acks_late=True)
 def execute_plan(self, plan_id: str) -> None:
-    """Execute all pending steps of an ExecutionPlan with full resilience matrix."""
+    """Execute all pending steps of an ExecutionPlan with full resilience matrix.
+
+    ``acks_late=True``: the broker message is ACK'd only after the task returns
+    (or raises a non-retried exception).  If the worker process dies mid-run the
+    broker re-queues the task automatically, so plans are never silently lost.
+    Requires ``CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": <seconds>}``
+    set to at least the worst-case task duration (see settings).
+    """
+    celery_task_id = self.request.id or ""
+    logger.info(
+        "execute_plan started: plan=%s celery_task=%s",
+        plan_id,
+        celery_task_id,
+    )
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
     agent = _build_agent_for_plan(plan)
 
     try:
         plan.mark_started()
-    except InvalidStateTransitionError:
-        logger.info("plan=%s already in terminal state (%s) — skipping", plan.plan_id, plan.status)
-        return  # already completed / failed — idempotent no-op
+    except InvalidStateTransitionError as exc:
+        logger.info(
+            "execute_plan skipped (idempotent no-op): plan=%s celery_task=%s reason=%s",
+            plan_id,
+            celery_task_id,
+            exc,
+        )
+        return  # another worker already owns this plan — safe no-op
 
-    logger.info("plan=%s started (progress_total=%s)", plan.plan_id, plan.progress_total)
+    logger.info(
+        "execute_plan running: plan=%s celery_task=%s progress_total=%s",
+        plan.plan_id,
+        celery_task_id,
+        plan.progress_total,
+    )
 
     try:
         step_number = plan.progress_current
@@ -99,16 +122,32 @@ def execute_plan(self, plan_id: str) -> None:
 
     except (anthropic.RateLimitError, TimeoutError, OSError) as exc:
         logger.warning(
-            "plan=%s transient error (retry %s/%s): %s", plan.plan_id, plan.retry_count, plan.max_retries, exc
+            "execute_plan transient error: plan=%s celery_task=%s retry=%s/%s error=%s: %s",
+            plan.plan_id,
+            celery_task_id,
+            plan.retry_count,
+            plan.max_retries,
+            type(exc).__name__,
+            exc,
         )
         plan.mark_paused_for_retry(exc)
         if plan.status == "failed":
-            logger.error("plan=%s max retries exhausted — marked failed", plan.plan_id)
+            logger.error(
+                "execute_plan max retries exhausted: plan=%s celery_task=%s",
+                plan.plan_id,
+                celery_task_id,
+            )
             return  # max retries reached; plan already marked failed
         raise self.retry(exc=exc, countdown=_retry_countdown(plan))
 
     except Exception as exc:  # noqa: BLE001
-        logger.exception("plan=%s failed with unhandled exception: %s", plan.plan_id, exc)
+        logger.exception(
+            "execute_plan unhandled failure: plan=%s celery_task=%s error=%s: %s",
+            plan.plan_id,
+            celery_task_id,
+            type(exc).__name__,
+            exc,
+        )
         plan.mark_failed(exc)
         # TODO(chat-milestone): _notify_ai_of_plan_failure(plan, exc)
         raise

@@ -12,7 +12,7 @@ from gjallarhorn.llm.base import LLMResponse
 from gjallarhorn.tasks.sitrep_tasks import on_sync_project_completed
 from ingestion.models import Increment, Project
 from ingestion.signals import sync_project_completed
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import SitRep
 
 User = get_user_model()
@@ -31,9 +31,9 @@ _END_TURN = LLMResponse(content=_NARRATIVE_JSON, stop_reason="end_turn", usage={
 def project_with_commit(db):
     user = User.objects.create_user(email="sig-test@example.com", password="test")
     project = Project.objects.create(name="atlas-backend", slug="atlas-backend", imported_by=user)
-    pb = Playbook.objects.create(slug="default-pb", name="Default PB")
-    PlaybookVersion.objects.create(playbook=pb, version_number=1, workflow_md="workflow")
-    project.assigned_playbook = pb
+    roe = RulesOfEngagement.objects.create(slug="default-roe", name="Default RoE")
+    RulesOfEngagementVersion.objects.create(roe=roe, version_number=1, workflow_md="workflow")
+    project.assigned_roe = roe
     project.save()
     now = timezone.now()
     Increment.objects.create(project=project, kind="commit", external_id="sha1", occurred_at=now)

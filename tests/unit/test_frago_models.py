@@ -6,7 +6,7 @@ from django.db import IntegrityError
 from django.utils import timezone
 
 from sitrep.models import Frago
-from tests.factories import FragoFactory, PlaybookVariableFactory, ProjectFactory
+from tests.factories import FragoFactory, ProjectFactory, RulesOfEngagementVariableFactory
 
 
 @pytest.mark.django_db
@@ -19,7 +19,7 @@ def test_frago_requires_project() -> None:
 def test_frago_optional_affected_variable() -> None:
     project = ProjectFactory()
     FragoFactory(project=project, affected_variable=None)
-    variable = PlaybookVariableFactory()
+    variable = RulesOfEngagementVariableFactory()
     frago = FragoFactory(project=project, affected_variable=variable)
     assert frago.affected_variable_id == variable.id
 

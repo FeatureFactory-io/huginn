@@ -131,7 +131,7 @@ def test_import_post_banner_text(mock_urlopen, commander_client, db):
     )
     assert r.status_code == 200
     body = r.content.decode()
-    expected = "2 projects imported. Sync started. Assign a Playbook to receive SitReps."
+    expected = "2 projects imported. Sync started. Assign a Rules of Engagement to receive SitReps."
     assert expected in body
 
 

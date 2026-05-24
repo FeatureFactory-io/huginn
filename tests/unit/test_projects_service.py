@@ -122,44 +122,44 @@ def test_persist_skips_already_imported_via_catalog_flag(mock_delay) -> None:
 
 
 @pytest.mark.django_db
-def test_update_configuration_sets_playbook_and_clears_invalid_pin() -> None:
-    from tests.factories import PlaybookFactory, PlaybookVersionFactory, ProjectFactory
+def test_update_configuration_sets_roe_and_clears_invalid_pin() -> None:
+    from tests.factories import ProjectFactory, RulesOfEngagementFactory, RulesOfEngagementVersionFactory
 
-    p = ProjectFactory(playbook_slug="")
-    pb_a = PlaybookFactory(slug="pb-a")
-    pb_b = PlaybookFactory(slug="pb-b")
-    va = PlaybookVersionFactory(playbook=pb_a, version_number=1)
-    PlaybookVersionFactory(playbook=pb_b, version_number=1)
-
-    ProjectsService().update_project_configuration(
-        p.pk,
-        assigned_playbook=str(pb_a.pk),
-        pinned_playbook_version=str(va.pk),
-    )
-    p.refresh_from_db()
-    assert p.assigned_playbook_id == pb_a.pk
-    assert p.playbook_slug == "pb-a"
-    assert p.pinned_playbook_version_id == va.pk
+    p = ProjectFactory(roe_slug="")
+    roe_a = RulesOfEngagementFactory(slug="roe-a")
+    roe_b = RulesOfEngagementFactory(slug="roe-b")
+    va = RulesOfEngagementVersionFactory(roe=roe_a, version_number=1)
+    RulesOfEngagementVersionFactory(roe=roe_b, version_number=1)
 
     ProjectsService().update_project_configuration(
         p.pk,
-        assigned_playbook=str(pb_b.pk),
-        pinned_playbook_version=str(va.pk),
+        assigned_roe=str(roe_a.pk),
+        pinned_roe_version=str(va.pk),
     )
     p.refresh_from_db()
-    assert p.assigned_playbook_id == pb_b.pk
-    assert p.pinned_playbook_version_id is None
+    assert p.assigned_roe_id == roe_a.pk
+    assert p.roe_slug == "roe-a"
+    assert p.pinned_roe_version_id == va.pk
+
+    ProjectsService().update_project_configuration(
+        p.pk,
+        assigned_roe=str(roe_b.pk),
+        pinned_roe_version=str(va.pk),
+    )
+    p.refresh_from_db()
+    assert p.assigned_roe_id == roe_b.pk
+    assert p.pinned_roe_version_id is None
 
 
 @pytest.mark.django_db
-def test_update_configuration_clears_playbook_when_empty() -> None:
-    from tests.factories import PlaybookFactory, ProjectFactory
+def test_update_configuration_clears_roe_when_empty() -> None:
+    from tests.factories import ProjectFactory, RulesOfEngagementFactory
 
-    pb = PlaybookFactory(slug="keep-slug")
-    p = ProjectFactory(assigned_playbook=pb, playbook_slug=pb.slug)
+    roe = RulesOfEngagementFactory(slug="keep-slug")
+    p = ProjectFactory(assigned_roe=roe, roe_slug=roe.slug)
 
-    ProjectsService().update_project_configuration(p.pk, assigned_playbook="", pinned_playbook_version="")
+    ProjectsService().update_project_configuration(p.pk, assigned_roe="", pinned_roe_version="")
     p.refresh_from_db()
-    assert p.assigned_playbook_id is None
-    assert p.playbook_slug == ""
-    assert p.pinned_playbook_version_id is None
+    assert p.assigned_roe_id is None
+    assert p.roe_slug == ""
+    assert p.pinned_roe_version_id is None

@@ -109,8 +109,8 @@
                 synced {{ p.last_sync }}
               </span>
               <span class="d-flex gap-2 align-items-center">
-                <i class="fa-solid fa-book-open"></i> {{ p.playbook }}
-                {% if p.playbook_track == 'pin' %}<i class="fa-solid fa-thumbtack text-warning" title="Pinned"></i>{% else %}<i class="fa-solid fa-arrows-rotate text-muted" title="Auto-track"></i>{% endif %}
+                <i class="fa-solid fa-ballot-check"></i> {{ p.roe }}
+                {% if p.roe_track == 'pin' %}<i class="fa-solid fa-thumbtack text-warning" title="Pinned"></i>{% else %}<i class="fa-solid fa-arrows-rotate text-muted" title="Auto-track"></i>{% endif %}
               </span>
             </div>
             <a class="stretched-link" href="{% url 'mockup-projects-view' p.id %}" aria-label="Open project {{ p.name }}"></a>

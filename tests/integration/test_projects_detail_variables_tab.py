@@ -6,7 +6,12 @@ import pytest
 from django.urls import reverse
 
 from ingestion.models import Project
-from tests.factories import PlaybookFactory, PlaybookVariableFactory, PlaybookVersionFactory, ProjectFactory
+from tests.factories import (
+    ProjectFactory,
+    RulesOfEngagementFactory,
+    RulesOfEngagementVariableFactory,
+    RulesOfEngagementVersionFactory,
+)
 
 
 def _detail_url(pk: int, **q: str) -> str:
@@ -65,16 +70,16 @@ def test_variables_invalid_period_normalizes(commander_client):
 
 
 @pytest.mark.django_db
-def test_variables_grid_and_cards_when_playbook_has_variables(commander_client):
-    pb = PlaybookFactory(name="PB Vars", slug="pb-vars")
-    ver = PlaybookVersionFactory(playbook=pb, version_number=1)
-    PlaybookVariableFactory(playbook_version=ver, sort_order=0, name="Throughput", abbrev="TP")
+def test_variables_grid_and_cards_when_roe_has_variables(commander_client):
+    roe = RulesOfEngagementFactory(name="RoE Vars", slug="roe-vars")
+    ver = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    RulesOfEngagementVariableFactory(roe_version=ver, sort_order=0, name="Throughput", abbrev="TP")
     p = ProjectFactory(
         name="vgrid",
         slug="vgrid",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        roe_slug=roe.slug,
     )
     body = commander_client.get(_detail_url(p.pk, tab="variables")).content.decode()
     assert 'data-testid="variables-diagram-grid"' in body
@@ -84,15 +89,15 @@ def test_variables_grid_and_cards_when_playbook_has_variables(commander_client):
 
 @pytest.mark.django_db
 def test_vitals_informer_dots_when_variables_exist(commander_client):
-    pb = PlaybookFactory(name="PB Inf", slug="pb-inf")
-    ver = PlaybookVersionFactory(playbook=pb, version_number=1)
-    PlaybookVariableFactory(playbook_version=ver, sort_order=0, name="Risk", abbrev="RS")
+    roe = RulesOfEngagementFactory(name="RoE Inf", slug="roe-inf")
+    ver = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    RulesOfEngagementVariableFactory(roe_version=ver, sort_order=0, name="Risk", abbrev="RS")
     p = ProjectFactory(
         name="vdot",
         slug="vdot",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        roe_slug=roe.slug,
     )
     body = commander_client.get(_detail_url(p.pk, tab="vitals")).content.decode()
     assert 'data-testid="project-informer-bar"' in body
@@ -101,22 +106,22 @@ def test_vitals_informer_dots_when_variables_exist(commander_client):
 
 
 @pytest.mark.django_db
-def test_vitals_informer_no_playbook(commander_client):
+def test_vitals_informer_no_roe(commander_client):
     p = ProjectFactory(name="vnopb", slug="vnopb", sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(_detail_url(p.pk)).content.decode()
     assert 'data-testid="informer-bar-empty"' in body
 
 
 @pytest.mark.django_db
-def test_vitals_informer_playbook_no_variables(commander_client):
-    pb = PlaybookFactory(name="PB Empty", slug="pb-empty")
-    PlaybookVersionFactory(playbook=pb, version_number=1)
+def test_vitals_informer_roe_no_variables(commander_client):
+    roe = RulesOfEngagementFactory(name="RoE Empty", slug="roe-empty")
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
     p = ProjectFactory(
         name="vempty",
         slug="vempty",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        roe_slug=roe.slug,
     )
     body = commander_client.get(_detail_url(p.pk)).content.decode()
     assert 'data-testid="informer-bar-no-vars"' in body
@@ -124,14 +129,14 @@ def test_vitals_informer_playbook_no_variables(commander_client):
 
 @pytest.mark.django_db
 def test_variables_tab_empty_when_no_variables(commander_client):
-    pb = PlaybookFactory(name="PB Empty2", slug="pb-empty2")
-    PlaybookVersionFactory(playbook=pb, version_number=1)
+    roe = RulesOfEngagementFactory(name="RoE Empty2", slug="roe-empty2")
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
     p = ProjectFactory(
         name="vtabempty",
         slug="vtabempty",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        roe_slug=roe.slug,
     )
     body = commander_client.get(_detail_url(p.pk, tab="variables")).content.decode()
     assert 'data-testid="variables-empty-state"' in body
@@ -139,18 +144,18 @@ def test_variables_tab_empty_when_no_variables(commander_client):
 
 @pytest.mark.django_db
 def test_effective_version_respects_pinned_version(commander_client):
-    pb = PlaybookFactory(name="PB Pin", slug="pb-pin")
-    v1 = PlaybookVersionFactory(playbook=pb, version_number=1)
-    PlaybookVariableFactory(playbook_version=v1, sort_order=0, name="Only V1", abbrev="O1")
-    v2 = PlaybookVersionFactory(playbook=pb, version_number=2)
-    PlaybookVariableFactory(playbook_version=v2, sort_order=0, name="Only V2", abbrev="O2")
+    roe = RulesOfEngagementFactory(name="RoE Pin", slug="roe-pin")
+    v1 = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    RulesOfEngagementVariableFactory(roe_version=v1, sort_order=0, name="Only V1", abbrev="O1")
+    v2 = RulesOfEngagementVersionFactory(roe=roe, version_number=2)
+    RulesOfEngagementVariableFactory(roe_version=v2, sort_order=0, name="Only V2", abbrev="O2")
     p = ProjectFactory(
         name="vpin",
         slug="vpin",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        pinned_playbook_version=v1,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        pinned_roe_version=v1,
+        roe_slug=roe.slug,
     )
     body = commander_client.get(_detail_url(p.pk, tab="variables")).content.decode()
     assert "Only V1" in body
@@ -161,14 +166,14 @@ def test_effective_version_respects_pinned_version(commander_client):
 
 @pytest.mark.django_db
 def test_sync_now_preserves_variables_tab_and_period(commander_client):
-    pb = PlaybookFactory(name="PB Sync", slug="pb-sync")
-    PlaybookVersionFactory(playbook=pb, version_number=1)
+    roe = RulesOfEngagementFactory(name="RoE Sync", slug="roe-sync")
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
     p = ProjectFactory(
         name="vsync",
         slug="vsync",
         sync_state=Project.SyncState.ACTIVE,
-        assigned_playbook=pb,
-        playbook_slug=pb.slug,
+        assigned_roe=roe,
+        roe_slug=roe.slug,
     )
     commander_client.get(_detail_url(p.pk, tab="variables", period="last_30d"))
     r = commander_client.post(

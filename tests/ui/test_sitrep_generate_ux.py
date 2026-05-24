@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from gjallarhorn.models import Conversation, ExecutionPlan
 from ingestion.models import Project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import SitRep
 
 pytestmark = [pytest.mark.django_db]
@@ -34,13 +34,13 @@ pytestmark = [pytest.mark.django_db]
 
 @pytest.fixture()
 def project(commander_user):
-    pb = Playbook.objects.create(slug="ux-pb", name="UX PB")
-    PlaybookVersion.objects.create(playbook=pb, version_number=1, workflow_md="## wf")
+    roe = RulesOfEngagement.objects.create(slug="ux-roe", name="UX RoE")
+    RulesOfEngagementVersion.objects.create(roe=roe, version_number=1, workflow_md="## wf")
     return Project.objects.create(
         name="ux-project",
         slug="ux-project",
         imported_by=commander_user,
-        assigned_playbook=pb,
+        assigned_roe=roe,
     )
 
 

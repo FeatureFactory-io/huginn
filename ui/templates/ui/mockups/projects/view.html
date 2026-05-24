@@ -51,7 +51,7 @@
 <div class="row g-4">
   <div class="col-lg-8 vstack gap-4">
     <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2><dl class="row small mb-0"><dt class="col-sm-4">Source path</dt><dd class="col-sm-8"><code>{{ p.source_path }}</code></dd><dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd><dt class="col-sm-4">Imported by</dt><dd class="col-sm-8">{{ p.imported_by }}</dd></dl></div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Playbook</h2><p>{{ p.playbook_display }}</p></div></article>
+    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">RoE</h2><p>{{ p.roe_display }}</p></div></article>
     <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2><p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p><p class="mb-2">Schedule: <span>{{ p.sync_schedule_display }}</span></p><p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p></div></article>
   </div>
 </div>

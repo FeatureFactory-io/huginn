@@ -80,6 +80,6 @@ class TestToolExecutorEnvelope:
         assert len(executor._registry) == 5
         assert "list_commits" in executor._registry
         assert "get_contributor_activity" in executor._registry
-        assert "get_active_playbook" in executor._registry
+        assert "get_active_roe" in executor._registry
         assert "get_active_situational_awareness" in executor._registry
         assert "list_active_fragos" in executor._registry

@@ -14,7 +14,7 @@ from django.views.decorators.http import require_POST
 
 from ingestion.models import DataSource, Project
 from ingestion.services.project_metadata import refresh_project_metadata
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from ui.services.increments_service import RANGE_LABELS, IncrementsService, normalize_range_key
 from ui.services.project_vitals_service import ProjectVitalsService
 from ui.services.projects_service import ProjectsService
@@ -34,25 +34,25 @@ def _normalize_variables_period(raw: str | None) -> str:
     return key if key in VARIABLES_PERIOD_LABELS else "this_week"
 
 
-def _effective_playbook_version(project: Project) -> PlaybookVersion | None:
-    if not project.assigned_playbook_id:
+def _effective_roe_version(project: Project) -> RulesOfEngagementVersion | None:
+    if not project.assigned_roe_id:
         return None
-    pinned = project.pinned_playbook_version
+    pinned = project.pinned_roe_version
     if pinned is not None:
         return pinned
-    return PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by("-version_number").first()
+    return RulesOfEngagementVersion.objects.filter(roe_id=project.assigned_roe_id).order_by("-version_number").first()
 
 
-def _playbook_variables_for_variables_tab(project: Project) -> list[dict]:
-    ver = _effective_playbook_version(project)
+def _roe_variables_for_variables_tab(project: Project) -> list[dict]:
+    ver = _effective_roe_version(project)
     if ver is None:
         return []
     return list(ver.variables.order_by("sort_order").values("name", "abbrev"))
 
 
 def _informer_bar_dots(project: Project) -> list[dict]:
-    """One dot per Playbook Variable — grey until SitRep wiring supplies colors."""
-    ver = _effective_playbook_version(project)
+    """One dot per RoE Variable — grey until SitRep wiring supplies colors."""
+    ver = _effective_roe_version(project)
     if ver is None:
         return []
     out = []
@@ -88,7 +88,7 @@ def _project_detail_query(
 
 
 def _import_success_message(imported_count: int) -> str:
-    tail = "Sync started. Assign a Playbook to receive SitReps."
+    tail = "Sync started. Assign a Rules of Engagement to receive SitReps."
     if imported_count == 1:
         return f"1 project imported. {tail}"
     return f"{imported_count} projects imported. {tail}"
@@ -121,20 +121,20 @@ class ProjectsListView(View):
     template_name = "ui/projects/list.html"
 
     def get(self, request: HttpRequest) -> HttpResponse:
-        qs = Project.objects.select_related("datasource", "imported_by", "assigned_playbook").all()
+        qs = Project.objects.select_related("datasource", "imported_by", "assigned_roe").all()
         ds_param = (request.GET.get("datasource") or "").strip()
         st_param = (request.GET.get("status") or "").strip()
-        playbook_param = (request.GET.get("playbook") or "").strip()
+        roe_param = (request.GET.get("roe") or "").strip()
 
         if ds_param.isdigit():
             qs = qs.filter(datasource_id=int(ds_param))
         if st_param in {Project.Status.ACTIVE, Project.Status.ARCHIVED, Project.Status.ORPHANED}:
             qs = qs.filter(status=st_param)
-        if playbook_param:
+        if roe_param:
             qs = qs.filter(
-                Q(playbook_slug__icontains=playbook_param)
-                | Q(assigned_playbook__slug__icontains=playbook_param)
-                | Q(assigned_playbook__name__icontains=playbook_param),
+                Q(roe_slug__icontains=roe_param)
+                | Q(assigned_roe__slug__icontains=roe_param)
+                | Q(assigned_roe__name__icontains=roe_param),
             )
 
         projects = list(qs.order_by("name"))
@@ -148,7 +148,7 @@ class ProjectsListView(View):
                 "filter_datasources": DataSource.objects.order_by("name"),
                 "filter_datasource": ds_param,
                 "filter_status": st_param,
-                "filter_playbook": playbook_param,
+                "filter_roe": roe_param,
                 "imported_banner": request.GET.get("imported") == "1",
             },
         )
@@ -255,8 +255,8 @@ class ProjectsDetailView(View):
             Project.objects.select_related(
                 "datasource",
                 "imported_by",
-                "assigned_playbook",
-                "pinned_playbook_version",
+                "assigned_roe",
+                "pinned_roe_version",
             ),
             pk=pk,
         )
@@ -270,7 +270,7 @@ class ProjectsDetailView(View):
         time_range_choices = [(k, RANGE_LABELS[k]) for k in range_order]
         latest_commit_at = ProjectVitalsService().latest_increment_occurred_at(project.pk)
         variables_period_choices = [(k, VARIABLES_PERIOD_LABELS[k]) for k in VARIABLES_PERIOD_ORDER]
-        playbook_variables = _playbook_variables_for_variables_tab(project)
+        roe_variables = _roe_variables_for_variables_tab(project)
         informer_bar_dots = _informer_bar_dots(project)
         return render(
             request,
@@ -285,7 +285,7 @@ class ProjectsDetailView(View):
                 "latest_commit_at": latest_commit_at,
                 "variables_period": variables_period,
                 "variables_period_choices": variables_period_choices,
-                "playbook_variables": playbook_variables,
+                "roe_variables": roe_variables,
                 "informer_bar_dots": informer_bar_dots,
             },
         )
@@ -325,14 +325,14 @@ class ProjectsEditView(View):
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
         project = get_object_or_404(
-            Project.objects.select_related("datasource", "assigned_playbook", "pinned_playbook_version"),
+            Project.objects.select_related("datasource", "assigned_roe", "pinned_roe_version"),
             pk=pk,
         )
-        playbooks_list = list(Playbook.objects.order_by("name"))
-        pinned_versions: list[PlaybookVersion] = []
-        if project.assigned_playbook_id:
+        roes_list = list(RulesOfEngagement.objects.order_by("name"))
+        pinned_versions: list[RulesOfEngagementVersion] = []
+        if project.assigned_roe_id:
             pinned_versions = list(
-                PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by(
+                RulesOfEngagementVersion.objects.filter(roe_id=project.assigned_roe_id).order_by(
                     "-version_number",
                 ),
             )
@@ -342,23 +342,23 @@ class ProjectsEditView(View):
             {
                 "active_nav": "projects",
                 "project": project,
-                "playbooks_list": playbooks_list,
+                "roes_list": roes_list,
                 "pinned_versions": pinned_versions,
             },
         )
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         project = get_object_or_404(
-            Project.objects.select_related("datasource", "assigned_playbook", "pinned_playbook_version"),
+            Project.objects.select_related("datasource", "assigned_roe", "pinned_roe_version"),
             pk=pk,
         )
         display_name = (request.POST.get("display_name") or "").strip()
         if not display_name:
-            playbooks_list = list(Playbook.objects.order_by("name"))
-            pinned_versions: list[PlaybookVersion] = []
-            if project.assigned_playbook_id:
+            roes_list = list(RulesOfEngagement.objects.order_by("name"))
+            pinned_versions: list[RulesOfEngagementVersion] = []
+            if project.assigned_roe_id:
                 pinned_versions = list(
-                    PlaybookVersion.objects.filter(playbook_id=project.assigned_playbook_id).order_by(
+                    RulesOfEngagementVersion.objects.filter(roe_id=project.assigned_roe_id).order_by(
                         "-version_number",
                     ),
                 )
@@ -368,7 +368,7 @@ class ProjectsEditView(View):
                 {
                     "active_nav": "projects",
                     "project": project,
-                    "playbooks_list": playbooks_list,
+                    "roes_list": roes_list,
                     "pinned_versions": pinned_versions,
                     "form_error": "Display name is required.",
                 },
@@ -377,8 +377,8 @@ class ProjectsEditView(View):
             project.id,
             display_name=display_name,
             sync_schedule=(request.POST.get("sync_schedule") or "").strip(),
-            assigned_playbook=(request.POST.get("assigned_playbook") or "").strip(),
-            pinned_playbook_version=(request.POST.get("pinned_playbook_version") or "").strip(),
+            assigned_roe=(request.POST.get("assigned_roe") or "").strip(),
+            pinned_roe_version=(request.POST.get("pinned_roe_version") or "").strip(),
         )
         messages.success(request, "Project settings updated.")
         return redirect(reverse("projects-detail", args=[project.pk]))

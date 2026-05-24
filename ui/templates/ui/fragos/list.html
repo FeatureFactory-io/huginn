@@ -227,7 +227,7 @@
     {% else %}
     <div class="border-top px-3 py-4 text-center text-muted" data-testid="fragos-empty-state">
       <p class="mb-1 fw-medium">No FRAGOs.</p>
-      <p class="small mb-3">Create one to override Playbook expectations for known temporary conditions.</p>
+      <p class="small mb-3">Create one to override RoE expectations for known temporary conditions.</p>
       <a href="{% url 'fragos-create' %}{% if project_slug %}?project={{ project_slug }}{% endif %}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i> New FRAGO</a>
     </div>
     {% endif %}

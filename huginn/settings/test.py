@@ -27,5 +27,9 @@ CACHES = {
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 
+# Orphan recovery thresholds set to 1 s so tests can back-date plans without long sleeps.
+PLAN_ORPHAN_PENDING_SECONDS = 1
+PLAN_ORPHAN_RUNNING_SECONDS = 1
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/plot/"

@@ -23,9 +23,9 @@ from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from sitrep.models import SitRep
 from tests.factories import (
     FragoFactory,
-    PlaybookFactory,
-    PlaybookVersionFactory,
     ProjectFactory,
+    RulesOfEngagementFactory,
+    RulesOfEngagementVersionFactory,
     UserFactory,
 )
 from tests.gjallarhorn.conftest import ScriptedLLM
@@ -89,11 +89,11 @@ def _agent_with_failing_step(fail_on_order: int) -> GjallarhornAgent:
 
 @pytest.fixture()
 def project_ctx(db):
-    """A fully configured project: user, playbook v1, two FRAGOs, time window."""
+    """A fully configured project: user, roe v1, two FRAGOs, time window."""
     user = UserFactory()
-    playbook = PlaybookFactory()
-    PlaybookVersionFactory(playbook=playbook, version_number=1)
-    project = ProjectFactory(imported_by=user, assigned_playbook=playbook)
+    roe = RulesOfEngagementFactory()
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    project = ProjectFactory(imported_by=user, assigned_roe=roe)
     FragoFactory(project=project, title="FRAGO Alpha")
     FragoFactory(project=project, title="FRAGO Bravo")
     now = timezone.now()
@@ -131,10 +131,10 @@ def test_sitrep_can_be_requested(project_ctx):
 
 
 @pytest.mark.django_db
-def test_sitrep_not_requested_without_playbook(db):
-    """generate_sitrep_for_project returns None when project has no playbook."""
+def test_sitrep_not_requested_without_roe(db):
+    """generate_sitrep_for_project returns None when project has no roe."""
     user = UserFactory()
-    project = ProjectFactory(imported_by=user, assigned_playbook=None)
+    project = ProjectFactory(imported_by=user, assigned_roe=None)
     now = timezone.now()
 
     plan_id = generate_sitrep_for_project(
@@ -226,9 +226,9 @@ def test_all_steps_executed_with_progress(project_ctx):
 def plan_with_non_critical_step_2(db):
     """A 5-step plan where step 2 is marked non-critical."""
     user = UserFactory()
-    playbook = PlaybookFactory()
-    PlaybookVersionFactory(playbook=playbook, version_number=1)
-    project = ProjectFactory(imported_by=user, assigned_playbook=playbook)
+    roe = RulesOfEngagementFactory()
+    RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    project = ProjectFactory(imported_by=user, assigned_roe=roe)
     now = timezone.now()
 
     conv = Conversation.objects.create(

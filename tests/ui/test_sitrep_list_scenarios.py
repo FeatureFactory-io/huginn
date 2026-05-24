@@ -18,7 +18,7 @@ from django.utils import timezone
 
 from gjallarhorn.models import Conversation, ExecutionPlan
 from ingestion.models import Project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import SitRep
 
 pytestmark = [pytest.mark.django_db]
@@ -29,15 +29,15 @@ def atlas_project(commander_user):
     """Background fixture matching the .feature Background block.
 
     Mirrors:
-        Given Project "atlas-backend" exists with assigned Playbook
-              "Atlas Engineering Playbook" v1
+        Given Project "atlas-backend" exists with assigned Rules of Engagement
+              "Atlas Engineering RoE" v1
     """
-    pb = Playbook.objects.create(
-        slug="atlas-engineering-playbook",
-        name="Atlas Engineering Playbook",
+    roe = RulesOfEngagement.objects.create(
+        slug="atlas-engineering-roe",
+        name="Atlas Engineering RoE",
     )
-    PlaybookVersion.objects.create(
-        playbook=pb,
+    RulesOfEngagementVersion.objects.create(
+        roe=roe,
         version_number=1,
         workflow_md="## v1",
     )
@@ -45,7 +45,7 @@ def atlas_project(commander_user):
         name="atlas-backend",
         slug="atlas-backend",
         imported_by=commander_user,
-        assigned_playbook=pb,
+        assigned_roe=roe,
     )
 
 
@@ -72,7 +72,7 @@ def _make_sitrep(
     to_dt=None,
     trigger="automatic",
     headline="Headline",
-    playbook_version=1,
+    roe_version=1,
     situation_assessment="x",
 ):
     """Create a SitRep, overriding ``generated_at`` (auto_now_add) when given.
@@ -87,7 +87,7 @@ def _make_sitrep(
         to_dt=to_dt or now,
         trigger=trigger,
         headline=headline,
-        playbook_version=playbook_version,
+        roe_version=roe_version,
         situation_assessment=situation_assessment,
     )
     if generated_at is not None:
@@ -137,7 +137,7 @@ def test_sitrep_list_find_06_table_columns(commander_client, atlas_project):
       Given at least one SitRep exists for "atlas-backend"
       When I view the SitRep list
       Then the history table has columns:
-        | Generated at | Assessed period | Trigger | Status | Headline | Decisions proposed | Decisions accepted | Playbook version | Actions |
+        | Generated at | Assessed period | Trigger | Status | Headline | Decisions proposed | Decisions accepted | RoE version | Actions |
     """
     _make_sitrep(atlas_project, headline="Row 06")
 
@@ -153,7 +153,7 @@ def test_sitrep_list_find_06_table_columns(commander_client, atlas_project):
         "Headline",
         "Proposed",
         "Accepted",
-        "Playbook version",
+        "RoE version",
     ):
         assert column in body, f"missing table column header: {column!r}"
 
@@ -356,31 +356,31 @@ def test_sitrep_list_find_13_filter_date_range(commander_client, atlas_project):
     assert f'data-testid="sitrep-row-{out_sitrep.pk}"' not in body
 
 
-def test_sitrep_list_find_14_filter_playbook_version(commander_client, atlas_project):
+def test_sitrep_list_find_14_filter_roe_version(commander_client, atlas_project):
     """# SCENARIO: SITREP-LIST+FIND-14
 
-    Scenario: SITREP-LIST+FIND-14 Filter by Playbook version shows only matching SitReps
-      Given a SitRep was evaluated against Playbook version "v1"
-      And another SitRep was evaluated against Playbook version "v2"
-      When I filter the list by Playbook version "v1"
+    Scenario: SITREP-LIST+FIND-14 Filter by RoE version shows only matching SitReps
+      Given a SitRep was evaluated against RoE version "v1"
+      And another SitRep was evaluated against RoE version "v2"
+      When I filter the list by RoE version "v1"
       Then the table shows only the v1 SitRep
     """
-    PlaybookVersion.objects.create(
-        playbook=atlas_project.assigned_playbook,
+    RulesOfEngagementVersion.objects.create(
+        roe=atlas_project.assigned_roe,
         version_number=2,
         workflow_md="## v2",
     )
     now = timezone.now()
     v1_sitrep = _make_sitrep(
         atlas_project,
-        playbook_version=1,
+        roe_version=1,
         headline="Filter14 v1",
         to_dt=now,
         from_dt=now - timedelta(hours=2),
     )
     v2_sitrep = _make_sitrep(
         atlas_project,
-        playbook_version=2,
+        roe_version=2,
         headline="Filter14 v2",
         to_dt=now - timedelta(hours=3),
         from_dt=now - timedelta(hours=5),
@@ -545,7 +545,7 @@ def test_sitrep_list_find_21_empty_state(commander_client, atlas_project):
       Given no SitRep exists for "atlas-backend"
       When I view the SitRep list
       Then I see the message "No SitReps yet."
-      And I see a description mentioning that Gjallarhorn generates the first SitRep when sync completes and a Playbook is assigned
+      And I see a description mentioning that Gjallarhorn generates the first SitRep when sync completes and a Rules of Engagement is assigned
       And I see the "Generate SitRep ▾" button in the empty state area
     """
     assert SitRep.objects.filter(project=atlas_project).count() == 0
@@ -557,7 +557,7 @@ def test_sitrep_list_find_21_empty_state(commander_client, atlas_project):
     assert "No SitReps yet." in body
     assert "Gjallarhorn" in body
     assert "sync" in body.lower()
-    assert "Playbook" in body
+    assert "Rules of Engagement" in body
     assert 'data-testid="empty-state-cta"' in body
     assert "Generate SitRep" in body
 

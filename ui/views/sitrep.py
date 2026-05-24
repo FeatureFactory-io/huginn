@@ -35,7 +35,7 @@ def _sitrep_row(sr: SitRep) -> dict[str, Any]:
         "headline": sr.headline,
         "decisions_proposed": 0,
         "decisions_accepted": 0,
-        "pb_version": sr.playbook_version if sr.playbook_version is not None else 1,
+        "pb_version": sr.roe_version if sr.roe_version is not None else 1,
     }
 
 
@@ -236,7 +236,7 @@ class SitRepListView(LoginRequiredMixin, View):
 
         if filter_pb_version:
             try:
-                qs = qs.filter(playbook_version=int(filter_pb_version.lstrip("vV")))
+                qs = qs.filter(roe_version=int(filter_pb_version.lstrip("vV")))
             except ValueError:
                 pass
 
@@ -283,10 +283,10 @@ class SitRepListView(LoginRequiredMixin, View):
 
         pb_versions = (
             SitRep.objects.filter(project=project)
-            .exclude(playbook_version__isnull=True)
-            .values_list("playbook_version", flat=True)
+            .exclude(roe_version__isnull=True)
+            .values_list("roe_version", flat=True)
             .distinct()
-            .order_by("playbook_version")
+            .order_by("roe_version")
         )
         pb_version_choices = [(str(v), f"v{v}") for v in pb_versions]
 
@@ -406,7 +406,7 @@ class SitRepAllListView(LoginRequiredMixin, View):
                     "trigger": sr.trigger,
                     "trigger_label": "Auto" if sr.trigger == "automatic" else "Manual",
                     "headline": sr.headline,
-                    "pb_version": sr.playbook_version if sr.playbook_version is not None else 1,
+                    "pb_version": sr.roe_version if sr.roe_version is not None else 1,
                 }
             )
         return render(request, self.template_name, {"rows": rows, "active_nav": "sitreps"})
@@ -438,7 +438,7 @@ class SitRepDetailView(LoginRequiredMixin, View):
 
         trigger_label = "Auto" if sitrep.trigger == "automatic" else "Manual"
         mode_label = "Semi-Auto" if sitrep.mode_at_generation == "semi_auto" else "Auto"
-        pb_version_label = f"v{sitrep.playbook_version}" if sitrep.playbook_version is not None else "v?"
+        pb_version_label = f"v{sitrep.roe_version}" if sitrep.roe_version is not None else "v?"
 
         fragos_applied = sitrep.fragos_applied.order_by("title")
         notable_activity = sitrep.notable_activity or []

@@ -6,10 +6,10 @@ from django.urls import reverse
 
 from tests.factories import (
     FragoFactory,
-    PlaybookFactory,
-    PlaybookVariableFactory,
-    PlaybookVersionFactory,
     ProjectFactory,
+    RulesOfEngagementFactory,
+    RulesOfEngagementVariableFactory,
+    RulesOfEngagementVersionFactory,
 )
 
 
@@ -44,12 +44,12 @@ def test_fragos_list_renders(commander_client: Client) -> None:
 
 @pytest.mark.django_db
 def test_fragos_filter_affects_narrative(commander_client: Client) -> None:
-    pb = PlaybookFactory()
-    ver = PlaybookVersionFactory(playbook=pb, version_number=1)
-    var = PlaybookVariableFactory(playbook_version=ver, abbrev="ABC", name="Alpha")
+    roe = RulesOfEngagementFactory()
+    ver = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    var = RulesOfEngagementVariableFactory(roe_version=ver, abbrev="ABC", name="Alpha")
     project = ProjectFactory(slug="aff-n")
-    project.assigned_playbook = pb
-    project.save(update_fields=["assigned_playbook"])
+    project.assigned_roe = roe
+    project.save(update_fields=["assigned_roe"])
     FragoFactory(project=project, title="Global narrative", affected_variable=None)
     FragoFactory(project=project, title="Scope ABC", affected_variable=var)
     url = reverse("fragos-list") + f"?project={project.slug}&affects=narrative"

@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ingestion.models import Project
-from playbooks.models import Playbook, PlaybookVersion
+from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from ui.views.sitrep import _period_window
 
 pytestmark = [pytest.mark.django_db]
@@ -28,14 +28,14 @@ pytestmark = [pytest.mark.django_db]
 
 @pytest.fixture()
 def simple_project(commander_user):
-    """Minimal project for generate-view tests (no Playbook required)."""
-    pb = Playbook.objects.create(slug="gen-test-pb", name="Gen Test PB")
-    PlaybookVersion.objects.create(playbook=pb, version_number=1, workflow_md="## v1")
+    """Minimal project for generate-view tests (no RoE required)."""
+    roe = RulesOfEngagement.objects.create(slug="gen-test-roe", name="Gen Test RoE")
+    RulesOfEngagementVersion.objects.create(roe=roe, version_number=1, workflow_md="## v1")
     return Project.objects.create(
         name="gen-test-project",
         slug="gen-test-project",
         imported_by=commander_user,
-        assigned_playbook=pb,
+        assigned_roe=roe,
     )
 
 

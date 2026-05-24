@@ -15,7 +15,7 @@ _MASTER_VARS = [
         "full": "Transparency",
         "name_help": (
             "Transparency — how openly the team publishes milestones, blocked work, risks, and decisions. "
-            "Read the dot vs the FeatureFactory playbook band: green means surfaced on time with enough detail; "
+            "Read the dot vs the FeatureFactory RoE band: green means surfaced on time with enough detail; "
             "warmer colours mean increasing opacity or surprise for stakeholders."
         ),
     },
@@ -34,7 +34,7 @@ _MASTER_VARS = [
         "full": "Cycle time",
         "name_help": (
             "Cycle time — elapsed time from start to done for the work items we track here. "
-            "The dot is stretch versus the playbook’s cycle-time guardrails."
+            "The dot is stretch versus the RoE cycle-time guardrails."
         ),
     },
     {
@@ -43,7 +43,7 @@ _MASTER_VARS = [
         "full": "Rework",
         "name_help": (
             "Rework — churn from defects, regressions, and repeated touches on the same work. "
-            "The dot rises when reopened tickets, failed checks, or rollbacks exceed the playbook threshold."
+            "The dot rises when reopened tickets, failed checks, or rollbacks exceed the RoE threshold."
         ),
     },
     {
@@ -52,7 +52,7 @@ _MASTER_VARS = [
         "full": "Quality",
         "name_help": (
             "Quality — defects, outages, flaky automation, and review outcomes versus agreed bars. "
-            "Green meets the playbook; red signals a systemic quality breach for this codebase."
+            "Green meets the RoE; red signals a systemic quality breach for this codebase."
         ),
     },
     {
@@ -61,7 +61,7 @@ _MASTER_VARS = [
         "full": "Complexity",
         "name_help": (
             "Complexity — structural burden: hotspots, coupling, deep paths, and brittle integrations. "
-            "The dot shows whether complexity stays tractable vs the playbook’s guardrails."
+            "The dot shows whether complexity stays tractable vs the RoE guardrails."
         ),
     },
     {
@@ -80,13 +80,13 @@ def _dot_reason(full_label: str, hue: str) -> str:
     """Explain why this traffic-light colour appears for this metric (mock)."""
     hl = hue.lower()
     if hl == "green":
-        return f"{full_label}: within the playbook band — no escalation on this lever right now."
+        return f"{full_label}: within the RoE band — no escalation on this lever right now."
     if hl == "yellow":
-        return f"{full_label}: minor deviation from playbook; watch trend in upcoming SitRep."
+        return f"{full_label}: minor deviation from RoE; watch trend in upcoming SitRep."
     if hl == "orange":
-        return f"{full_label}: material drift versus playbook expectation — act this cycle."
+        return f"{full_label}: material drift versus RoE expectation — act this cycle."
     if hl == "red":
-        return f"{full_label}: critical breach of playbook expectation — requires immediate sponsor review."
+        return f"{full_label}: critical breach of RoE expectation — requires immediate sponsor review."
     return f"{full_label}: state is {hue}."
 
 
@@ -123,8 +123,8 @@ def dashboard_projects(request):
             "last_sitrep_at": "Today 09:15",
             "last_sync": "5 min ago",
             "sync_ok": True,
-            "playbook": "FeatureFactory Playbook",
-            "playbook_track": "auto",
+            "roe": "FeatureFactory RoE",
+            "roe_track": "auto",
             "vars": ["red", "yellow", "green", "green", "red", "orange", "green"],
             "ds_icon": "gitlab",
         },
@@ -132,14 +132,14 @@ def dashboard_projects(request):
             "id": 2,
             "name": "billing-service",
             "health": "orange",
-            "headline": "Throughput dipped vs. playbook expectation",
+            "headline": "Throughput dipped vs. RoE expectation",
             "last_sitrep_pk": None,
             "last_sitrep_headline": None,
             "last_sitrep_at": None,
             "last_sync": "12 min ago",
             "sync_ok": True,
-            "playbook": "Sprint Delivery",
-            "playbook_track": "pin",
+            "roe": "Sprint Delivery",
+            "roe_track": "pin",
             "vars": ["green", "orange", "yellow", "green", "green", "green", "yellow"],
             "ds_icon": "gitlab",
         },
@@ -153,8 +153,8 @@ def dashboard_projects(request):
             "last_sitrep_at": "Yesterday 18:00",
             "last_sync": "1 h ago",
             "sync_ok": True,
-            "playbook": "FeatureFactory Playbook",
-            "playbook_track": "auto",
+            "roe": "FeatureFactory RoE",
+            "roe_track": "auto",
             "vars": ["green", "green", "green", "green", "green", "green", "green"],
             "ds_icon": "gitlab",
         },

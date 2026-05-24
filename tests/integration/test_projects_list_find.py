@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 
 from ingestion.models import DataSource, Project
-from tests.factories import PlaybookFactory, ProjectFactory
+from tests.factories import ProjectFactory, RulesOfEngagementFactory
 
 
 @pytest.mark.django_db
@@ -18,13 +18,13 @@ def test_list_02_table_has_required_columns(commander_client, db):
     r = commander_client.get(reverse("projects-list"))
     assert r.status_code == 200
     body = r.content.decode()
-    for label in ("Name", "Data source", "Playbook", "Last sync", "Last SitRep", "Last SitRep generated", "Status"):
+    for label in ("Name", "Data source", "RoE", "Last sync", "Last SitRep", "Last SitRep generated", "Status"):
         assert label in body
 
 
 @pytest.mark.django_db
-def test_list_04_no_playbook_shows_not_assigned(commander_client, db):
-    ProjectFactory(name="nopb", slug="nopb", playbook_slug="")
+def test_list_04_no_roe_shows_not_assigned(commander_client, db):
+    ProjectFactory(name="nopb", slug="nopb", roe_slug="")
     r = commander_client.get(reverse("projects-list"))
     assert "Not assigned" in r.content.decode()
 
@@ -155,20 +155,20 @@ def test_projects_list_import_banner_query(commander_client):
 
 
 @pytest.mark.django_db
-def test_projects_list_filter_playbook_matches_assigned_fk(commander_client, db):
-    pb = PlaybookFactory(name="Zebra Analytics", slug="zebra-analytics")
-    ProjectFactory(name="with-pb", slug="with-pb", assigned_playbook=pb, playbook_slug=pb.slug)
-    ProjectFactory(name="no-pb", slug="no-pb", playbook_slug="")
+def test_projects_list_filter_roe_matches_assigned_fk(commander_client, db):
+    roe = RulesOfEngagementFactory(name="Zebra Analytics", slug="zebra-analytics")
+    ProjectFactory(name="with-roe", slug="with-roe", assigned_roe=roe, roe_slug=roe.slug)
+    ProjectFactory(name="no-roe", slug="no-roe", roe_slug="")
 
-    r = commander_client.get(reverse("projects-list"), {"playbook": "Zebra"})
+    r = commander_client.get(reverse("projects-list"), {"roe": "Zebra"})
     body = r.content.decode()
-    assert "with-pb" in body
-    assert "no-pb" not in body
+    assert "with-roe" in body
+    assert "no-roe" not in body
 
 
 @pytest.mark.django_db
 def test_projects_list_empty_state_cta(commander_client):
-    r = commander_client.get(reverse("projects-list"), {"playbook": "no-such-slug-xyz"})
+    r = commander_client.get(reverse("projects-list"), {"roe": "no-such-slug-xyz"})
     body = r.content.decode()
     assert "projects-empty-state" in body
     assert "projects-empty-cta-import" in body

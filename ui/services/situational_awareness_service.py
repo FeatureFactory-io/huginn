@@ -7,7 +7,7 @@ from typing import Any
 
 from django.utils import timezone
 
-from playbooks.markdown_utils import workflow_md_to_html
+from roe.markdown_utils import workflow_md_to_html
 from sitrep.models import (
     SituationalAwareness,
     SituationalAwarenessEntry,

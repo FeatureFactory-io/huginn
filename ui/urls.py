@@ -23,13 +23,6 @@ from .views.fragos import (
 )
 from .views.health import health_json, welcome
 from .views.home import HomeView
-from .views.playbooks import (
-    PlaybooksCreateView,
-    PlaybooksDeleteView,
-    PlaybooksDetailView,
-    PlaybooksEditView,
-    PlaybooksListView,
-)
 from .views.projects import (
     ProjectsArchiveView,
     ProjectsDetailView,
@@ -37,6 +30,13 @@ from .views.projects import (
     ProjectsImportView,
     ProjectsListView,
     ProjectsSyncNowView,
+)
+from .views.roe import (
+    RulesOfEngagementCreateView,
+    RulesOfEngagementDeleteView,
+    RulesOfEngagementDetailView,
+    RulesOfEngagementEditView,
+    RulesOfEngagementListView,
 )
 from .views.sitrep import SitRepAllListView, SitRepDetailView, SitRepListView, sitrep_generate_view
 from .views.situational_awareness import SituationalAwarenessEditView, SituationalAwarenessView
@@ -60,11 +60,11 @@ urlpatterns = [
     ),
     path("datasources/<int:pk>/edit/", DataSourcesEditView.as_view(), name="datasource-edit"),
     path("datasources/<int:pk>/delete/", DataSourcesDeleteView.as_view(), name="datasource-delete"),
-    path("playbooks/", PlaybooksListView.as_view(), name="playbooks-list"),
-    path("playbooks/create/", PlaybooksCreateView.as_view(), name="playbooks-create"),
-    path("playbooks/<int:pk>/", PlaybooksDetailView.as_view(), name="playbooks-detail"),
-    path("playbooks/<int:pk>/edit/", PlaybooksEditView.as_view(), name="playbooks-edit"),
-    path("playbooks/<int:pk>/delete/", PlaybooksDeleteView.as_view(), name="playbooks-delete"),
+    path("roe/", RulesOfEngagementListView.as_view(), name="roe-list"),
+    path("roe/new/", RulesOfEngagementCreateView.as_view(), name="roe-create"),
+    path("roe/<int:pk>/", RulesOfEngagementDetailView.as_view(), name="roe-detail"),
+    path("roe/<int:pk>/edit/", RulesOfEngagementEditView.as_view(), name="roe-edit"),
+    path("roe/<int:pk>/delete/", RulesOfEngagementDeleteView.as_view(), name="roe-delete"),
     path("fragos/", FragosListView.as_view(), name="fragos-list"),
     path("fragos/create/", FragosCreateView.as_view(), name="fragos-create"),
     path("fragos/<int:pk>/", FragosDetailView.as_view(), name="fragos-detail"),

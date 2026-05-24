@@ -11,7 +11,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from ingestion.models import DataSource, Project
-from playbooks.markdown_utils import workflow_md_to_html
+from roe.markdown_utils import workflow_md_to_html
 from sitrep.models import Frago
 from ui.services.situational_awareness_service import (
     active_entries_for,
