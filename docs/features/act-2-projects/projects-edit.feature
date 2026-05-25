@@ -67,18 +67,50 @@ Feature: PROJECTS-EDIT_PROJECT-1 Edit a Project's configuration
   # Sync schedule
   # ---------------------------------------------------------------------------
 
-  Scenario: PROJECTS-EDIT_PROJECT-09 Sync schedule options are Hourly, Every 6h, and Daily
+  Scenario: PROJECTS-EDIT_PROJECT-09 Sync schedule options include Hourly, Every 6h, Daily, Weekly, and Manual
     When I open the "Sync schedule" selector
     Then I see the options:
       | Option    |
       | Hourly    |
       | Every 6h  |
       | Daily     |
+      | Weekly    |
+      | Manual    |
 
   Scenario: PROJECTS-EDIT_PROJECT-10 Changing sync schedule is saved
     When I select "Daily" from the sync schedule
     And I click "Save Changes"
     Then the Project sync schedule is "Daily"
+
+  Scenario: PROJECTS-EDIT_PROJECT-14 Selecting Daily reveals a Start hour dropdown
+    When I select "Daily" from the sync schedule
+    Then I see the "Start hour" dropdown
+
+  Scenario: PROJECTS-EDIT_PROJECT-15 Selecting Weekly reveals Day and Start hour dropdowns
+    When I select "Weekly" from the sync schedule
+    Then I see the "Day" dropdown
+    And I see the "Start hour" dropdown
+
+  Scenario: PROJECTS-EDIT_PROJECT-16 Selecting Manual shows no sub-option rows
+    When I select "Manual" from the sync schedule
+    Then I do not see the "Start hour" dropdown for daily schedule
+    And I do not see the "Day" dropdown for weekly schedule
+
+  Scenario: PROJECTS-EDIT_PROJECT-17 Saving Weekly with day Wednesday and hour 09 persists both fields
+    When I select "Weekly" from the sync schedule
+    And I select "Wednesday" from the Day dropdown
+    And I select "09:00" from the Start hour dropdown
+    And I click "Save Changes"
+    Then the Project sync schedule is "Weekly"
+    And the Project sync weekly day is Wednesday
+    And the Project sync weekly hour is 9
+
+  Scenario: PROJECTS-EDIT_PROJECT-18 Saving Daily with start hour 08 persists sync_daily_hour
+    When I select "Daily" from the sync schedule
+    And I select "08:00" from the Start hour dropdown
+    And I click "Save Changes"
+    Then the Project sync schedule is "Daily"
+    And the Project sync daily hour is 8
 
   # ---------------------------------------------------------------------------
   # Validation

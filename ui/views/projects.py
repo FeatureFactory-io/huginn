@@ -377,6 +377,9 @@ class ProjectsEditView(View):
             project.id,
             display_name=display_name,
             sync_schedule=(request.POST.get("sync_schedule") or "").strip(),
+            sync_daily_hour=request.POST.get("sync_daily_hour"),
+            sync_weekly_day=request.POST.get("sync_weekly_day"),
+            sync_weekly_hour=request.POST.get("sync_weekly_hour"),
             assigned_roe=(request.POST.get("assigned_roe") or "").strip(),
             pinned_roe_version=(request.POST.get("pinned_roe_version") or "").strip(),
         )

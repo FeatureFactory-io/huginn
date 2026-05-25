@@ -74,7 +74,10 @@ def test_edit_09_schedule_options(commander_client):
     body = r.content.decode()
     assert "Every 6h" in body
     assert 'value="every_6h"' in body
-    assert "Manual only" not in body
+    assert 'value="weekly"' in body
+    assert 'value="manual"' in body
+    assert "Weekly" in body
+    assert "Manual" in body
 
 
 @pytest.mark.django_db
@@ -181,3 +184,115 @@ def test_project_edit_post_every_6h(commander_client):
     assert r.status_code == 302
     p.refresh_from_db()
     assert p.sync_schedule == Project.SyncSchedule.EVERY_6H
+
+
+@pytest.mark.django_db
+def test_edit_manual_schedule_saves(commander_client):
+    p = ProjectFactory(name="manual", slug="manual")
+    commander_client.get(reverse("projects-edit", args=[p.pk]))
+    r = commander_client.post(
+        reverse("projects-edit", args=[p.pk]),
+        {
+            "csrfmiddlewaretoken": _csrf(commander_client),
+            "display_name": "Manual Project",
+            "sync_schedule": "manual",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
+        },
+        follow=False,
+    )
+    assert r.status_code == 302
+    p.refresh_from_db()
+    assert p.sync_schedule == Project.SyncSchedule.MANUAL
+
+
+@pytest.mark.django_db
+def test_edit_weekly_schedule_saves_day_and_hour(commander_client):
+    p = ProjectFactory(name="weekly", slug="weekly")
+    commander_client.get(reverse("projects-edit", args=[p.pk]))
+    r = commander_client.post(
+        reverse("projects-edit", args=[p.pk]),
+        {
+            "csrfmiddlewaretoken": _csrf(commander_client),
+            "display_name": "Weekly Project",
+            "sync_schedule": "weekly",
+            "sync_weekly_day": "3",
+            "sync_weekly_hour": "9",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
+        },
+        follow=False,
+    )
+    assert r.status_code == 302
+    p.refresh_from_db()
+    assert p.sync_schedule == Project.SyncSchedule.WEEKLY
+    assert p.sync_weekly_day == 3
+    assert p.sync_weekly_hour == 9
+
+
+@pytest.mark.django_db
+def test_edit_daily_with_hour_saves(commander_client):
+    p = ProjectFactory(name="daily-hour", slug="daily-hour")
+    commander_client.get(reverse("projects-edit", args=[p.pk]))
+    r = commander_client.post(
+        reverse("projects-edit", args=[p.pk]),
+        {
+            "csrfmiddlewaretoken": _csrf(commander_client),
+            "display_name": "Daily Hour Project",
+            "sync_schedule": "daily",
+            "sync_daily_hour": "8",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
+        },
+        follow=False,
+    )
+    assert r.status_code == 302
+    p.refresh_from_db()
+    assert p.sync_schedule == Project.SyncSchedule.DAILY
+    assert p.sync_daily_hour == 8
+
+
+@pytest.mark.django_db
+def test_edit_weekly_renders_existing_values(commander_client):
+    p = ProjectFactory(
+        name="weekly-render",
+        slug="weekly-render",
+        sync_schedule=Project.SyncSchedule.WEEKLY,
+        sync_weekly_day=3,
+        sync_weekly_hour=9,
+    )
+    r = commander_client.get(reverse("projects-edit", args=[p.pk]))
+    body = r.content.decode()
+    assert 'value="weekly" selected' in body
+    assert 'value="3" selected' in body
+    assert 'value="9" selected' in body
+    assert "projects-edit-sync-weekly-day" in body
+    assert "projects-edit-sync-weekly-hour" in body
+
+
+@pytest.mark.django_db
+def test_edit_switching_from_weekly_clears_fields(commander_client):
+    p = ProjectFactory(
+        name="weekly-clear",
+        slug="weekly-clear",
+        sync_schedule=Project.SyncSchedule.WEEKLY,
+        sync_weekly_day=3,
+        sync_weekly_hour=9,
+    )
+    commander_client.get(reverse("projects-edit", args=[p.pk]))
+    r = commander_client.post(
+        reverse("projects-edit", args=[p.pk]),
+        {
+            "csrfmiddlewaretoken": _csrf(commander_client),
+            "display_name": "Weekly Clear",
+            "sync_schedule": "hourly",
+            "assigned_roe": "",
+            "pinned_roe_version": "",
+        },
+        follow=False,
+    )
+    assert r.status_code == 302
+    p.refresh_from_db()
+    assert p.sync_schedule == Project.SyncSchedule.HOURLY
+    assert p.sync_weekly_day is None
+    assert p.sync_weekly_hour is None

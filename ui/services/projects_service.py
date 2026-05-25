@@ -11,6 +11,34 @@ from ingestion.tasks import sync_project
 from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 
 
+def _parse_optional_hour(raw: object) -> int | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if not text.isdigit():
+        return None
+    hour = int(text)
+    if 0 <= hour <= 23:
+        return hour
+    return None
+
+
+def _parse_optional_weekday(raw: object) -> int | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if not text.isdigit():
+        return None
+    day = int(text)
+    if 0 <= day <= 6:
+        return day
+    return None
+
+
 class ProjectsService:
     """Domain entrypoints for Projects."""
 
@@ -144,11 +172,37 @@ class ProjectsService:
         updates: dict = {}
         if "display_name" in fields:
             updates["display_name"] = (fields["display_name"] or "").strip()
+        schedule_val: str | None = None
         if "sync_schedule" in fields:
             val = (fields["sync_schedule"] or "").strip()
             choices = {c.value for c in Project.SyncSchedule}
             if val in choices:
+                schedule_val = val
                 updates["sync_schedule"] = val
+
+        effective_schedule = schedule_val
+        if effective_schedule is None and qs.exists():
+            effective_schedule = qs.values_list("sync_schedule", flat=True).first()
+
+        if effective_schedule == Project.SyncSchedule.DAILY:
+            if "sync_daily_hour" in fields:
+                updates["sync_daily_hour"] = _parse_optional_hour(fields.get("sync_daily_hour"))
+        elif effective_schedule is not None:
+            updates["sync_daily_hour"] = None
+
+        if effective_schedule == Project.SyncSchedule.WEEKLY:
+            weekly_day = _parse_optional_weekday(fields.get("sync_weekly_day"))
+            weekly_hour = _parse_optional_hour(fields.get("sync_weekly_hour"))
+            if schedule_val == Project.SyncSchedule.WEEKLY and (weekly_day is None or weekly_hour is None):
+                updates.pop("sync_schedule", None)
+            else:
+                if "sync_weekly_day" in fields:
+                    updates["sync_weekly_day"] = weekly_day
+                if "sync_weekly_hour" in fields:
+                    updates["sync_weekly_hour"] = weekly_hour
+        elif effective_schedule is not None:
+            updates["sync_weekly_day"] = None
+            updates["sync_weekly_hour"] = None
 
         if {"assigned_roe", "pinned_roe_version"} & fields.keys():
             apb_raw = (fields.get("assigned_roe") or "").strip()

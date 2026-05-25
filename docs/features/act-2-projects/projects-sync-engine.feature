@@ -23,6 +23,23 @@ Feature: Project sync engine — Celery ingestion and idempotency
     When sync_due_projects runs
     Then no sync task is enqueued for Project C
 
+  Scenario: PROJECTS-SYNC-08 Manual project is never enqueued by sync_due_projects
+    Given Project D is Active, manual schedule, last_sync_at older than 1 hour
+    When sync_due_projects runs
+    Then no sync task is enqueued for Project D
+
+  Scenario: PROJECTS-SYNC-09 Weekly project enqueued when weekday and hour match
+    Given Project E is Active, weekly schedule on Wednesday at 09:00, last_sync_at 7 days ago
+    And the current time is Wednesday 09:30
+    When sync_due_projects runs
+    Then a sync task is enqueued for Project E
+
+  Scenario: PROJECTS-SYNC-10 Weekly project skipped when weekday does not match
+    Given Project F is Active, weekly schedule on Wednesday at 09:00, last_sync_at 7 days ago
+    And the current time is Thursday 09:30
+    When sync_due_projects runs
+    Then no sync task is enqueued for Project F
+
   # ---------------------------------------------------------------------------
   # Successful run
   # ---------------------------------------------------------------------------

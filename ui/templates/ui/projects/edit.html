@@ -40,8 +40,97 @@
                 <option value="hourly" {% if project.sync_schedule == "hourly" %}selected{% endif %}>Hourly</option>
                 <option value="every_6h" {% if project.sync_schedule == "every_6h" %}selected{% endif %}>Every 6h</option>
                 <option value="daily" {% if project.sync_schedule == "daily" %}selected{% endif %}>Daily</option>
+                <option value="weekly" {% if project.sync_schedule == "weekly" %}selected{% endif %}>Weekly</option>
+                <option value="manual" {% if project.sync_schedule == "manual" %}selected{% endif %}>Manual</option>
               </select>
             </div>
+            <div class="col-12" id="sync-daily-options" style="display: none;">
+              <label class="form-label mb-1" for="id_sync_daily_hour">Start hour</label>
+              <select id="id_sync_daily_hour" name="sync_daily_hour" class="form-select form-select-sm" data-testid="projects-edit-sync-daily-hour">
+                <option value="0" {% if project.sync_daily_hour == 0 %}selected{% endif %}>00:00 (midnight)</option>
+                <option value="1" {% if project.sync_daily_hour == 1 %}selected{% endif %}>01:00</option>
+                <option value="2" {% if project.sync_daily_hour == 2 %}selected{% endif %}>02:00</option>
+                <option value="3" {% if project.sync_daily_hour == 3 %}selected{% endif %}>03:00</option>
+                <option value="4" {% if project.sync_daily_hour == 4 %}selected{% endif %}>04:00</option>
+                <option value="5" {% if project.sync_daily_hour == 5 %}selected{% endif %}>05:00</option>
+                <option value="6" {% if project.sync_daily_hour == 6 %}selected{% endif %}>06:00</option>
+                <option value="7" {% if project.sync_daily_hour == 7 %}selected{% endif %}>07:00</option>
+                <option value="8" {% if project.sync_daily_hour == 8 %}selected{% endif %}>08:00</option>
+                <option value="9" {% if project.sync_daily_hour == 9 %}selected{% endif %}>09:00</option>
+                <option value="10" {% if project.sync_daily_hour == 10 %}selected{% endif %}>10:00</option>
+                <option value="11" {% if project.sync_daily_hour == 11 %}selected{% endif %}>11:00</option>
+                <option value="12" {% if project.sync_daily_hour == 12 %}selected{% endif %}>12:00</option>
+                <option value="13" {% if project.sync_daily_hour == 13 %}selected{% endif %}>13:00</option>
+                <option value="14" {% if project.sync_daily_hour == 14 %}selected{% endif %}>14:00</option>
+                <option value="15" {% if project.sync_daily_hour == 15 %}selected{% endif %}>15:00</option>
+                <option value="16" {% if project.sync_daily_hour == 16 %}selected{% endif %}>16:00</option>
+                <option value="17" {% if project.sync_daily_hour == 17 %}selected{% endif %}>17:00</option>
+                <option value="18" {% if project.sync_daily_hour == 18 %}selected{% endif %}>18:00</option>
+                <option value="19" {% if project.sync_daily_hour == 19 %}selected{% endif %}>19:00</option>
+                <option value="20" {% if project.sync_daily_hour == 20 %}selected{% endif %}>20:00</option>
+                <option value="21" {% if project.sync_daily_hour == 21 %}selected{% endif %}>21:00</option>
+                <option value="22" {% if project.sync_daily_hour == 22 %}selected{% endif %}>22:00</option>
+                <option value="23" {% if project.sync_daily_hour == 23 %}selected{% endif %}>23:00</option>
+              </select>
+              <p class="small text-muted mb-0 mt-1">Sync will run at the start of the selected hour each day.</p>
+            </div>
+            <div class="col-12" id="sync-weekly-options" style="display: none;">
+              <label class="form-label mb-1" for="id_sync_weekly_day">Day</label>
+              <select id="id_sync_weekly_day" name="sync_weekly_day" class="form-select form-select-sm mb-3" data-testid="projects-edit-sync-weekly-day">
+                <option value="0" {% if project.sync_weekly_day == 0 %}selected{% endif %}>Monday</option>
+                <option value="1" {% if project.sync_weekly_day == 1 %}selected{% endif %}>Tuesday</option>
+                <option value="2" {% if project.sync_weekly_day == 2 %}selected{% endif %}>Wednesday</option>
+                <option value="3" {% if project.sync_weekly_day == 3 %}selected{% endif %}>Thursday</option>
+                <option value="4" {% if project.sync_weekly_day == 4 %}selected{% endif %}>Friday</option>
+                <option value="5" {% if project.sync_weekly_day == 5 %}selected{% endif %}>Saturday</option>
+                <option value="6" {% if project.sync_weekly_day == 6 %}selected{% endif %}>Sunday</option>
+              </select>
+              <label class="form-label mb-1" for="id_sync_weekly_hour">Start hour</label>
+              <select id="id_sync_weekly_hour" name="sync_weekly_hour" class="form-select form-select-sm" data-testid="projects-edit-sync-weekly-hour">
+                <option value="0" {% if project.sync_weekly_hour == 0 %}selected{% endif %}>00:00 (midnight)</option>
+                <option value="1" {% if project.sync_weekly_hour == 1 %}selected{% endif %}>01:00</option>
+                <option value="2" {% if project.sync_weekly_hour == 2 %}selected{% endif %}>02:00</option>
+                <option value="3" {% if project.sync_weekly_hour == 3 %}selected{% endif %}>03:00</option>
+                <option value="4" {% if project.sync_weekly_hour == 4 %}selected{% endif %}>04:00</option>
+                <option value="5" {% if project.sync_weekly_hour == 5 %}selected{% endif %}>05:00</option>
+                <option value="6" {% if project.sync_weekly_hour == 6 %}selected{% endif %}>06:00</option>
+                <option value="7" {% if project.sync_weekly_hour == 7 %}selected{% endif %}>07:00</option>
+                <option value="8" {% if project.sync_weekly_hour == 8 %}selected{% endif %}>08:00</option>
+                <option value="9" {% if project.sync_weekly_hour == 9 %}selected{% endif %}>09:00</option>
+                <option value="10" {% if project.sync_weekly_hour == 10 %}selected{% endif %}>10:00</option>
+                <option value="11" {% if project.sync_weekly_hour == 11 %}selected{% endif %}>11:00</option>
+                <option value="12" {% if project.sync_weekly_hour == 12 %}selected{% endif %}>12:00</option>
+                <option value="13" {% if project.sync_weekly_hour == 13 %}selected{% endif %}>13:00</option>
+                <option value="14" {% if project.sync_weekly_hour == 14 %}selected{% endif %}>14:00</option>
+                <option value="15" {% if project.sync_weekly_hour == 15 %}selected{% endif %}>15:00</option>
+                <option value="16" {% if project.sync_weekly_hour == 16 %}selected{% endif %}>16:00</option>
+                <option value="17" {% if project.sync_weekly_hour == 17 %}selected{% endif %}>17:00</option>
+                <option value="18" {% if project.sync_weekly_hour == 18 %}selected{% endif %}>18:00</option>
+                <option value="19" {% if project.sync_weekly_hour == 19 %}selected{% endif %}>19:00</option>
+                <option value="20" {% if project.sync_weekly_hour == 20 %}selected{% endif %}>20:00</option>
+                <option value="21" {% if project.sync_weekly_hour == 21 %}selected{% endif %}>21:00</option>
+                <option value="22" {% if project.sync_weekly_hour == 22 %}selected{% endif %}>22:00</option>
+                <option value="23" {% if project.sync_weekly_hour == 23 %}selected{% endif %}>23:00</option>
+              </select>
+              <p class="small text-muted mb-0 mt-1">Sync will run at the start of the selected hour on the chosen day each week.</p>
+            </div>
+            <script>
+              (function () {
+                var schedule = document.getElementById("id_sync_schedule");
+                var daily = document.getElementById("sync-daily-options");
+                var weekly = document.getElementById("sync-weekly-options");
+                if (!schedule || !daily || !weekly) return;
+
+                function toggleSyncOptions() {
+                  var value = schedule.value;
+                  daily.style.display = value === "daily" ? "" : "none";
+                  weekly.style.display = value === "weekly" ? "" : "none";
+                }
+
+                schedule.addEventListener("change", toggleSyncOptions);
+                toggleSyncOptions();
+              })();
+            </script>
             <div class="col-12">
               <label class="form-label mb-1" for="id_assigned_roe">Rules of Engagement</label>
               <select id="id_assigned_roe" name="assigned_roe" class="form-select form-select-sm" data-testid="projects-edit-assigned-roe">

@@ -44,13 +44,32 @@ def sync_due_projects() -> None:
 
 
 def _project_sync_due(project: Project, now) -> bool:
+    schedule = project.sync_schedule
+    if schedule == Project.SyncSchedule.MANUAL:
+        return False
     if project.last_sync_at is None:
+        if schedule == Project.SyncSchedule.DAILY and project.sync_daily_hour is not None:
+            return now.hour == project.sync_daily_hour
+        if schedule == Project.SyncSchedule.WEEKLY:
+            if project.sync_weekly_day is None or project.sync_weekly_hour is None:
+                return False
+            return now.weekday() == project.sync_weekly_day and now.hour == project.sync_weekly_hour
         return True
     delta = now - project.last_sync_at
-    if project.sync_schedule == Project.SyncSchedule.HOURLY:
+    if schedule == Project.SyncSchedule.HOURLY:
         return delta >= timedelta(hours=1)
-    if project.sync_schedule == Project.SyncSchedule.EVERY_6H:
+    if schedule == Project.SyncSchedule.EVERY_6H:
         return delta >= timedelta(hours=6)
-    if project.sync_schedule == Project.SyncSchedule.DAILY:
+    if schedule == Project.SyncSchedule.DAILY:
+        if project.sync_daily_hour is not None:
+            return now.hour == project.sync_daily_hour and delta >= timedelta(hours=23)
         return delta >= timedelta(days=1)
+    if schedule == Project.SyncSchedule.WEEKLY:
+        if project.sync_weekly_day is None or project.sync_weekly_hour is None:
+            return False
+        return (
+            now.weekday() == project.sync_weekly_day
+            and now.hour == project.sync_weekly_hour
+            and delta >= timedelta(days=6, hours=23)
+        )
     return True

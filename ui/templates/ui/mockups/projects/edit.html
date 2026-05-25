@@ -19,20 +19,134 @@
 </section>
 
 <div class="row justify-content-center">
-  <div class="col-lg-8 col-xl-6">
+  <div class="col-lg-8 col-xl-7">
     <div class="card border-0 shadow-sm rounded-3">
       <div class="card-body">
-        <form class="vstack gap-3">
-      <label class="form-label">Display name</label><input class="form-control mb-3" value="{{ p.name }}" data-testid="project-display-name-input">
-      <label class="form-label text-muted small">Immutable source path</label><input class="form-control mb-3 bg-light font-monospace" value="{{ p.source_path }}" disabled>
-      <label class="form-label">Assigned RoE</label>
-      <select class="form-select mb-3" data-testid="project-roe-select"><option value="">None</option><option>FeatureFactory RoE</option></select>
-      <label class="form-label">Sync schedule</label>
-      <select class="form-select mb-3"><option>Hourly</option><option>Every 6h</option><option>Daily</option></select>
-      <div class="d-flex justify-content-end gap-2">
-        <a href="{% url 'mockup-projects-view' pk %}" class="btn btn-outline-secondary">Cancel</a>
-        <button class="btn btn-primary disabled" tabindex="-1" aria-disabled="true">Save Changes</button>
-      </div>
+        <form class="vstack gap-3" data-testid="projects-edit-form">
+          <div>
+            <label class="form-label" for="id_display_name">Display name <span class="text-danger">*</span></label>
+            <input class="form-control" id="id_display_name" name="display_name" value="{{ p.name }}" data-testid="project-display-name-input">
+          </div>
+          <div>
+            <label class="form-label text-muted small" for="id_source_path">Immutable source path</label>
+            <input class="form-control bg-light font-monospace" id="id_source_path" value="{{ p.source_path }}" disabled>
+          </div>
+          <div>
+            <label class="form-label" for="id_assigned_roe">Assigned RoE</label>
+            <select class="form-select" id="id_assigned_roe" name="assigned_roe" data-testid="project-roe-select">
+              <option value="">None</option>
+              <option>FeatureFactory RoE</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="id_sync_schedule">Sync schedule <span class="text-danger">*</span></label>
+            <select class="form-select" id="id_sync_schedule" name="sync_schedule" data-testid="projects-edit-sync-schedule">
+              <option value="hourly">Hourly</option>
+              <option value="every_6h">Every 6h</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+
+          <div id="sync-daily-options" style="display: none;">
+            <label class="form-label" for="id_sync_daily_hour">Start hour</label>
+            <select class="form-select" id="id_sync_daily_hour" name="sync_daily_hour" data-testid="projects-edit-sync-daily-hour">
+              <option value="0">00:00 (midnight)</option>
+              <option value="1">01:00</option>
+              <option value="2">02:00</option>
+              <option value="3">03:00</option>
+              <option value="4">04:00</option>
+              <option value="5">05:00</option>
+              <option value="6">06:00</option>
+              <option value="7">07:00</option>
+              <option value="8">08:00</option>
+              <option value="9">09:00</option>
+              <option value="10">10:00</option>
+              <option value="11">11:00</option>
+              <option value="12">12:00</option>
+              <option value="13">13:00</option>
+              <option value="14">14:00</option>
+              <option value="15">15:00</option>
+              <option value="16">16:00</option>
+              <option value="17">17:00</option>
+              <option value="18">18:00</option>
+              <option value="19">19:00</option>
+              <option value="20">20:00</option>
+              <option value="21">21:00</option>
+              <option value="22">22:00</option>
+              <option value="23">23:00</option>
+            </select>
+            <p class="small text-muted mb-0 mt-1">Sync will run at the start of the selected hour each day.</p>
+          </div>
+
+          <div id="sync-weekly-options" style="display: none;">
+            <label class="form-label" for="id_sync_weekly_day">Day</label>
+            <select class="form-select mb-3" id="id_sync_weekly_day" name="sync_weekly_day" data-testid="projects-edit-sync-weekly-day">
+              <option value="0">Monday</option>
+              <option value="1">Tuesday</option>
+              <option value="2">Wednesday</option>
+              <option value="3">Thursday</option>
+              <option value="4">Friday</option>
+              <option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+            <label class="form-label" for="id_sync_weekly_hour">Start hour</label>
+            <select class="form-select" id="id_sync_weekly_hour" name="sync_weekly_hour" data-testid="projects-edit-sync-weekly-hour">
+              <option value="0">00:00 (midnight)</option>
+              <option value="1">01:00</option>
+              <option value="2">02:00</option>
+              <option value="3">03:00</option>
+              <option value="4">04:00</option>
+              <option value="5">05:00</option>
+              <option value="6">06:00</option>
+              <option value="7">07:00</option>
+              <option value="8">08:00</option>
+              <option value="9">09:00</option>
+              <option value="10">10:00</option>
+              <option value="11">11:00</option>
+              <option value="12">12:00</option>
+              <option value="13">13:00</option>
+              <option value="14">14:00</option>
+              <option value="15">15:00</option>
+              <option value="16">16:00</option>
+              <option value="17">17:00</option>
+              <option value="18">18:00</option>
+              <option value="19">19:00</option>
+              <option value="20">20:00</option>
+              <option value="21">21:00</option>
+              <option value="22">22:00</option>
+              <option value="23">23:00</option>
+            </select>
+            <p class="small text-muted mb-0 mt-1">Sync will run at the start of the selected hour on the chosen day each week.</p>
+          </div>
+
+          <script>
+            (function () {
+              var schedule = document.getElementById("id_sync_schedule");
+              var daily = document.getElementById("sync-daily-options");
+              var weekly = document.getElementById("sync-weekly-options");
+              if (!schedule || !daily || !weekly) return;
+
+              function toggleSyncOptions() {
+                var value = schedule.value;
+                daily.style.display = value === "daily" ? "" : "none";
+                weekly.style.display = value === "weekly" ? "" : "none";
+              }
+
+              schedule.addEventListener("change", toggleSyncOptions);
+              toggleSyncOptions();
+            })();
+          </script>
+
+          <div class="d-flex justify-content-end gap-2 mt-2">
+            <a href="{% url 'mockup-projects-view' pk %}" class="btn btn-outline-secondary" data-testid="projects-edit-cancel">
+              <i class="fa-solid fa-xmark me-1" aria-hidden="true"></i> Cancel
+            </a>
+            <button type="button" class="btn btn-primary disabled" tabindex="-1" aria-disabled="true" data-testid="project-save">
+              <i class="fa-solid fa-floppy-disk me-1" aria-hidden="true"></i> Save Changes
+            </button>
+          </div>
         </form>
       </div>
     </div>

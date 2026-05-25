@@ -121,6 +121,8 @@ class Project(models.Model):
         HOURLY = "hourly", "Hourly"
         EVERY_6H = "every_6h", "Every 6h"
         DAILY = "daily", "Daily"
+        WEEKLY = "weekly", "Weekly"
+        MANUAL = "manual", "Manual"
 
     datasource = models.ForeignKey(
         DataSource,
@@ -162,6 +164,9 @@ class Project(models.Model):
         choices=SyncSchedule.choices,
         default=SyncSchedule.HOURLY,
     )
+    sync_daily_hour = models.IntegerField(null=True, blank=True)
+    sync_weekly_day = models.IntegerField(null=True, blank=True)
+    sync_weekly_hour = models.IntegerField(null=True, blank=True)
     imported_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

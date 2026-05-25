@@ -82,4 +82,4 @@ def test_project_factory_default_sync_schedule_hourly() -> None:
 
 def test_sync_schedule_textchoices_values() -> None:
     values = {c.value for c in Project.SyncSchedule}
-    assert values == {"hourly", "every_6h", "daily"}
+    assert values == {"hourly", "every_6h", "daily", "weekly", "manual"}
