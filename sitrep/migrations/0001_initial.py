@@ -8,6 +8,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     initial = True
 
+    replaces = [
+        ("sitrep", "0001_frago_initial"),
+        ("sitrep", "0002_situational_awareness"),
+        ("sitrep", "0003_frago_audit_event"),
+        ("sitrep", "0004_situational_awareness_entries"),
+        ("sitrep", "0005_situational_awareness_global"),
+        ("sitrep", "0006_sitrep"),
+    ]
+
     dependencies = [
         ("gjallarhorn", "0001_initial"),
         ("ingestion", "0001_initial"),

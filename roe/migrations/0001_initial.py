@@ -109,6 +109,12 @@ def unseed_featurefactory_roe(apps, schema_editor) -> None:
 class Migration(migrations.Migration):
     initial = True
 
+    replaces = [
+        ("playbooks", "0001_initial_playbooks_models"),
+        ("playbooks", "0002_seed_featurefactory_playbook"),
+        ("playbooks", "0003_remove_playbookvariable_dimensions_and_playbooktable"),
+    ]
+
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
