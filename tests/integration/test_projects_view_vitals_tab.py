@@ -221,6 +221,4 @@ def test_project_sync_now_post_redirects(commander_client):
         follow=False,
     )
     assert r.status_code == 302
-    p.refresh_from_db()
-    assert p.sync_state == Project.SyncState.ACTIVE
     assert "tab=vitals" in (r.get("Location") or "")

@@ -74,10 +74,10 @@ class GitlabCommitAdapter(DataSourceAdapter):
 
     def fetch_increments(self, project: Project, *, since: datetime | None) -> Iterator[CommitIncrementDTO]:
         if not project.gitlab_project_id or not project.datasource:
-            return
+            raise RuntimeError(f"Project {project.pk} has no gitlab_project_id configured — cannot ingest.")
         token = (project.datasource.encrypted_token_ciphertext or "").strip()
         if not token:
-            return
+            raise RuntimeError(f"DataSource {project.datasource_id} has no access token configured — cannot ingest.")
 
         client = GitlabClient(project.datasource.base_url, token)
         gid = int(project.gitlab_project_id)

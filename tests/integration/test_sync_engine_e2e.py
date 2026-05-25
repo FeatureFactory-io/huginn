@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from ingestion.models import Increment, Project
+from ingestion.models import Increment, IngestionRun, Project
 from ingestion.tasks import sync_project
 from tests.factories import DataSourceFactory, ProjectFactory
 
@@ -39,3 +39,31 @@ def test_sync_project_task_writes_increment_when_gitlab_returns_commit() -> None
     p.refresh_from_db()
     assert p.sync_state == Project.SyncState.ACTIVE
     assert Increment.objects.filter(project=p, external_id="abc123def456").exists()
+
+
+@pytest.mark.django_db
+def test_sync_project_task_errors_when_gitlab_project_id_missing() -> None:
+    ds = DataSourceFactory(encrypted_token_ciphertext="glpat-x")
+    p = ProjectFactory(datasource=ds, gitlab_project_id=None)
+
+    sync_project(p.pk)
+
+    p.refresh_from_db()
+    assert p.sync_state == Project.SyncState.ERROR
+    run = IngestionRun.objects.get(project=p)
+    assert run.status == IngestionRun.Status.ERROR
+    assert "gitlab_project_id" in run.error_message
+
+
+@pytest.mark.django_db
+def test_sync_project_task_errors_when_token_missing() -> None:
+    ds = DataSourceFactory(encrypted_token_ciphertext="")
+    p = ProjectFactory(datasource=ds, gitlab_project_id=42)
+
+    sync_project(p.pk)
+
+    p.refresh_from_db()
+    assert p.sync_state == Project.SyncState.ERROR
+    run = IngestionRun.objects.get(project=p)
+    assert run.status == IngestionRun.Status.ERROR
+    assert "token" in run.error_message
