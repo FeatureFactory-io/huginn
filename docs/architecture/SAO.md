@@ -1,12 +1,12 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 15 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven tag-triggered pipelines (`git tag x.y.z && git push origin x.y.z` → lint → test → build → staging → manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 5 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven tag-triggered pipelines (`git tag x.y.z && git push origin x.y.z` → lint → test → build → staging → manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
 
 ---
 
 ## Executive Summary
 
-Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 15 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and — via **Gjallarhorn AI** — automatically generates a SitRep after each sync. The PM conducts Observe-Orient (OO) with Gjallarhorn in Chat, then approves or rejects its proposed Decisions (Semi-Autonomous mode) or watches Gjallarhorn execute autonomously (Autonomous mode). Gjallarhorn runs on `claude-sonnet-4-6` with extended thinking, caches stable context (Playbook, FRAGOs, Situational Awareness), and executes multi-step tasks via an `ExecutionPlan` / `PlanStep` engine backed by Celery.
+Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 5 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and — via **Gjallarhorn AI** — automatically generates a SitRep after each sync. The PM conducts Observe-Orient (OO) with Gjallarhorn in Chat, then approves or rejects its proposed Decisions (Semi-Autonomous mode) or watches Gjallarhorn execute autonomously (Autonomous mode). Gjallarhorn runs on `claude-sonnet-4-6` with extended thinking, caches stable context (Playbook, FRAGOs, Situational Awareness), and executes multi-step tasks via an `ExecutionPlan` / `PlanStep` engine backed by Celery.
 
 **Key architectural decisions:**
 - Django MTV + Celery hybrid: web UI and async ingestion in one monorepo
@@ -56,7 +56,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - **`ingestion/services/sync_engine.py`** — `SyncEngine.run_for_project(project_id)` orchestrates: open `IngestionRun`, resolve adapters for the project's `DataSource`, upsert `Contributor` / `Increment` rows idempotently on `(project, kind, external_id)`, close run with counts and cursor, update `Project.last_sync_at` and `sync_state`.
 - **Idempotency:** re-running sync is safe — upserts only; duplicate external IDs do not create second rows.
 - **Audit:** every run appends an `IngestionRun` row (success or error) for TRANSPARENCY and ops visibility.
-- **Scheduling (prod):** `django_celery_beat` `PeriodicTask` `ingestion.sync_due_projects` runs every **15 minutes** (migration `0007_beat_sync_due_projects`). The task enqueues `ingestion.sync_project` per **Active** project when `last_sync_at` is older than that project's `sync_schedule` (hourly, every 6h, or daily).
+- **Scheduling (prod):** `django_celery_beat` `PeriodicTask` `ingestion.sync_due_projects` runs every **5 minutes** (migration `0002_sync_due_projects_beat`). The task enqueues `ingestion.sync_project` per **Active** project when `last_sync_at` is older than that project's `sync_schedule` (hourly, every 6h, or daily).
 - **Acceptance:** `docs/features/act-2-projects/projects-sync-engine.feature` encodes scheduling, idempotency, error, concurrency, and archived-skip behavior.
 
 ---
@@ -86,7 +86,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 | Slack / email | TBD |
 | XRay (test state) | TBD |
 
-**Ingestion cadence:** Celery Beat (`DatabaseScheduler`) fires `ingestion.sync_due_projects` every **15 minutes**; that task enqueues `ingestion.sync_project(project_id)` for each **Active** project whose `last_sync_at` exceeds its `sync_schedule` (hourly / every 6h / daily). On-demand sync from the UI still calls the same task. OODA loop runs daily at morning planning session.
+**Ingestion cadence:** Celery Beat (`DatabaseScheduler`) fires `ingestion.sync_due_projects` every **5 minutes**; that task enqueues `ingestion.sync_project(project_id)` for each **Active** project whose `last_sync_at` exceeds its `sync_schedule` (hourly / every 6h / daily). On-demand sync from the UI still calls the same task. OODA loop runs daily at morning planning session.
 
 **Contract approach:** no formal REST contract for v1 (single consumer: the web UI). MCP tools documented inline in `gjallarhorn/`.
 
@@ -264,7 +264,7 @@ class IngestionRun(Model):
 - Read-heavy: dashboards read far more than ingestion writes
 
 **Async processing:**
-- Celery Beat: **15-minute** fan-out — `ingestion.sync_due_projects` (see migration `ingestion/0007_beat_sync_due_projects.py`) enqueues per-project `ingestion.sync_project` when due; `Project.sync_schedule` controls minimum spacing (hourly / every 6h / daily).
+- Celery Beat: **5-minute** fan-out — `ingestion.sync_due_projects` (see migration `ingestion/0002_sync_due_projects_beat.py`) enqueues per-project `ingestion.sync_project` when due; `Project.sync_schedule` controls minimum spacing (hourly / every 6h / daily).
 - Celery worker: **one** `worker` container in `docker-compose.prod.yml` with **`--concurrency=2`** (two concurrent tasks), sufficient for v1; GitLab API sync load may warrant a larger EB instance type later.
 - Priority queues: not needed for v1 (all jobs equal priority)
 
@@ -1156,7 +1156,7 @@ sequenceDiagram
     participant Redis as Redis (pub/sub)
     participant Browser as Browser (SSE)
 
-    Beat->>SyncTask: sync_due_projects (every 15 min)
+    Beat->>SyncTask: sync_due_projects (every 5 min)
     SyncTask->>GitLab: fetch commits / MRs since cursor
     GitLab-->>SyncTask: IncrementDTOs
     SyncTask->>DB: upsert Increment rows (idempotent on external_id)
@@ -1363,7 +1363,7 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | CI builds | Kaniko | Shared runners are Alpine; Kaniko is daemonless, no glibc needed |
 | Image registry | AWS ECR | Co-located with EB/IAM; no extra auth needed |
 | Secrets | AWS SSM → EB env properties | Credentials never in git or image |
-| Async | Celery + Redis + `django_celery_beat` | 15-minute `sync_due_projects` fan-out + per-Project `sync_schedule`; DatabaseScheduler persists periodic tasks in RDS |
+| Async | Celery + Redis + `django_celery_beat` | 5-minute `sync_due_projects` fan-out + per-Project `sync_schedule`; DatabaseScheduler persists periodic tasks in RDS |
 | Connectors v1 | python-gitlab + jira (pycontribs) | Both actively maintained; `jira` preferred over `atlassian-python-api` for Jira-specific coverage |
 | Testing | pytest + Django test client, no E2E | Internal tool; browser E2E overhead not justified; ECharts tested via JSON endpoints |
 | Observability | AWS CloudWatch | Co-located with EB; no additional tooling needed |
