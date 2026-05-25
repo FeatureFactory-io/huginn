@@ -6,7 +6,7 @@ def create_periodic_task(apps, schema_editor):
     PeriodicTask = apps.get_model("django_celery_beat", "PeriodicTask")
 
     schedule, _ = IntervalSchedule.objects.get_or_create(
-        every=5,
+        every=15,
         period="minutes",
     )
     PeriodicTask.objects.get_or_create(
