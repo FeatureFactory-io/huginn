@@ -135,14 +135,14 @@ class Project(models.Model):
     source_path = models.CharField(max_length=512, blank=True)
     roe_slug = models.CharField(max_length=255, blank=True)
     assigned_roe = models.ForeignKey(
-        "playbooks.RulesOfEngagement",
+        "roe.RulesOfEngagement",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="assigned_projects",
     )
     pinned_roe_version = models.ForeignKey(
-        "playbooks.RulesOfEngagementVersion",
+        "roe.RulesOfEngagementVersion",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

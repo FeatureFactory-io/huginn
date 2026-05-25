@@ -18,7 +18,7 @@ class RulesOfEngagement(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="playbooks_authored",
+        related_name="roe_authored",
     )
 
     class Meta:
@@ -49,7 +49,7 @@ class RulesOfEngagementVersion(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("roe", "version_number"),
-                name="playbooks_rulesofengagementversion_unique_version_per_roe",
+                name="roe_rulesofengagementversion_unique_version_per_roe",
             ),
         ]
 

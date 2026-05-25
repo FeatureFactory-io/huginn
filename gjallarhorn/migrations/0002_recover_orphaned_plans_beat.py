@@ -1,5 +1,3 @@
-"""Register recover_orphaned_plans PeriodicTask (every 60 s)."""
-
 from django.db import migrations
 
 
@@ -12,10 +10,10 @@ def create_periodic_task(apps, schema_editor):
         period="seconds",
     )
     PeriodicTask.objects.get_or_create(
-        name="gjallarhorn-recover-orphaned-plans",
+        name="Recover orphaned ExecutionPlans",
         defaults={
-            "task": "gjallarhorn.recover_orphaned_plans",
             "interval": schedule,
+            "task": "gjallarhorn.recover_orphaned_plans",
             "enabled": True,
         },
     )
@@ -23,7 +21,7 @@ def create_periodic_task(apps, schema_editor):
 
 def delete_periodic_task(apps, schema_editor):
     PeriodicTask = apps.get_model("django_celery_beat", "PeriodicTask")
-    PeriodicTask.objects.filter(name="gjallarhorn-recover-orphaned-plans").delete()
+    PeriodicTask.objects.filter(name="Recover orphaned ExecutionPlans").delete()
 
 
 class Migration(migrations.Migration):
