@@ -322,7 +322,7 @@ def test_sitrep_view_11_section_situation_no_variables_chip(commander_client, at
     assert 'data-testid="sitrep-section1-status-chip"' in body
     idx = body.find('data-testid="sitrep-section1-status-chip"')
     snippet = body[max(0, idx - 200) : idx + 400]
-    assert "No Variables" in snippet
+    assert "No Data" in snippet
     assert "bg-secondary" in snippet, "Section-1 chip must be grey (bg-secondary) per mockup"
 
 
@@ -353,9 +353,9 @@ def test_sitrep_view_13_section_variables_placeholder(commander_client, atlas_pr
     response = commander_client.get(_view_url(atlas_project, auto_sitrep))
     assert response.status_code == 200
     body = response.content.decode()
-    assert 'data-testid="sitrep-variables-placeholder"' in body
-    assert "Variables will be available in a future release" in body
-    assert "sitrep-variable-row-" not in body, "narrative phase must not render Variable row testids"
+    assert 'data-testid="sitrep-variables-empty"' in body
+    assert "No Variables computed for this SitRep." in body
+    assert "sitrep-variable-row-" not in body, "empty snapshot must not render Variable row testids"
 
 
 # ---------------------------------------------------------------------------

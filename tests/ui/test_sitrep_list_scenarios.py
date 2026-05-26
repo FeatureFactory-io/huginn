@@ -146,7 +146,7 @@ def test_sitrep_list_find_06_table_columns(commander_client, atlas_project):
     body = response.content.decode()
     assert 'data-testid="sitrep-table"' in body
     for column in (
-        "Generated at",
+        "SitRep T",
         "Assessed period",
         "Trigger",
         "Status",

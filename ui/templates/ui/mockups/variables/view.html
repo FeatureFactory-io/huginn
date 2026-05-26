@@ -1,44 +1,399 @@
 {% extends "base_mockups.html" %}
+{% load static %}
 
 {% block title %}Variables · {{ project_slug }} · Huginn{% endblock %}
 
 {% block content %}
 {% include "ui/mockups/_screen_anchor.html" with screen_id="VARIABLES-VIEW-1" screen_testid="variables-view-loaded" %}
 
+{# ── Breadcrumb ────────────────────────────────────────────────────────────── #}
+<nav aria-label="breadcrumb" class="mb-2">
+  <ol class="breadcrumb small mb-0">
+    <li class="breadcrumb-item"><a href="{% url 'mockup-projects-list' %}">Projects</a></li>
+    <li class="breadcrumb-item"><a href="{% url 'mockup-projects-view' 1 %}?tab=variables">{{ project_slug }}</a></li>
+    <li class="breadcrumb-item active" aria-current="page">Variables</li>
+  </ol>
+</nav>
+
+{# ── Page header ──────────────────────────────────────────────────────────── #}
 <section class="hg-page-header rounded-2 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
   <div class="flex-grow-1">
-    <h1 class="hg-page-title mb-1" data-testid="page-title">Variables · {{ project_slug }}</h1>
-    <p class="text-muted mb-0 small">Read-only panels (mock charts placeholders).</p>
+    <h1 class="hg-page-title mb-1" data-testid="page-title">
+      <i class="fa-solid fa-chart-bar hg-page-title-icon text-primary me-2" aria-hidden="true"></i>Variables · {{ project_slug }}
+    </h1>
+    <p class="text-muted mb-0 small">
+      RoE <strong>Atlas Engineering RoE</strong> v1 ·
+      Showing <strong>{{ period_label }}</strong>
+    </p>
   </div>
-  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0" role="toolbar" aria-label="Variables time range">
-    <div class="btn-group btn-group-sm" role="group" aria-label="Chart time range">
-      <button type="button" class="btn btn-outline-secondary">This week</button>
-      <button type="button" class="btn btn-outline-secondary">Previous week</button>
-      <button type="button" class="btn btn-primary">Last 2 weeks</button>
+
+  {# ── Period selector ──────────────────────────────────────────────────── #}
+  <div class="d-flex flex-wrap gap-2 justify-content-end align-items-center flex-shrink-0"
+       role="toolbar" aria-label="Variables period selection">
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              type="button"
+              id="variables-period-dropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              data-testid="variables-period-selector"
+              aria-label="Select period">
+        <i class="fa-solid fa-calendar fa-fw me-1" aria-hidden="true"></i>{{ period_label }}
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="variables-period-dropdown">
+        <li><h6 class="dropdown-header">Sub-day</h6></li>
+        {% for key, label in period_choices %}
+          {% if key == "last_2h" or key == "last_4h" or key == "last_8h" %}
+          <li>
+            <a class="dropdown-item {% if period == key %}active{% endif %}"
+               href="?project={{ project_slug }}&period={{ key }}&state={{ state }}"
+               data-testid="variables-period-{{ key }}">
+              <i class="fa-solid fa-clock fa-fw me-2 text-muted" aria-hidden="true"></i>{{ label }}
+            </a>
+          </li>
+          {% endif %}
+        {% endfor %}
+        <li><hr class="dropdown-divider"></li>
+        <li><h6 class="dropdown-header">Day-level</h6></li>
+        {% for key, label in period_choices %}
+          {% if key == "today" or key == "yesterday" or key == "this_week" or key == "prev_week" or key == "30d" %}
+          <li>
+            <a class="dropdown-item {% if period == key %}active{% endif %}"
+               href="?project={{ project_slug }}&period={{ key }}&state={{ state }}"
+               data-testid="variables-period-{{ key }}">
+              <i class="fa-solid fa-calendar-day fa-fw me-2 text-muted" aria-hidden="true"></i>{{ label }}
+            </a>
+          </li>
+          {% endif %}
+        {% endfor %}
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item {% if period == 'custom' %}active{% endif %}"
+             href="#variables-custom-period"
+             data-bs-toggle="collapse"
+             data-testid="variables-period-custom">
+            <i class="fa-solid fa-calendar-range fa-fw me-2 text-muted" aria-hidden="true"></i>Custom…
+          </a>
+        </li>
+      </ul>
     </div>
   </div>
 </section>
 
-<div class="vstack gap-4">
-  <section class="card border-0 shadow-sm rounded-3" data-testid="variables-section-transparency">
-    <div class="card-header bg-white fw-semibold">TRANSPARENCY</div>
-    <div class="card-body row g-3">
-      <div class="col-md-6">
-        <p class="small text-muted mb-1">Freshness dashboard</p>
-        <div class="rounded-3 border bg-light-subtle p-5 text-center text-muted"><i class="fa-solid fa-wave-square mb-3"></i> Apache ECharts hook</div>
+{# ── Custom period form (collapsed) ──────────────────────────────────────── #}
+<div id="variables-custom-period" class="collapse mb-3">
+  <div class="card card-body border-0 shadow-sm rounded-3">
+    <form method="get" action="" class="row g-3 align-items-end">
+      <input type="hidden" name="project" value="{{ project_slug }}">
+      <input type="hidden" name="state" value="{{ state }}">
+      <div class="col-12 col-md-5">
+        <label class="form-label hg-label-caps mb-1" for="vars-from">From</label>
+        <input type="datetime-local" id="vars-from" name="from_dt"
+               class="form-control form-control-sm" data-testid="variables-custom-from">
       </div>
-      <div class="col-md-6">
-        <p class="small text-muted mb-1">Stale Jira breakdown</p>
-        <div class="rounded-3 border bg-light-subtle p-5 text-center text-muted"><i class="fa-solid fa-table-cells-large mb-3"></i> Placeholder viz</div>
+      <div class="col-12 col-md-5">
+        <label class="form-label hg-label-caps mb-1" for="vars-to">To</label>
+        <input type="datetime-local" id="vars-to" name="to_dt"
+               class="form-control form-control-sm" data-testid="variables-custom-to">
       </div>
-    </div>
-  </section>
-  <section class="card border-0 shadow-sm rounded-3"><div class="card-header bg-white fw-semibold">THROUGHPUT</div>
-    <div class="card-body"><div class="rounded-3 border bg-light-subtle p-5 text-center text-muted" style="min-height:200px;"><i class="fa-solid fa-chart-line mb-2"></i> Burndown + cadence</div></div>
-  </section>
-  <section class="card border-0 shadow-sm rounded-3"><div class="card-header bg-white fw-semibold">CYCLE & LEAD TIME</div>
-    <div class="card-body"><div class="rounded-3 border bg-light-subtle p-5 text-muted text-center">Median / p90 trend</div></div>
-  </section>
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100">Apply</button>
+      </div>
+    </form>
+  </div>
 </div>
 
+{# ── State switcher (mockup nav) ──────────────────────────────────────────── #}
+<div class="alert alert-light border mb-3 small d-flex flex-wrap gap-2 align-items-center">
+  <strong class="me-1">Mockup state:</strong>
+  <a href="?project={{ project_slug }}&period={{ period }}&state=normal"
+     class="btn btn-xs btn-sm {% if state == 'normal' %}btn-primary{% else %}btn-outline-secondary{% endif %} py-0 px-2">Normal</a>
+  <a href="?project={{ project_slug }}&period={{ period }}&state=no_roe"
+     class="btn btn-xs btn-sm {% if state == 'no_roe' %}btn-primary{% else %}btn-outline-secondary{% endif %} py-0 px-2">No RoE</a>
+  <a href="?project={{ project_slug }}&period={{ period }}&state=no_variables"
+     class="btn btn-xs btn-sm {% if state == 'no_variables' %}btn-primary{% else %}btn-outline-secondary{% endif %} py-0 px-2">No Variables</a>
+  <a href="?project={{ project_slug }}&period={{ period }}&state=no_datapoints"
+     class="btn btn-xs btn-sm {% if state == 'no_datapoints' %}btn-primary{% else %}btn-outline-secondary{% endif %} py-0 px-2">No Datapoints</a>
+  <a href="?project={{ project_slug }}&period={{ period }}&state=drilldown&var=Tp"
+     class="btn btn-xs btn-sm {% if state == 'drilldown' %}btn-primary{% else %}btn-outline-secondary{% endif %} py-0 px-2">Drilldown (Tp)</a>
+  <span class="ms-2 text-muted">·</span>
+  <a href="{% url 'mockup-projects-view' 1 %}?tab=variables" class="ms-1">Open in Project view →</a>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# ── EMPTY STATE: no RoE ─────────────────────────────────────────────────── #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{% if empty_reason == "no_roe" %}
+<div class="text-center py-5 text-muted" data-testid="variables-empty-no-roe">
+  <i class="fa-solid fa-scale-unbalanced fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+  <p class="mb-1 fw-medium">No Rules of Engagement assigned.</p>
+  <p class="small mb-3">Assign one in the Project view to start tracking Variables.</p>
+  <a href="{% url 'mockup-projects-view' 1 %}?tab=vitals" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-arrow-left me-1" aria-hidden="true"></i>Back to Project
+  </a>
+</div>
+
+{# ── EMPTY STATE: no variables defined ──────────────────────────────────── #}
+{% elif empty_reason == "no_variables" %}
+<div class="text-center py-5 text-muted" data-testid="variables-empty-no-variables">
+  <i class="fa-solid fa-list-check fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+  <p class="mb-1 fw-medium">This Rules of Engagement defines no Variables.</p>
+  <p class="small mb-3">Add some in the RoE editor to start measuring project health dimensions.</p>
+  <a href="{% url 'mockup-roe-edit' 1 %}" class="btn btn-primary btn-sm">
+    <i class="fa-solid fa-pen me-1" aria-hidden="true"></i>Edit Rules of Engagement
+  </a>
+</div>
+
+{# ── NORMAL + NO-DATAPOINTS: variable cards ──────────────────────────────── #}
+{% else %}
+
+{# ── Drill-down off-canvas (right-rail) ─────────────────────────────────── #}
+{% if show_drilldown and drilldown %}
+<div class="offcanvas offcanvas-end show" tabindex="-1" id="variableDrilldown"
+     aria-labelledby="variableDrilldownLabel"
+     data-testid="variable-drilldown-panel"
+     style="width: 420px;">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="variableDrilldownLabel">
+      <i class="fa-solid fa-chart-bar me-2 text-primary" aria-hidden="true"></i>
+      {{ drilldown.var_name }} ({{ drilldown.var_abbrev }}) — Datapoint
+    </h5>
+    <a href="?project={{ project_slug }}&period={{ period }}&state=normal"
+       class="btn-close" aria-label="Close drill-down"></a>
+  </div>
+  <div class="offcanvas-body vstack gap-3 p-3">
+    {# Datapoint row #}
+    <div class="card border-0 bg-light-subtle rounded-3">
+      <div class="card-body py-2 px-3">
+        <h6 class="hg-label-caps text-muted mb-2">Datapoint</h6>
+        <dl class="row small mb-0">
+          <dt class="col-5">Period</dt>
+          <dd class="col-7">{{ drilldown.from_dt }} → {{ drilldown.to_dt }}</dd>
+          <dt class="col-5">Value</dt>
+          <dd class="col-7"><strong>{{ drilldown.value }}</strong> {{ drilldown.y_axis_label }}</dd>
+          <dt class="col-5">Color</dt>
+          <dd class="col-7">
+            <span class="badge {% if drilldown.color == 'green' %}bg-success{% elif drilldown.color == 'red' %}bg-danger{% elif drilldown.color == 'orange' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-capitalize">
+              {{ drilldown.color }}
+            </span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    {# Originating SitRep #}
+    <div>
+      <h6 class="hg-label-caps text-muted mb-1">Originating SitRep</h6>
+      <a href="{% url 'mockup-sitrep-view' drilldown.sitrep_id %}"
+         class="hg-list-name-link small d-block"
+         data-testid="drilldown-sitrep-link">
+        <i class="fa-solid fa-display-chart-up-circle-currency fa-fw me-1 text-muted" aria-hidden="true"></i>
+        {{ drilldown.sitrep_headline }}
+      </a>
+    </div>
+
+    {# PlanStep reasoning (collapsed) #}
+    <div>
+      <h6 class="hg-label-caps text-muted mb-1 d-flex align-items-center gap-2">
+        Originating Plan Step
+        <button class="btn btn-xs btn-sm btn-outline-secondary py-0 px-1 ms-auto"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#drilldown-step"
+                aria-expanded="false"
+                data-testid="drilldown-step-toggle">
+          <i class="fa-solid fa-chevron-down fa-xs" aria-hidden="true"></i>Expand
+        </button>
+      </h6>
+      <p class="small text-muted mb-1 fst-italic">{{ drilldown.step_action }}</p>
+      <div class="collapse" id="drilldown-step" data-testid="drilldown-step-detail">
+        <div class="card border-0 bg-light-subtle rounded-3">
+          <div class="card-body py-2 px-3">
+            <dl class="row small mb-0">
+              <dt class="col-12 text-muted hg-label-caps mb-1">Why needed</dt>
+              <dd class="col-12 mb-2">{{ drilldown.step_why }}</dd>
+              <dt class="col-12 text-muted hg-label-caps mb-1">Expected outcome</dt>
+              <dd class="col-12 mb-2">{{ drilldown.step_expected }}</dd>
+              <dt class="col-12 text-muted hg-label-caps mb-1">Actual result</dt>
+              <dd class="col-12 mb-2">{{ drilldown.step_actual }}</dd>
+              <dt class="col-12 text-muted hg-label-caps mb-1">Assessment</dt>
+              <dd class="col-12 mb-0">{{ drilldown.step_assessment }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="offcanvas-backdrop fade show" onclick="window.location='?project={{ project_slug }}&period={{ period }}&state=normal'"></div>
+{% endif %}
+
+{# ── Variable cards grid ─────────────────────────────────────────────────── #}
+<div class="vstack gap-4" data-testid="variables-cards-grid">
+  {% for v in variables %}
+  {% with color_bs=v.color|default:"grey" %}
+
+  <article class="card border-0 shadow-sm rounded-3"
+           data-testid="variable-card"
+           data-variable-abbrev="{{ v.abbrev }}">
+
+    {# ── Card header: name + value + color band ───────────────────────── #}
+    <div class="card-header bg-white d-flex align-items-center gap-3 py-2"
+         data-testid="variable-card-header">
+      {# Color band pill #}
+      <span class="d-inline-block rounded-pill flex-shrink-0"
+            style="width: 0.5rem; height: 2rem;
+                   background: {% if v.color == 'green' %}var(--bs-success){% elif v.color == 'red' %}var(--bs-danger){% elif v.color == 'orange' %}var(--bs-warning){% else %}var(--bs-secondary){% endif %};"
+            aria-hidden="true"></span>
+
+      {# Name + abbrev #}
+      <div class="flex-grow-1">
+        <span class="fw-semibold">{{ v.name }}</span>
+        <span class="text-muted small ms-2">({{ v.abbrev }})</span>
+      </div>
+
+      {# Latest value #}
+      {% if v.value %}
+      <span class="badge {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6 px-3"
+            aria-label="{{ v.name }}: {{ v.value }} {{ v.y_axis_label }}">
+        {{ v.value }}
+        <span class="fw-normal ms-1 small opacity-75">{{ v.y_axis_label }}</span>
+      </span>
+      {% else %}
+      <span class="badge bg-secondary px-3 fs-6"
+            aria-label="{{ v.name }}: no data">
+        — <span class="fw-normal ms-1 small opacity-75">no data</span>
+      </span>
+      {% endif %}
+    </div>
+
+    <div class="card-body">
+      {% if v.datapoints %}
+      {# ── Chart area ─────────────────────────────────────────────────── #}
+      <div class="rounded-3 border bg-light-subtle mb-3"
+           style="min-height: 180px; position: relative;"
+           data-testid="variable-chart-{{ v.abbrev }}"
+           data-chart-variable="{{ v.abbrev }}"
+           data-chart-y-label="{{ v.y_axis_label }}"
+           aria-label="Chart for {{ v.name }}">
+
+        {# Chart placeholder with mock points #}
+        <div class="d-flex align-items-end justify-content-around px-4 pb-3 pt-4 h-100 gap-2"
+             style="min-height: 160px;"
+             role="img"
+             aria-label="{{ v.name }} trend: {{ v.datapoints|length }} datapoints">
+          {% for dp in v.datapoints %}
+          <div class="d-flex flex-column align-items-center gap-1">
+            {# Bar #}
+            <div class="rounded-top"
+                 style="width: 2.5rem; height: {{ forloop.counter0|add:3 }}rem;
+                        background: {% if dp.color == 'green' %}rgba(var(--bs-success-rgb),0.7){% elif dp.color == 'red' %}rgba(var(--bs-danger-rgb),0.7){% elif dp.color == 'orange' %}rgba(var(--bs-warning-rgb),0.7){% else %}rgba(var(--bs-secondary-rgb),0.4){% endif %};"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="{{ dp.ts }}: {{ dp.value }}"
+                 data-testid="variable-chart-point-{{ v.abbrev }}-{{ forloop.counter }}"
+                 tabindex="0"
+                 role="button"
+                 aria-label="{{ dp.ts }}: {{ dp.value }} — click to drill down"
+                 onclick="window.location='?project={{ project_slug }}&period={{ period }}&state=drilldown&var={{ v.abbrev }}'">
+            </div>
+            <span class="text-muted" style="font-size: 0.65rem; white-space: nowrap;">{{ dp.ts }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        {# Y-axis label #}
+        <div class="position-absolute text-muted"
+             style="font-size: 0.65rem; bottom: 0.5rem; left: 0.75rem;">
+          <i class="fa-solid fa-arrow-up fa-xs" aria-hidden="true"></i> {{ v.y_axis_label }}
+        </div>
+
+        {# Apache ECharts hook (production will replace this placeholder) #}
+        {# data-echart-variable="{{ v.abbrev }}" data-echart-period="{{ period }}" #}
+      </div>
+
+      {% else %}
+      {# ── No datapoints for this variable ────────────────────────────── #}
+      <div class="rounded-3 border bg-light-subtle d-flex align-items-center justify-content-center mb-3"
+           style="min-height: 160px;"
+           data-testid="variable-chart-empty-{{ v.abbrev }}">
+        <div class="text-center text-muted">
+          <i class="fa-solid fa-chart-bar fa-xl mb-2 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+          <p class="small mb-0">No SitReps yet</p>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Calculating (collapsed) ──────────────────────────────────── #}
+      <div class="mb-2">
+        <button class="btn btn-link btn-sm text-muted px-0 d-flex align-items-center gap-1"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#calculating-{{ v.abbrev }}"
+                aria-expanded="false"
+                data-testid="variable-card-calculating-toggle-{{ v.abbrev }}">
+          <i class="fa-solid fa-chevron-right fa-xs" aria-hidden="true"></i>
+          <span class="hg-label-caps" style="font-size: 0.7rem;">Calculating</span>
+        </button>
+        <div class="collapse" id="calculating-{{ v.abbrev }}"
+             data-testid="variable-card-calculating-{{ v.abbrev }}">
+          <p class="small text-muted mb-0 ps-3 border-start border-2 mt-1">{{ v.calculating }}</p>
+        </div>
+      </div>
+
+      {# ── Interpreting ───────────────────────────────────────────────── #}
+      <div class="mb-3">
+        <p class="hg-label-caps text-muted mb-1" style="font-size: 0.7rem;">Interpreting</p>
+        <p class="small mb-0 font-monospace ps-2 border-start border-2"
+           data-testid="variable-card-interpreting">{{ v.interpreting }}</p>
+      </div>
+
+      {# ── Per-card affordances ──────────────────────────────────────── #}
+      <div class="d-flex flex-wrap gap-2 align-items-center mt-1">
+        <a href="{% url 'mockup-fragos-create' %}?affects_variable={{ v.abbrev }}&project={{ project_slug }}"
+           class="btn btn-outline-secondary btn-sm"
+           data-testid="variable-card-create-frago-{{ v.abbrev }}"
+           data-bs-toggle="tooltip"
+           title="Create a FRAGO that retunes this Variable's interpreting rule">
+          <i class="fa-solid fa-puzzle-piece fa-fw me-1" aria-hidden="true"></i>Create FRAGO from this
+        </a>
+        <a href="{% url 'mockup-chat' %}?context=variable&var={{ v.abbrev }}&project={{ project_slug }}&period={{ period }}"
+           class="btn btn-outline-secondary btn-sm"
+           data-testid="variable-card-view-in-chat-{{ v.abbrev }}">
+          <i class="fa-solid fa-comments fa-fw me-1" aria-hidden="true"></i>View in Chat
+        </a>
+        <a href="{% url 'mockup-roe-edit' 1 %}#variable-{{ v.abbrev }}"
+           class="btn btn-link btn-sm text-muted ps-0 ms-auto small"
+           data-testid="variable-card-edit-roe-{{ v.abbrev }}">
+          <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1" aria-hidden="true"></i>Edit in Rules of Engagement
+        </a>
+      </div>
+    </div>
+  </article>
+  {% endwith %}
+  {% empty %}
+  {# Should not reach here — handled by empty_reason checks above #}
+  {% endfor %}
+</div>
+
+{% endif %}
+
+{# ── Mockup nav ───────────────────────────────────────────────────────────── #}
+<div class="alert alert-light border mt-5 small">
+  <strong>Mockup screens:</strong>
+  <a href="{% url 'mockup-projects-view' 1 %}?tab=variables">Project → Variables tab</a> ·
+  <a href="{% url 'mockup-projects-view' 1 %}?tab=vitals">Project → Vitals (informer bar)</a> ·
+  <a href="{% url 'mockup-sitrep-view' 2001 %}">SitRep view (Variables Snapshot)</a> ·
+  <a href="{% url 'mockup-sitrep-list' %}">SitRep list (Variables column)</a>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('[mockup:variables-view] page loaded, state={{ state }}, period={{ period }}, project={{ project_slug }}');
+  // Initialise Bootstrap tooltips on all chart bars
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+});
+</script>
 {% endblock %}

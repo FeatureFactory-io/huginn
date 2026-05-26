@@ -35,12 +35,23 @@
   <div class="card-body p-0">
     <div class="table-responsive" data-testid="projects-table-wrap">
       <table class="table table-hover align-middle mb-0" data-testid="projects-table">
+        <colgroup>
+          <col>
+          <col>
+          <col>
+          <col class="hg-projects-list-datetime-col" span="2">
+          <col>
+          <col>
+          <col>
+          <col style="width:3.25rem">
+        </colgroup>
         <thead class="table-light">
           <tr>
-            <th scope="col">Name</th><th scope="col">DataSource</th><th scope="col">RoE</th>
-            <th scope="col">Last sync</th>
+            <th scope="col">Name</th><th scope="col">Source</th><th scope="col">RoE</th>
+            <th scope="col" class="hg-projects-list-datetime-col">Last sync</th>
+            <th scope="col" class="hg-projects-list-datetime-col">SitRep T</th>
             <th scope="col">Last SitRep</th>
-            <th scope="col">Last SitRep generated</th>
+            <th scope="col" data-testid="projects-list-variables-column">Variables</th>
             <th scope="col">Status</th>
             <th class="text-end ps-3" scope="col" style="width:3.25rem;"><span class="visually-hidden">Row actions</span></th>
           </tr>
@@ -53,7 +64,15 @@
                    class="hg-list-name-link fw-semibold d-inline-block"
                    data-testid="projects-row-name-{{ r.id }}">{{ r.name }}</a>
               </td><td>{{ r.datasource }}</td><td>{{ r.roe }}</td>
-              <td>{{ r.last_sync }}</td>
+              <td class="small hg-projects-list-datetime-col">{{ r.last_sync }}</td>
+              <td class="small hg-projects-list-datetime-col" data-testid="projects-row-last-sitrep-at-{{ r.id }}">
+                {% if r.last_sitrep_generated_at %}
+                <span class="hg-datetime-stack small lh-sm">
+                  <span class="d-block">{{ r.last_sitrep_generated_at|slice:":10" }}</span>
+                  <span class="d-block text-body-secondary">{{ r.last_sitrep_generated_at|slice:"11:" }}</span>
+                </span>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
               <td data-testid="projects-row-last-sitrep-{{ r.id }}">
                 {% if r.last_sitrep_pk %}
                   <a href="{% url 'mockup-sitrep-view' r.last_sitrep_pk %}"
@@ -62,8 +81,25 @@
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
-              <td class="text-nowrap small" data-testid="projects-row-last-sitrep-at-{{ r.id }}">
-                {% if r.last_sitrep_generated_at %}{{ r.last_sitrep_generated_at }}{% else %}<span class="text-muted">—</span>{% endif %}
+              <td data-testid="projects-row-variables-{{ r.id }}">
+                {% if r.variables_snapshot %}
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  {% for v in r.variables_snapshot %}
+                  <a href="{% url 'mockup-variables-view' %}?project={{ r.name|urlencode }}&period=today"
+                     class="d-inline-flex align-items-center gap-1 text-decoration-none text-body"
+                     data-bs-toggle="tooltip"
+                     title="{{ v.name }}: {% if v.value %}{{ v.value }} {{ v.y_axis_label }}{% else %}no data{% endif %}"
+                     data-testid="projects-var-dot-{{ r.id }}-{{ v.abbrev }}"
+                     style="font-size:0.75rem;">
+                    <span class="fw-semibold">{{ v.abbrev }}</span>
+                    <span class="rounded-circle d-inline-block flex-shrink-0 {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning{% else %}bg-secondary{% endif %}"
+                          style="width:0.6rem;height:0.6rem;" aria-hidden="true"></span>
+                  </a>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
               </td>
               <td><span class="badge bg-secondary-subtle border">{{ r.sync_status }}</span></td>
               <td class="text-end ps-3 align-middle">
@@ -101,4 +137,13 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+  console.log('[mockup:projects-list] page loaded');
+});
+</script>
 {% endblock %}

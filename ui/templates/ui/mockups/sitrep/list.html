@@ -194,6 +194,7 @@
             <th scope="col">Assessed period</th>
             <th scope="col">Trigger</th>
             <th scope="col">Status</th>
+            <th scope="col" data-testid="sitrep-list-variables-column">Variables</th>
             <th scope="col">Headline</th>
             <th scope="col" class="text-center">Proposed</th>
             <th scope="col" class="text-center">Accepted</th>
@@ -222,6 +223,7 @@
                 Generating… ({{ in_progress_row.progress_current }} / {{ in_progress_row.progress_total }})
               </span>
             </td>
+            <td class="text-muted small">—</td>
             <td class="text-muted small fst-italic">In progress</td>
             <td class="text-center text-muted">—</td>
             <td class="text-center text-muted">—</td>
@@ -245,6 +247,7 @@
                     data-testid="sitrep-row-failed-badge"
                     aria-label="Status: Failed">Failed</span>
             </td>
+            <td class="text-muted small">—</td>
             <td class="small text-danger">{{ f.last_error|truncatechars:80 }}</td>
             <td class="text-center text-muted">—</td>
             <td class="text-center text-muted">—</td>
@@ -270,7 +273,33 @@
                 </span>
               </td>
               <td>
-                <span class="badge bg-secondary">No Variables</span>
+                <span class="badge {{ r.agg_color_bs|default:'bg-secondary' }}"
+                      data-testid="sitrep-row-status-{{ r.id }}"
+                      aria-label="Status: {{ r.agg_color_label|default:'No Data' }}">
+                  {{ r.agg_color_label|default:"No Data" }}
+                </span>
+              </td>
+              {# ── Variables column: colored dot strip ──────────────────── #}
+              <td data-testid="sitrep-variables-column-{{ r.id }}">
+                {% if r.variables_snapshot %}
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                  {% for v in r.variables_snapshot %}
+                  <a href="{% url 'mockup-variables-view' %}?project={{ project_slug|urlencode }}&period=today"
+                     class="d-inline-flex align-items-center gap-1 text-decoration-none text-body"
+                     data-bs-toggle="tooltip"
+                     title="{{ v.name }}: {% if v.value %}{{ v.value }} {{ v.y_axis_label }}{% else %}no data{% endif %}"
+                     data-testid="sitrep-var-dot-{{ r.id }}-{{ v.abbrev }}"
+                     aria-label="{{ v.name }}: {% if v.value %}{{ v.value }}{% else %}no data{% endif %}"
+                     style="font-size:0.75rem;">
+                    <span class="fw-semibold">{{ v.abbrev }}</span>
+                    <span class="rounded-circle d-inline-block flex-shrink-0 {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning{% else %}bg-secondary{% endif %}"
+                          style="width:0.6rem;height:0.6rem;" aria-hidden="true"></span>
+                  </a>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span class="text-muted small">—</span>
+                {% endif %}
               </td>
               <td>
                 <a href="{% url 'mockup-sitrep-view' r.id %}"
@@ -307,7 +336,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="9">
+              <td colspan="10">
                 <div class="text-center py-5 text-muted" data-testid="sitrep-empty-state">
                   <i class="fa-solid fa-display-chart-up-circle-currency fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
                   <p class="mb-1 fw-medium">No SitReps yet.</p>
@@ -334,4 +363,12 @@
   </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+  console.log('[mockup:sitrep-list] page loaded');
+});
+</script>
 {% endblock %}

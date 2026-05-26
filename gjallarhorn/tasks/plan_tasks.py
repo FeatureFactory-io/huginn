@@ -35,11 +35,17 @@ def _build_agent_for_plan(plan: ExecutionPlan):
     from gjallarhorn.services.factory import create_agent  # noqa: PLC0415
 
     conversation = plan.conversation
-    return create_agent(
-        user=conversation.user,
-        project=conversation.project,
+    logger.debug("_build_agent_for_plan: loading conversation plan=%s", plan.plan_id)
+    user = conversation.user
+    project = conversation.project
+    logger.debug("_build_agent_for_plan: calling create_agent plan=%s", plan.plan_id)
+    agent = create_agent(
+        user=user,
+        project=project,
         plan_id=str(plan.plan_id),
     )
+    logger.debug("_build_agent_for_plan: agent ready plan=%s", plan.plan_id)
+    return agent
 
 
 def _retry_countdown(plan: ExecutionPlan) -> int:
@@ -115,10 +121,7 @@ def execute_plan(self, plan_id: str) -> None:
         if plan.conversation.conversation_type == "sitrep_generation" and plan.sitrep_to_dt is not None:
             from gjallarhorn.services.sitrep_service import _persist_sitrep_from_plan  # noqa: PLC0415
 
-            try:
-                _persist_sitrep_from_plan(plan)
-            except Exception:  # noqa: BLE001
-                pass  # plan already marked failed by _persist_sitrep_from_plan
+            _persist_sitrep_from_plan(plan)
 
     except (anthropic.RateLimitError, TimeoutError, OSError) as exc:
         logger.warning(

@@ -1,0 +1,8 @@
+{% if dt %}
+<span class="hg-datetime-stack small lh-sm">
+  <span class="d-block">{{ dt|date:"M j, Y" }}</span>
+  <span class="d-block text-body-secondary">{{ dt|time:"g:i a" }}</span>
+</span>
+{% elif empty %}
+<span class="text-muted">{{ empty }}</span>
+{% endif %}

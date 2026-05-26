@@ -1,76 +1,75 @@
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-huginn}
-      POSTGRES_USER: ${POSTGRES_USER:-huginn}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-huginn}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-huginn}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+# Production Docker Compose — consumed by AWS Elastic Beanstalk.
+# ECR_IMAGE is substituted by scripts/deploy-staging.sh (envsubst) before bundling.
+#
+# NOTE: No 'db' service — production uses RDS PostgreSQL.
+# EB exports all environment properties as shell env vars before running docker
+# compose, so ${VAR} substitution here is satisfied automatically at deploy time.
 
+services:
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    restart: always
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
 
   web:
-    build: .
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
+    image: 411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn:1a8ae0c7
+    restart: always
+    command: "sh -c 'python manage.py reset_schema_if_requested && python manage.py migrate --noinput && gunicorn huginn.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -'"
     ports:
-      - "8000:8000"
+      - "8080:8000"
     environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.local
-    env_file:
-      - .env
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE}
+      SECRET_KEY: ${SECRET_KEY}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: ${REDIS_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      HUGINN_RESET_DB: ${HUGINN_RESET_DB:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      EXTRA_CSRF_ORIGINS: ${EXTRA_CSRF_ORIGINS:-}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
   worker:
-    build: .
-    command: celery -A huginn worker --loglevel=info
-    volumes:
-      - .:/app
+    image: 411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn:1a8ae0c7
+    restart: always
+    command: celery -A huginn worker --loglevel=info --concurrency=2
     environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.local
-    env_file:
-      - .env
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE}
+      SECRET_KEY: ${SECRET_KEY}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: ${REDIS_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      EXTRA_CSRF_ORIGINS: ${EXTRA_CSRF_ORIGINS:-}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
   beat:
-    build: .
-    command: celery -A huginn beat --loglevel=info
-    volumes:
-      - .:/app
+    image: 411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn:1a8ae0c7
+    restart: always
+    command: celery -A huginn beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     environment:
-      DJANGO_SETTINGS_MODULE: huginn.settings.local
-    env_file:
-      - .env
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE}
+      SECRET_KEY: ${SECRET_KEY}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: ${REDIS_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-
-volumes:
-  postgres_data:

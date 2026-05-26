@@ -18,7 +18,7 @@ def test_list_02_table_has_required_columns(commander_client, db):
     r = commander_client.get(reverse("projects-list"))
     assert r.status_code == 200
     body = r.content.decode()
-    for label in ("Name", "Data source", "RoE", "Last sync", "Last SitRep", "Last SitRep generated", "Status"):
+    for label in ("Name", "Source", "RoE", "Last sync", "SitRep T", "Last SitRep", "Variables"):
         assert label in body
 
 
@@ -30,14 +30,14 @@ def test_list_04_no_roe_shows_not_assigned(commander_client, db):
 
 
 @pytest.mark.django_db
-def test_list_05_newly_imported_shows_initial_sync_queued(commander_client, db):
+def test_list_05_newly_imported_does_not_show_sync_state_on_list(commander_client, db):
     ProjectFactory(
         name="queued",
         slug="queued",
         sync_state=Project.SyncState.INITIAL_SYNC_QUEUED,
     )
     r = commander_client.get(reverse("projects-list"))
-    assert "Initial sync queued" in r.content.decode()
+    assert "Initial sync queued" not in r.content.decode()
 
 
 @pytest.mark.django_db

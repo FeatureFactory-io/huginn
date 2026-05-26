@@ -9,16 +9,27 @@ MOCK_PROJECT = {
     "source_path": "company-gitlab/atlas-backend",
 }
 
+_ATLAS_VARIABLES_SNAPSHOT = [
+    {"name": "Transparency", "abbrev": "Tr", "y_axis_label": "% linked", "value": "92%", "color": "green"},
+    {"name": "Throughput", "abbrev": "Tp", "y_axis_label": "merged MRs", "value": "15", "color": "orange"},
+    {"name": "Cycle & Lead Time", "abbrev": "CLT", "y_axis_label": "days", "value": "8d", "color": "red"},
+    {"name": "Rework", "abbrev": "Rw", "y_axis_label": "% rework", "value": "4%", "color": "green"},
+    {"name": "Quality", "abbrev": "Q", "y_axis_label": "% pipelines passing", "value": "78%", "color": "orange"},
+    {"name": "Complexity", "abbrev": "X", "y_axis_label": "avg lines/MR", "value": "142", "color": "green"},
+    {"name": "Contribution", "abbrev": "Co", "y_axis_label": "Gini coefficient", "value": None, "color": "grey"},
+]
+
 MOCK_LIST = [
     {
         **MOCK_PROJECT,
-        "roe": "FeatureFactory RoE · v12 (auto-track)",
+        "roe": "Atlas Engineering RoE · v1 (auto-track)",
         "last_sync": "8 min ago",
         "sync_status": "Active",
         "row_status": "Active",
         "last_sitrep_pk": 2001,
         "last_sitrep_headline": "Delivery pace steady — no blockers detected",
         "last_sitrep_generated_at": "2026-05-11 13:15",
+        "variables_snapshot": _ATLAS_VARIABLES_SNAPSHOT,
     },
     {
         "id": 2,
@@ -32,6 +43,7 @@ MOCK_LIST = [
         "last_sitrep_pk": None,
         "last_sitrep_headline": None,
         "last_sitrep_generated_at": None,
+        "variables_snapshot": [],
     },
 ]
 

@@ -144,16 +144,23 @@
         {% for var in roe_variables %}
         <div class="col">
           <div class="card border-0 shadow-sm rounded-3" data-testid="variables-diagram-{{ var.abbrev }}">
-            <div class="card-header bg-white py-2 border-bottom">
-              <span class="fw-semibold small">{{ var.name }}</span>
-              <code class="small text-muted ms-2">{{ var.abbrev }}</code>
+            <div class="card-header bg-white py-2 border-bottom d-flex align-items-center justify-content-between gap-2">
+              <div>
+                <span class="fw-semibold small">{{ var.name }}</span>
+                <code class="small text-muted ms-2">{{ var.abbrev }}</code>
+              </div>
+              <span class="badge {% if var.latest_color == 'green' %}bg-success{% elif var.latest_color == 'red' %}bg-danger{% elif var.latest_color == 'orange' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"
+                    data-testid="variable-card-latest-{{ var.abbrev }}">
+                {% if var.latest_value %}{{ var.latest_value }}{% else %}—{% endif %}
+              </span>
             </div>
             <div class="card-body p-2">
-              <div class="text-muted small text-center py-4"
+              <div id="var-chart-{{ var.abbrev }}"
+                   style="min-height: 160px;"
                    data-chart-var="{{ var.abbrev }}"
-                   data-chart-period="{{ variables_period }}">
-                No datapoints yet for this period.
-              </div>
+                   data-chart-name="{{ var.name }}"
+                   data-chart-period="{{ variables_period }}"
+                   data-testid="variable-chart-{{ var.abbrev }}"></div>
             </div>
           </div>
         </div>
@@ -223,4 +230,54 @@
     {% endif %}
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if active_tab == 'variables' and roe_variables %}
+<script>
+(function () {
+  const url = "{{ variables_echarts_url }}?period={{ variables_period|escapejs }}";
+  fetch(url, { headers: { "Accept": "application/json" } })
+    .then(function (r) { return r.json(); })
+    .then(function (payload) {
+      const seriesByName = {};
+      (payload.series || []).forEach(function (s) { seriesByName[s.name] = s; });
+      document.querySelectorAll("[data-chart-var]").forEach(function (el) {
+        const name = el.dataset.chartName;
+        const series = seriesByName[name];
+        const chart = echarts.init(el);
+        if (!series || !series.data || series.data.length === 0) {
+          chart.setOption({
+            title: {
+              text: "No datapoints in this period",
+              left: "center",
+              top: "middle",
+              textStyle: { color: "#6c757d", fontSize: 12, fontWeight: "normal" },
+            },
+          });
+          return;
+        }
+        chart.setOption({
+          tooltip: { trigger: "axis" },
+          grid: { left: 40, right: 12, top: 12, bottom: 28 },
+          xAxis: { type: "time" },
+          yAxis: { type: "value", scale: true },
+          series: [{
+            name: name,
+            type: "line",
+            smooth: true,
+            showSymbol: true,
+            data: series.data.map(function (pt) { return pt.value; }),
+          }],
+        });
+      });
+    })
+    .catch(function () {
+      document.querySelectorAll("[data-chart-var]").forEach(function (el) {
+        el.innerHTML = '<p class="text-muted small text-center py-4 mb-0">Could not load chart data.</p>';
+      });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

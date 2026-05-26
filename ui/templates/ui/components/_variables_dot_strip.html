@@ -1,0 +1,21 @@
+{# Shared abbrev + traffic-light dot strip for list rows (Projects, SitReps). #}
+{# Expects: variables_snapshot, variables_href, row_id, testid_prefix #}
+{% if variables_snapshot %}
+<div class="d-flex flex-wrap gap-2 align-items-center hg-variables-dot-strip">
+  {% for v in variables_snapshot %}
+  <a href="{{ variables_href }}"
+     class="d-inline-flex align-items-center gap-1 text-decoration-none text-body"
+     data-bs-toggle="tooltip"
+     title="{{ v.name }}: {% if v.value_title %}{{ v.value_title }}{% if v.y_axis_label %} {{ v.y_axis_label }}{% endif %}{% else %}no data{% endif %}"
+     data-testid="{{ testid_prefix }}-var-dot-{{ row_id }}-{{ v.abbrev }}"
+     aria-label="{{ v.name }}: {% if v.value_title %}{{ v.value_title }}{% else %}no data{% endif %}"
+     style="font-size:0.75rem;">
+    <span class="fw-semibold">{{ v.abbrev }}</span>
+    <span class="rounded-circle d-inline-block flex-shrink-0 {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning{% else %}bg-secondary{% endif %}"
+          style="width:0.6rem;height:0.6rem;" aria-hidden="true"></span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<span class="text-muted small">—</span>
+{% endif %}

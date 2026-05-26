@@ -118,11 +118,9 @@
       <div class="flex-grow-1 d-flex flex-column min-vh-0">
       <div class="list-group list-group-flush small">
         {% for card in dashboard_projects %}
-        <a class="list-group-item list-group-item-action px-3 py-2 hg-plot-project-sync-row {{ card.sync_accent_class }} text-decoration-none text-reset"
-           href="{% url 'projects-detail' pk=card.pk %}"
-           aria-label="Open project {{ card.name }}"
-           data-testid="dashboard-project-card-{{ card.pk }}">
-          <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+        <div class="list-group-item px-3 py-2 hg-plot-project-sync-row {{ card.sync_accent_class }}"
+             data-testid="dashboard-project-card-{{ card.pk }}">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
             <div class="fw-medium d-flex gap-2 align-items-center min-w-0 flex-grow-1">
               <span class="hg-source-icons d-inline-flex align-items-center gap-1 lh-1 flex-shrink-0" aria-hidden="false">
                 {% for src in card.sources %}
@@ -139,14 +137,24 @@
                   <span class="text-muted small" title="No data source">—</span>
                 {% endif %}
               </span>
-              <span class="text-break" data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</span>
+              <a href="{% url 'projects-detail' pk=card.pk %}"
+                 class="hg-list-name-link text-break text-reset"
+                 data-testid="dashboard-card-{{ card.pk }}-name">{{ card.name }}</a>
             </div>
             {% if card.source_path %}
             <code class="small text-body ms-1 text-break flex-shrink-0 hg-plot-project-path" data-testid="dashboard-card-{{ card.pk }}-source-path">{{ card.source_path }}</code>
             {% endif %}
           </div>
-          <div class="mb-1">
-            <span class="badge {{ card.sync_badge_class }}">{{ card.sync_state_display }}</span>
+          <div class="mb-2">
+            <span class="badge {{ card.sync_badge_class }}"
+                  {% if card.sync_error_message %}
+                  data-bs-toggle="tooltip"
+                  title="{{ card.sync_error_message }}"
+                  data-testid="dashboard-card-{{ card.pk }}-sync-error"
+                  {% endif %}>{{ card.sync_state_display }}</span>
+          </div>
+          <div class="mb-2" data-testid="dashboard-card-{{ card.pk }}-variables">
+            {% include "ui/components/_variables_dot_strip.html" with variables_snapshot=card.variables_snapshot variables_href=card.variables_href row_id=card.pk testid_prefix="plot" %}
           </div>
           {% if card.description %}
           <div data-testid="dashboard-card-{{ card.pk }}-body">
@@ -157,7 +165,7 @@
             <p class="mb-0 text-muted fst-italic" style="font-size:0.75rem;" data-testid="dashboard-card-{{ card.pk }}-empty-subtitle">—</p>
           </div>
           {% endif %}
-        </a>
+        </div>
         {% endfor %}
       </div>
       </div>
@@ -198,4 +206,12 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+});
+</script>
 {% endblock %}

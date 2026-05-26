@@ -47,7 +47,19 @@ def _roe_variables_for_variables_tab(project: Project) -> list[dict]:
     ver = _effective_roe_version(project)
     if ver is None:
         return []
-    return list(ver.variables.order_by("sort_order").values("name", "abbrev"))
+    latest = {row["abbrev"]: row for row in _informer_bar_dots(project)}
+    rows = []
+    for var in ver.variables.order_by("sort_order"):
+        lat = latest.get(var.abbrev, {})
+        rows.append(
+            {
+                "name": var.name,
+                "abbrev": var.abbrev,
+                "latest_value": lat.get("value"),
+                "latest_color": lat.get("color", "grey"),
+            }
+        )
+    return rows
 
 
 def _informer_bar_dots(project: Project) -> list[dict]:
@@ -104,14 +116,27 @@ def _connected_gitlab_datasources() -> list[DataSource]:
 
 
 def _annotate_projects_last_sitrep(projects: list[Project]) -> None:
-    """Attach latest SitRep summary for list rows (href, headline, generated display).
+    """Attach latest SitRep summary and Variables strip for list rows."""
+    from sitrep.models import SitRep
+    from ui.services.sitrep_variables_service import variables_snapshot_for_project
 
-    Placeholders until SitRep persistence exposes a per-project latest row.
-    """
     for p in projects:
-        setattr(p, "last_sitrep_href", None)
-        setattr(p, "last_sitrep_headline", None)
-        setattr(p, "last_sitrep_at_display", None)
+        latest = SitRep.objects.filter(project=p).order_by("-generated_at").first()
+        if latest:
+            p.last_sitrep_href = reverse("sitrep-view", kwargs={"project_pk": p.pk, "pk": latest.pk})
+            p.last_sitrep_headline = latest.headline
+            p.last_sitrep_at = latest.generated_at
+        else:
+            p.last_sitrep_href = None
+            p.last_sitrep_headline = None
+            p.last_sitrep_at = None
+
+        if p.assigned_roe_id:
+            p.variables_snapshot = variables_snapshot_for_project(p.pk)
+            p.variables_href = reverse("projects-detail", args=[p.pk]) + "?tab=variables&period=today"
+        else:
+            p.variables_snapshot = []
+            p.variables_href = reverse("projects-detail", args=[p.pk])
 
 
 @method_decorator(login_required, name="dispatch")
@@ -294,6 +319,8 @@ class ProjectsDetailView(View):
             to_dt = to_dt_exclusive if to_dt_exclusive is not None else tz.now()
             variables_datapoints = get_datapoints_for_period(project.pk, from_dt, to_dt)
 
+        variables_echarts_url = reverse("project-variables-echarts", args=[project.pk])
+
         return render(
             request,
             self.template_name,
@@ -310,6 +337,7 @@ class ProjectsDetailView(View):
                 "roe_variables": roe_variables,
                 "informer_bar_dots": informer_bar_dots,
                 "variables_datapoints": variables_datapoints,
+                "variables_echarts_url": variables_echarts_url,
             },
         )
 

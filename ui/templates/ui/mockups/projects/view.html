@@ -1,4 +1,5 @@
 {% extends "base_mockups.html" %}
+{% load static %}
 
 {% block title %}{{ p.name }} · Project{% endblock %}
 
@@ -28,42 +29,139 @@
 
 <ul class="nav nav-pills mb-4 gap-2" role="tablist">
   <li class="nav-item" role="presentation">
-    <a
-      class="nav-link {% if active_tab == 'vitals' %}active{% endif %}"
-      href="{% url 'mockup-projects-view' pk %}?tab=vitals"
-      role="tab"
-      aria-selected="{% if active_tab == 'vitals' %}true{% else %}false{% endif %}"
-      data-testid="project-tab-vitals"
-    >Vitals</a>
+    <a class="nav-link {% if active_tab == 'vitals' %}active{% endif %}"
+       href="{% url 'mockup-projects-view' pk %}?tab=vitals"
+       role="tab"
+       aria-selected="{% if active_tab == 'vitals' %}true{% else %}false{% endif %}"
+       data-testid="project-tab-vitals">Vitals</a>
   </li>
   <li class="nav-item" role="presentation">
-    <a
-      class="nav-link {% if active_tab == 'increments' %}active{% endif %}"
-      href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ time_range }}"
-      role="tab"
-      aria-selected="{% if active_tab == 'increments' %}true{% else %}false{% endif %}"
-      data-testid="project-tab-increments"
-    >Increments</a>
+    <a class="nav-link {% if active_tab == 'increments' %}active{% endif %}"
+       href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ time_range }}"
+       role="tab"
+       aria-selected="{% if active_tab == 'increments' %}true{% else %}false{% endif %}"
+       data-testid="project-tab-increments">Increments</a>
   </li>
 </ul>
 
+{# ══════════════════ VITALS TAB ══════════════════════════════════════════════ #}
 {% if active_tab == 'vitals' %}
 <div class="row g-4">
   <div class="col-lg-8 vstack gap-4">
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2><dl class="row small mb-0"><dt class="col-sm-4">Source path</dt><dd class="col-sm-8"><code>{{ p.source_path }}</code></dd><dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd><dt class="col-sm-4">Imported by</dt><dd class="col-sm-8">{{ p.imported_by }}</dd></dl></div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">RoE</h2><p>{{ p.roe_display }}</p></div></article>
-    <article class="card border-0 shadow-sm rounded-3"><div class="card-body"><h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2><p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p><p class="mb-2">Schedule: <span>{{ p.sync_schedule_display }}</span></p><p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p></div></article>
+
+    <article class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Identity</h2>
+        <dl class="row small mb-0">
+          <dt class="col-sm-4">Source path</dt><dd class="col-sm-8"><code>{{ p.source_path }}</code></dd>
+          <dt class="col-sm-4">Imported on</dt><dd class="col-sm-8">{{ p.imported_on }}</dd>
+          <dt class="col-sm-4">Imported by</dt><dd class="col-sm-8">{{ p.imported_by }}</dd>
+        </dl>
+      </div>
+    </article>
+
+    <article class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">RoE</h2>
+        <p class="mb-0">{{ p.roe_display }}</p>
+      </div>
+    </article>
+
+    <article class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Sync</h2>
+        <p class="mb-2">Last sync: <strong>{{ p.sync_last }}</strong></p>
+        <p class="mb-2">Schedule: <span>{{ p.sync_schedule_display }}</span></p>
+        <p class="mb-0 text-muted small">Next: {{ p.sync_next }}</p>
+      </div>
+    </article>
+
+    {# ── Informer bar ─────────────────────────────────────────────────────── #}
+    <article class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted hg-label-caps mb-3">Variables</h2>
+        <div class="d-flex flex-wrap gap-2"
+             data-testid="project-informer-bar"
+             aria-label="Variables informer bar">
+
+          {# green: bg-success text-white #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-success text-white text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-Tr"
+             aria-label="Transparency: 92% % linked">
+            <strong>Tr</strong><span>Transparency</span><span>·</span><span>92%</span><span class="opacity-75">% linked</span>
+          </a>
+
+          {# orange: bg-warning text-dark #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-warning text-dark text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-Tp"
+             aria-label="Throughput: 15 merged MRs">
+            <strong>Tp</strong><span>Throughput</span><span>·</span><span>15</span><span class="opacity-75">merged MRs</span>
+          </a>
+
+          {# red: bg-danger text-white #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-danger text-white text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-CLT"
+             aria-label="Cycle &amp; Lead Time: 8d">
+            <strong>CLT</strong><span>Cycle &amp; Lead Time</span><span>·</span><span>8d</span><span class="opacity-75">days</span>
+          </a>
+
+          {# green #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-success text-white text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-Rw"
+             aria-label="Rework: 4% % rework">
+            <strong>Rw</strong><span>Rework</span><span>·</span><span>4%</span><span class="opacity-75">% rework</span>
+          </a>
+
+          {# orange #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-warning text-dark text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-Q"
+             aria-label="Quality: 78% % pipelines passing">
+            <strong>Q</strong><span>Quality</span><span>·</span><span>78%</span><span class="opacity-75">% pipelines passing</span>
+          </a>
+
+          {# green #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-success text-white text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-X"
+             aria-label="Complexity: 142 avg lines/MR">
+            <strong>X</strong><span>Complexity</span><span>·</span><span>142</span><span class="opacity-75">avg lines/MR</span>
+          </a>
+
+          {# grey: bg-secondary text-white, no value #}
+          <a href="{% url 'mockup-variables-view' %}?project={{ p.name|urlencode }}&period=today"
+             class="d-inline-flex align-items-baseline gap-2 rounded-pill px-3 py-1 bg-secondary text-white text-decoration-none"
+             style="font-size:0.82rem;"
+             data-testid="informer-bar-Co"
+             aria-label="Contribution: no data">
+            <strong>Co</strong><span>Contribution</span><span>·</span><span>—</span><span class="opacity-75">Gini coefficient</span>
+          </a>
+
+        </div>
+      </div>
+    </article>
+
   </div>
 </div>
+
+{# ══════════════════ INCREMENTS TAB ══════════════════════════════════════════ #}
 {% else %}
 <div class="mb-3 d-flex flex-wrap gap-2" role="group" aria-label="Increments time range">
   {% for key, label in time_range_choices %}
-  <a
-    href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ key }}"
-    class="btn btn-sm {% if time_range == key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
-    data-testid="increments-range-{{ key }}"
-    aria-label="Show Increments from {{ label }}"
-  >{{ label }}</a>
+  <a href="{% url 'mockup-projects-view' pk %}?tab=increments&range={{ key }}"
+     class="btn btn-sm {% if time_range == key %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+     data-testid="increments-range-{{ key }}"
+     aria-label="Show Increments from {{ label }}">{{ label }}</a>
   {% endfor %}
 </div>
 
@@ -102,4 +200,13 @@
 <p class="text-muted" data-testid="increments-empty-state">No Increments in this range yet.</p>
 {% endif %}
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+  console.log('[mockup:projects-view] tab={{ active_tab }}');
+});
+</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 # Huginn: System Architecture Overview
 
-> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 5 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven tag-triggered pipelines (`git tag x.y.z && git push origin x.y.z` → lint → test → build → staging → manual prod promote) — see §9; **SitRep pipeline** refactored: steps 1–4 are pure data-collection (direct tool calls, no LLM); step 5 is the single LLM call for narrative synthesis — reduces Anthropic API calls from 5 → 1 per SitRep*
+> *Last updated: May 2026 — CloudFront + ACM + CDK `HuginnCdn` deployed; Route53 CNAME via idempotent custom resource; **HSTS** (`max-age=3600; includeSubDomains`) added at CloudFront via `ResponseHeadersPolicy`; ingestion sync schedules Celery fan-out every 5 minutes (per-Project `sync_schedule`); **app CI/CD** is Makefile-driven tag-triggered pipelines (`git tag x.y.z && git push origin x.y.z` → lint → test → build → staging → manual prod promote) — see §9; **SitRep pipeline** three-phase: steps 1–4 are pure data-collection (direct tool calls, no LLM); steps 5…N+4 are per-Variable assessment (one execution-model/Sonnet call each); step N+5 is the single planning-model/Opus call for narrative synthesis + datapoints aggregation*
 
 ---
 
@@ -861,7 +861,8 @@ class PlanStep(Model):
     result               = JSONField(null=True)
     outcome_assessment   = TextField(blank=True)
     is_critical          = BooleanField(default=True)  # False → failure skips step, plan continues
-    is_planning          = BooleanField(default=False)  # True → single LLM call (narrative synthesis); False → direct tool call (data collection) — migration 0003
+    is_planning              = BooleanField(default=False)  # True → single planning-model LLM call (narrative synthesis); False → direct tool call or variable assessment — migration 0003
+    is_variable_assessment   = BooleanField(default=False)  # True → single execution-model LLM call per RoE Variable; mutually exclusive with is_planning — Variables sprint migration
     tool                 = CharField(max_length=64, blank=True, default="")  # tool function to call for data steps (e.g. 'list_commits') — migration 0004; empty for planning steps
     model_used           = CharField(blank=True)  # LLMResponse.model, only set on planning steps — migration 0003
     # UniqueConstraint(plan, order)
@@ -874,25 +875,28 @@ class SitRep(Model):
     to_dt                = DateTimeField()
     trigger              = CharField(max_length=16)     # 'automatic'|'manual'
     mode_at_generation   = CharField(max_length=16, default='semi_auto')  # 'semi_auto'|'auto'
-    playbook_version     = IntegerField(null=True, blank=True)
+    roe_version          = IntegerField(null=True, blank=True)
     headline             = CharField(max_length=200)
     situation_assessment = TextField()
     notable_activity     = JSONField(default=list, blank=True)
+    variables_snapshot   = JSONField(default=list, blank=True)  # immutable copy of datapoints emitted by Gjallarhorn at generation time — [{variable_name, abbrev, y_axis_label, value, color}, …]
     fragos_applied       = ManyToManyField('sitrep.Frago', blank=True, related_name='sitreps_applied_to')
     source_plan          = ForeignKey('gjallarhorn.ExecutionPlan', null=True, blank=True, on_delete=SET_NULL)
     # UniqueConstraint(project, to_dt)  — one SitRep per project per sync window end
 
-# In sitrep/ — links each Variable assessment back to the step that produced it
+# In sitrep/ — one row per RulesOfEngagementVariable per SitRep; powers Variables tab charts + Vitals informer bar
 class VariableDatapoint(Model):
-    project          = ForeignKey(Project, on_delete=CASCADE)
-    variable         = ForeignKey(PlaybookVariable, on_delete=CASCADE)
+    sitrep           = ForeignKey('sitrep.SitRep', on_delete=CASCADE, related_name='datapoints')
+    roe_variable     = ForeignKey('roe.RulesOfEngagementVariable', null=True, blank=True, on_delete=SET_NULL)
+    variable_name    = CharField(max_length=255)       # denormalized from RoE — frozen at generation time
+    y_axis_label     = CharField(max_length=128, blank=True, default='')  # e.g. 'merged MRs', 'days', '% linked'
     from_dt          = DateTimeField()
     to_dt            = DateTimeField()
-    value            = FloatField(null=True)
-    color            = CharField(max_length=16)     # 'green'|'amber'|'red'
+    value            = CharField(max_length=64, null=True, blank=True)  # string value e.g. '92%', '8d', '15'; null = grey (no data)
+    color            = CharField(max_length=16)        # 'green'|'orange'|'red'|'grey'
     source_plan_step = ForeignKey('gjallarhorn.PlanStep', null=True, blank=True, on_delete=SET_NULL)
     created_at       = DateTimeField(auto_now_add=True)
-    # UniqueConstraint(project, variable, from_dt, to_dt)
+    # UniqueConstraint(sitrep, roe_variable)
 ```
 
 **`execute_plan` Celery task** (`gjallarhorn/tasks/plan_tasks.py`, `@shared_task(bind=True, max_retries=5)`):
@@ -969,12 +973,13 @@ Invalidation deletes the Redis key; the block is rebuilt and re-cached on the ne
 Sync Complete
   └─▶ generate_sitrep_for_project (Celery)
         ├─ create Conversation(type='sitrep_generation')
-        └─ build_narrative_plan_steps(project, from_dt, to_dt) → 5 canonical steps:
-               step 1 — "Get commits for period"          tool='list_commits'                    is_planning=False
-               step 2 — "Get contributor activity"        tool='get_contributor_activity'        is_planning=False
-               step 3 — "Load active FRAGOs in window"    tool='list_active_fragos'              is_planning=False
-               step 4 — "Load Situational Awareness"      tool='get_active_situational_awareness' is_planning=False
-               step 5 — "Compose SitRep narrative"        tool=''                                is_planning=True
+        └─ build_narrative_plan_steps(project, from_dt, to_dt) → 4 + N + 1 steps (N = RoE Variable count; 0 when no RoE):
+               step 1   — "Get commits for period"          tool='list_commits'                     is_planning=False  is_variable_assessment=False
+               step 2   — "Get contributor activity"        tool='get_contributor_activity'         is_planning=False  is_variable_assessment=False
+               step 3   — "Load active FRAGOs in window"    tool='list_active_fragos'               is_planning=False  is_variable_assessment=False
+               step 4   — "Load Situational Awareness"      tool='get_active_situational_awareness'  is_planning=False  is_variable_assessment=False
+               step 5…  — "Assess {name} ({abbrev})"        tool=''  (one per RoE Variable)         is_planning=False  is_variable_assessment=True  [execution model]
+               step N+5 — "Compose SitRep narrative"        tool=''                                 is_planning=True   is_variable_assessment=False  [planning model]
            ──► execute_plan.delay(plan_id)
                   │
                   ├─ steps 1–4 (_execute_data_step):
@@ -982,16 +987,26 @@ Sync Complete
                   │     → store raw {success, result, error} in step.result
                   │     → NO LLM call
                   │
-                  └─ step 5 (_execute_planning_step):
-                        gather results from steps 1–4 → COLLECTED PROJECT DATA block
-                        + system blocks: SITREP_NARRATIVE_SYSTEM_PROMPT + Playbook + FRAGOs + SA
-                        → SINGLE LLM call → JSON {headline, situation_assessment, notable_activity}
-                        → _persist_sitrep_from_plan → SitRep record written
+                  ├─ steps 5…N+4 (_execute_variable_assessment_step):   [Variables sprint]
+                  │     inject collected data + Variable's calculating + interpreting rules
+                  │     → SINGLE execution-model (Sonnet) LLM call per Variable
+                  │     → JSON {"value": "<str>", "color": "green|orange|red|grey"}
+                  │     → on parse error: value=null, color='grey' — plan continues
+                  │
+                  └─ step N+5 (_execute_planning_step):
+                        gather results from steps 1–N+4 → COLLECTED PROJECT DATA block
+                        + system blocks: SITREP_NARRATIVE_SYSTEM_PROMPT + RoE + FRAGOs + SA
+                        → SINGLE planning-model (Opus) LLM call
+                        → JSON {headline, situation_assessment, notable_activity,
+                                datapoints: [{variable_name, abbrev, y_axis_label, value, color}, …]}
+                        → _persist_sitrep_from_plan:
+                              SitRep record written (variables_snapshot = datapoints array)
+                              VariableDatapoint rows written (one per Variable)
                         ├─ Semi-Auto: Decision.status = 'Proposed'
                         └─ Autonomous: Decision.status = 'Auto-approved'; outcomes executed immediately
 ```
 
-`VariableDatapoint` is written once per Variable per SitRep — the timestamped record powering the Variables tab charts. The SitRep record itself stores `from_dt`, `to_dt`, `trigger` (`'automatic'` / `'manual'`), and `mode_at_generation`.
+`VariableDatapoint` is written once per `RulesOfEngagementVariable` per SitRep — the timestamped record powering the Variables tab charts and the Vitals informer bar. Each row stores: `variable_name` + `y_axis_label` (denormalized from the RoE at generation time), `value` (string, e.g. `"92%"`, `"8d"`; `null` = grey/no-data), `color` (`green`|`orange`|`red`|`grey`), `from_dt`/`to_dt` (period boundaries from the SitRep), and a FK to its producing `PlanStep` for full reasoning traceability. `SitRep.variables_snapshot` stores the same data as an immutable JSON array (the frozen record of what Gjallarhorn computed at generation time — not re-computed on read).
 
 **`SITREP-LIST+FIND-1` generation-state rows:** `SitRepListView` additionally queries `ExecutionPlan` rows for the Project where `sitrep_from_dt IS NOT NULL` (i.e., plans created by `generate_sitrep_for_project`) and no `SitRep` with `source_plan = plan` exists yet. Plans with `status ∈ {pending, running, waiting_retry}` render as a **Generating** row (amber spinner + `N/M steps` from `progress_current/progress_total`) floated above completed rows. Plans with `status = failed` render as a **Failed** row (`last_error` reason + [View in Chat] → the plan's `Conversation`, which holds the `_notify_ai_of_plan_failure` recovery analysis). This gives the Commander a persistent order-book view of ongoing and failed generations — not just the ephemeral toast on trigger.
 
@@ -1371,7 +1386,7 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | FRAGO auditing | **`django-simple-history`** on FRAGO rows | Gives `FRAGOS-VIEW_FRAGO-1`'s chronological toggle/edit timeline without bespoke `FRAGOEvent` tables |
 | Semi-Auto Decision approvals | Branch outcomes run **inside the Django view/request** (`ToolExecutor`). Branch **C**: Jira **failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
 | AI model tiering | Opus (`claude-opus-4-5`) for plan creation + narrative synthesis; Sonnet (`claude-sonnet-4-6`) for Chat; Haiku (`claude-haiku-3-5`) for plan success/failure notifications | Reasoning depth proportional to task complexity; data-collection steps are deterministic tool calls — no model needed |
-| SitRep pipeline execution | Steps 1–4 are data-collection (`is_planning=False`, `PlanStep.tool` names the tool function, direct `ToolExecutor` call, no LLM); step 5 is the single LLM call (`is_planning=True`) that synthesises all collected data into the narrative | Reduces Anthropic API calls from 5 → 1 per SitRep; separates deterministic retrieval from LLM reasoning; data steps store raw results in `step.result` which the planning step assembles as a `COLLECTED PROJECT DATA` context block |
+| SitRep pipeline execution | Three step types: (1) data-collection steps (`is_planning=False`, `is_variable_assessment=False` — direct `ToolExecutor` call, no LLM); (2) per-Variable assessment steps (`is_variable_assessment=True` — one execution-model/Sonnet LLM call per `RulesOfEngagementVariable`, returns `{value, color}`); (3) narrative-composition step (`is_planning=True` — single planning-model/Opus LLM call, returns `{headline, situation_assessment, notable_activity, datapoints[…]}`). `_persist_sitrep_from_plan` writes the `SitRep` row, `variables_snapshot` JSON, and one `VariableDatapoint` row per Variable. | Minimises planning-model (Opus) token cost to one call per SitRep; execution-model (Sonnet) used for repeatable per-Variable assessments; data-collection steps are fully deterministic; tool-result cache prevents duplicate API calls within a plan run. |
 | Execution-layer caching | Intra-plan tool-result cache (Redis, scoped to `plan_id`, cleared on termination); explicit prompt-cache-block invalidation via Django signals | Prevents duplicate `list_commits` calls across Variable steps in the same plan; makes prompt-cache block freshness code-anchored rather than informal |
 | Conversation scope | Exactly **one** `gjallarhorn.Conversation` (`UNIQUE(user, project)`), plus optional `conversation_type` | Sidebar + fullscreen share SSE + history per Project boundary |
 | Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |

@@ -20,12 +20,20 @@ def create_agent(user=None, project=None, plan_id: str | None = None):
 
     ClaudeLLM is lazy-imported to keep test setup free of ANTHROPIC_API_KEY.
     """
+    import logging
+
+    log = logging.getLogger(__name__)
     from gjallarhorn.agent.agent import GjallarhornAgent  # noqa: PLC0415
     from gjallarhorn.llm.claude import ClaudeLLM  # noqa: PLC0415
 
+    log.debug("create_agent: constructing ClaudeLLM plan=%s key_set=%s", plan_id, bool(settings.ANTHROPIC_API_KEY))
     llm = ClaudeLLM(api_key=settings.ANTHROPIC_API_KEY)
+    log.debug("create_agent: ClaudeLLM ready plan=%s", plan_id)
     tool_executor = build_executor(user=user, project=project, plan_id=plan_id)
-    return GjallarhornAgent(llm=llm, tool_executor=tool_executor)
+    log.debug("create_agent: executor ready plan=%s", plan_id)
+    agent = GjallarhornAgent(llm=llm, tool_executor=tool_executor)
+    log.debug("create_agent: done plan=%s", plan_id)
+    return agent
 
 
 def build_executor(user, project, plan_id: str | None = None) -> ToolExecutor:

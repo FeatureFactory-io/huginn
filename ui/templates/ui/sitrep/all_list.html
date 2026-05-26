@@ -23,12 +23,25 @@
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
+        <colgroup>
+          <col class="hg-projects-list-datetime-col">
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col style="width:3.25rem">
+        </colgroup>
         <thead class="table-light">
           <tr>
-            <th scope="col">Generated at</th>
+            <th scope="col" class="hg-projects-list-datetime-col">SitRep T</th>
             <th scope="col">Project</th>
             <th scope="col">Assessed period</th>
             <th scope="col">Trigger</th>
+            <th scope="col">Status</th>
+            <th scope="col" data-testid="sitrep-list-variables-column">Variables</th>
             <th scope="col">Headline</th>
             <th scope="col">RoE version</th>
             <th class="text-end ps-3" scope="col" style="width:3.25rem;">
@@ -38,8 +51,10 @@
         </thead>
         <tbody>
           {% for r in rows %}
-          <tr>
-            <td class="text-nowrap small">{{ r.generated_at }}</td>
+          <tr data-testid="sitrep-all-row-{{ r.id }}">
+            <td class="small hg-projects-list-datetime-col">
+              {% include "ui/components/_datetime_stacked.html" with dt=r.generated_at_dt %}
+            </td>
             <td class="small">
               <a href="{% url 'sitrep-list' r.project.pk %}" class="text-decoration-none fw-medium">
                 {{ r.project.display_name|default:r.project.name }}
@@ -50,6 +65,16 @@
               <span class="badge {% if r.trigger == 'automatic' %}bg-info text-dark{% else %}bg-primary{% endif %}">
                 {{ r.trigger_label }}
               </span>
+            </td>
+            <td>
+              <span class="badge {{ r.agg_color_bs|default:'bg-secondary' }}"
+                    data-testid="sitrep-all-row-status-{{ r.id }}"
+                    aria-label="Status: {{ r.agg_color_label|default:'No Data' }}">
+                {{ r.agg_color_label|default:"No Data" }}
+              </span>
+            </td>
+            <td data-testid="sitrep-all-variables-column-{{ r.id }}">
+              {% include "ui/components/_variables_dot_strip.html" with variables_snapshot=r.variables_snapshot variables_href=r.variables_href row_id=r.id testid_prefix="sitrep-all" %}
             </td>
             <td>
               <a href="{% url 'sitrep-view' r.project.pk r.id %}"
@@ -66,7 +91,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="7">
+            <td colspan="9">
               <div class="text-center py-5 text-muted">
                 <i class="fa-solid fa-display-chart-up-circle-currency fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
                 <p class="mb-1 fw-medium">No SitReps yet.</p>
@@ -80,4 +105,12 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+});
+</script>
 {% endblock %}

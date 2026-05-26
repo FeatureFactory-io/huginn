@@ -19,6 +19,8 @@ _FAILED_ROW = {
     "conversation_id": 999,
 }
 
+# Each row's variables_snapshot mirrors the 7-variable seed RoE.
+# color: green | orange | red | grey; agg_color: dominant color; agg_color_bs: Bootstrap class.
 _ALL_ROWS = [
     {
         "id": 2001,
@@ -32,6 +34,30 @@ _ALL_ROWS = [
         "decisions_proposed": 0,
         "decisions_accepted": 0,
         "pb_version": 12,
+        "agg_color": "red",
+        "agg_color_bs": "bg-danger",
+        "agg_color_label": "Red",
+        "variables_snapshot": [
+            {"name": "Transparency", "abbrev": "Tr", "y_axis_label": "% linked", "value": "92%", "color": "green"},
+            {"name": "Throughput", "abbrev": "Tp", "y_axis_label": "merged MRs", "value": "15", "color": "orange"},
+            {"name": "Cycle & Lead Time", "abbrev": "CLT", "y_axis_label": "days", "value": "8d", "color": "red"},
+            {"name": "Rework", "abbrev": "Rw", "y_axis_label": "% rework", "value": "4%", "color": "green"},
+            {
+                "name": "Quality",
+                "abbrev": "Q",
+                "y_axis_label": "% pipelines passing",
+                "value": "78%",
+                "color": "orange",
+            },
+            {"name": "Complexity", "abbrev": "X", "y_axis_label": "avg lines/MR", "value": "142", "color": "green"},
+            {
+                "name": "Contribution",
+                "abbrev": "Co",
+                "y_axis_label": "Gini coefficient",
+                "value": None,
+                "color": "grey",
+            },
+        ],
     },
     {
         "id": 2000,
@@ -45,6 +71,24 @@ _ALL_ROWS = [
         "decisions_proposed": 2,
         "decisions_accepted": 0,
         "pb_version": 12,
+        "agg_color": "red",
+        "agg_color_bs": "bg-danger",
+        "agg_color_label": "Red",
+        "variables_snapshot": [
+            {"name": "Transparency", "abbrev": "Tr", "y_axis_label": "% linked", "value": "81%", "color": "orange"},
+            {"name": "Throughput", "abbrev": "Tp", "y_axis_label": "merged MRs", "value": "8", "color": "red"},
+            {"name": "Cycle & Lead Time", "abbrev": "CLT", "y_axis_label": "days", "value": "11d", "color": "red"},
+            {"name": "Rework", "abbrev": "Rw", "y_axis_label": "% rework", "value": "18%", "color": "red"},
+            {"name": "Quality", "abbrev": "Q", "y_axis_label": "% pipelines passing", "value": "91%", "color": "green"},
+            {"name": "Complexity", "abbrev": "X", "y_axis_label": "avg lines/MR", "value": "340", "color": "orange"},
+            {
+                "name": "Contribution",
+                "abbrev": "Co",
+                "y_axis_label": "Gini coefficient",
+                "value": "0.51",
+                "color": "orange",
+            },
+        ],
     },
     {
         "id": 1998,
@@ -58,6 +102,30 @@ _ALL_ROWS = [
         "decisions_proposed": 1,
         "decisions_accepted": 1,
         "pb_version": 11,
+        "agg_color": "orange",
+        "agg_color_bs": "bg-warning text-dark",
+        "agg_color_label": "Orange",
+        "variables_snapshot": [
+            {"name": "Transparency", "abbrev": "Tr", "y_axis_label": "% linked", "value": "88%", "color": "green"},
+            {"name": "Throughput", "abbrev": "Tp", "y_axis_label": "merged MRs", "value": "12", "color": "orange"},
+            {"name": "Cycle & Lead Time", "abbrev": "CLT", "y_axis_label": "days", "value": "5d", "color": "orange"},
+            {"name": "Rework", "abbrev": "Rw", "y_axis_label": "% rework", "value": "3%", "color": "green"},
+            {
+                "name": "Quality",
+                "abbrev": "Q",
+                "y_axis_label": "% pipelines passing",
+                "value": "87%",
+                "color": "orange",
+            },
+            {"name": "Complexity", "abbrev": "X", "y_axis_label": "avg lines/MR", "value": "178", "color": "green"},
+            {
+                "name": "Contribution",
+                "abbrev": "Co",
+                "y_axis_label": "Gini coefficient",
+                "value": "0.38",
+                "color": "green",
+            },
+        ],
     },
 ]
 
@@ -122,6 +190,10 @@ def sitrep_view(request, pk: int):  # noqa: ARG001
         "trigger_label": row["trigger_label"],
         "pb_version_eval": row["pb_version"],
         "mode_at_generation": "Semi-Auto",
+        "agg_color": row.get("agg_color", "grey"),
+        "agg_color_bs": row.get("agg_color_bs", "bg-secondary"),
+        "agg_color_label": row.get("agg_color_label", "No Data"),
+        "variables_snapshot": row.get("variables_snapshot", []),
         "situation_assessment": (
             "The team shipped 14 commits in the assessed period. "
             "Delivery pace is steady with no anomalies detected against the RoE workflow. "

@@ -111,9 +111,9 @@
   <article class="card border-0 shadow-sm rounded-3" id="section-situation">
     <div class="card-header bg-white d-flex align-items-center justify-content-between">
       <span class="fw-semibold">1 · Situation Assessment</span>
-      <span class="badge bg-secondary ms-2"
+      <span class="badge {{ agg_color_bs|default:'bg-secondary' }} ms-2"
             data-testid="sitrep-section1-status-chip"
-            aria-label="No Variables computed">No Variables</span>
+            aria-label="Overall status: {{ agg_color_label|default:'No Data' }}">{{ agg_color_label|default:"No Data" }}</span>
     </div>
     <div class="card-body">
       <p class="mb-0" data-testid="sitrep-situation-assessment">{{ sitrep.situation_assessment }}</p>
@@ -122,31 +122,68 @@
 
   {# ── Section 2 — Variables Snapshot ──────────────────────────────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-variables">
-    <div class="card-header bg-white fw-semibold">2 · Variables Snapshot</div>
-    <div class="card-body" data-testid="sitrep-variables-snapshot">
-      {% if sitrep.variables_snapshot %}
-        <div class="d-flex flex-wrap gap-2 align-items-center">
-          {% for var in sitrep.variables_snapshot %}
-            <span class="hg-variable-pill hg-variable-pill--{{ var.color }}"
-                  data-testid="variable-pill-{{ var.abbrev }}"
-                  title="{{ var.variable_name }}: {% if var.value %}{{ var.value }}{% else %}—{% endif %}{% if var.y_axis_label %} {{ var.y_axis_label }}{% endif %}"
-                  tabindex="0"
-                  aria-label="{{ var.variable_name }}: {% if var.value %}{{ var.value }}{% if var.y_axis_label %} {{ var.y_axis_label }}{% endif %}{% else %}no data{% endif %}">
-              <strong class="hg-variable-pill__abbrev">{{ var.abbrev }}</strong>
-              <span class="hg-variable-pill__name">{{ var.variable_name }}</span>
-              {% if var.value %}
-                <span class="hg-variable-pill__value">{{ var.value }}{% if var.y_axis_label %} <span class="hg-variable-pill__units">{{ var.y_axis_label }}</span>{% endif %}</span>
-              {% else %}
-                <span class="hg-variable-pill__value hg-variable-pill__value--empty">—</span>
-              {% endif %}
-            </span>
-          {% endfor %}
-        </div>
+    <div class="card-header bg-white d-flex align-items-center justify-content-between">
+      <span class="fw-semibold">2 · Variables Snapshot</span>
+      <a href="{% url 'projects-detail' project.pk %}?tab=variables&period=today"
+         class="btn btn-link btn-sm text-muted py-0"
+         data-testid="sitrep-open-variables-btn-section">
+        <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1" aria-hidden="true"></i>Open Variables tab
+      </a>
+    </div>
+    <div class="card-body p-0" data-testid="sitrep-variables-snapshot">
+      {% if variables_snapshot %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name (abbrev)</th>
+              <th scope="col">Y-axis label</th>
+              <th scope="col">Value</th>
+              <th scope="col">Color</th>
+              <th scope="col">Δ vs. prev</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in variables_snapshot %}
+            <tr data-testid="sitrep-snapshot-row-{{ v.abbrev }}">
+              <td>
+                <a href="{% url 'projects-detail' project.pk %}?tab=variables&period=today"
+                   class="hg-list-name-link"
+                   data-testid="sitrep-snapshot-link-{{ v.abbrev }}">
+                  {{ v.name }}
+                </a>
+                <span class="text-muted ms-1">({{ v.abbrev }})</span>
+              </td>
+              <td class="text-muted">{% if v.y_axis_label %}{{ v.y_axis_label }}{% else %}—{% endif %}</td>
+              <td>
+                {% if v.value_title %}
+                <strong title="{{ v.value_title }}">{{ v.value_display }}</strong>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-capitalize"
+                      data-testid="sitrep-snapshot-color-{{ v.abbrev }}">
+                  {{ v.color }}
+                </span>
+              </td>
+              <td class="text-muted">—</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% else %}
-        <div class="text-center py-4 text-muted" data-testid="sitrep-variables-empty">
+        <div class="text-center py-4 text-muted px-3" data-testid="sitrep-variables-empty">
           <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+          {% if variables_legacy_broken %}
+          <p class="mb-0 fw-medium">No Variables computed for this SitRep.</p>
+          <p class="small mb-0 mt-1">This SitRep was generated before Variable computation was enabled. Generate a new SitRep to populate Variables.</p>
+          {% else %}
           <p class="mb-0 fw-medium">No Variables computed for this SitRep.</p>
           <p class="small mb-0 mt-1">Variables require an assigned RoE with defined variables.</p>
+          {% endif %}
         </div>
       {% endif %}
     </div>

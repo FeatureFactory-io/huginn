@@ -31,7 +31,7 @@
       data-hg-list-find-auto
       data-hg-list-find-debounce="300">
   <div class="col-12 col-md-4">
-    <label class="form-label hg-label-caps mb-1" for="flt_ds">Data source</label>
+    <label class="form-label hg-label-caps mb-1" for="flt_ds">Source</label>
     <select name="datasource"
             id="flt_ds"
             class="form-select form-select-sm hg-filter-control rounded-2 hg-filter-on-change-submit"
@@ -80,15 +80,24 @@
     <div class="card-body p-0">
       <div class="table-responsive" data-testid="projects-table-wrap">
         <table class="table table-hover align-middle mb-0" data-testid="projects-list-table">
+          <colgroup>
+            <col>
+            <col>
+            <col>
+            <col class="hg-projects-list-datetime-col" span="2">
+            <col>
+            <col>
+            <col style="width:3.25rem">
+          </colgroup>
           <thead class="table-light">
             <tr>
               <th scope="col">Name</th>
-              <th scope="col">Data source</th>
+              <th scope="col">Source</th>
               <th scope="col">RoE</th>
-              <th scope="col">Last sync</th>
+              <th scope="col" class="hg-projects-list-datetime-col">Last sync</th>
+              <th scope="col" class="hg-projects-list-datetime-col">SitRep T</th>
               <th scope="col">Last SitRep</th>
-              <th scope="col">Last SitRep generated</th>
-              <th scope="col">Status</th>
+              <th scope="col" data-testid="projects-list-variables-column">Variables</th>
               <th class="text-end ps-3" scope="col" style="width:3.25rem;">
                 <span class="visually-hidden">Row actions</span>
               </th>
@@ -105,10 +114,16 @@
               <td>{{ p.datasource.name|default:"—" }}</td>
               <td>
                 {% if p.assigned_roe %}
-                  <a href="{% url 'roe-detail' p.assigned_roe.pk %}">{{ p.assigned_roe.name }}</a>
+                  <a href="{% url 'roe-detail' p.assigned_roe.pk %}"
+                     class="hg-list-name-link fw-medium d-inline-block">{{ p.assigned_roe.name }}</a>
                 {% elif p.roe_slug %}{{ p.roe_slug }}{% else %}Not assigned{% endif %}
               </td>
-              <td>{% if p.last_sync_at %}{{ p.last_sync_at }}{% else %}Never{% endif %}</td>
+              <td class="small hg-projects-list-datetime-col">
+                {% include "ui/components/_datetime_stacked.html" with dt=p.last_sync_at empty="Never" %}
+              </td>
+              <td class="small hg-projects-list-datetime-col" data-testid="projects-row-last-sitrep-at-{{ p.pk }}">
+                {% include "ui/components/_datetime_stacked.html" with dt=p.last_sitrep_at empty="—" %}
+              </td>
               <td data-testid="projects-row-last-sitrep-{{ p.pk }}">
                 {% if p.last_sitrep_href and p.last_sitrep_headline %}
                   <a href="{{ p.last_sitrep_href }}"
@@ -117,10 +132,9 @@
                   <span class="text-muted">—</span>
                 {% endif %}
               </td>
-              <td class="text-nowrap small" data-testid="projects-row-last-sitrep-at-{{ p.pk }}">
-                {% if p.last_sitrep_at_display %}{{ p.last_sitrep_at_display }}{% else %}<span class="text-muted">—</span>{% endif %}
+              <td data-testid="projects-row-variables-{{ p.pk }}">
+                {% include "ui/components/_variables_dot_strip.html" with variables_snapshot=p.variables_snapshot variables_href=p.variables_href row_id=p.pk testid_prefix="projects" %}
               </td>
-              <td><span class="badge text-bg-light border" data-testid="project-sync-state-{{ p.pk }}">{{ p.get_sync_state_display }}</span></td>
               <td class="text-end ps-3 align-middle">
                 <div class="dropdown d-inline-block">
                   <button type="button"
@@ -157,4 +171,12 @@
     </div>
   </div>
 {% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+    new bootstrap.Tooltip(el);
+  });
+});
+</script>
 {% endblock %}

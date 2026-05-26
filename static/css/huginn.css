@@ -177,11 +177,11 @@ main.hg-main {
  * Tactical Plot — project rows: sync status as a left tab (::before), not a Bootstrap
  * border-* accent (those tint every edge with list-group borders).
  */
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row {
   position: relative;
 }
 
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row::before {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row::before {
   background: var(--hg-sync-tab, var(--bs-secondary));
   content: "";
   inset-block-end: 0;
@@ -192,21 +192,26 @@ main.hg-main {
   width: 3px;
 }
 
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-active {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row.hg-plot-sync-active {
   --hg-sync-tab: var(--bs-success);
 }
 
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-error {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row.hg-plot-sync-error {
   --hg-sync-tab: var(--bs-danger);
 }
 
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-syncing {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row.hg-plot-sync-syncing {
   --hg-sync-tab: var(--bs-warning);
 }
 
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-queued,
-.hg-tactical-plot-grid a.list-group-item.hg-plot-project-sync-row.hg-plot-sync-unknown {
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row.hg-plot-sync-queued,
+.hg-tactical-plot-grid .list-group-item.hg-plot-project-sync-row.hg-plot-sync-unknown {
   --hg-sync-tab: var(--bs-secondary);
+}
+
+.hg-plot-project-sync-row .hg-variables-dot-strip {
+  position: relative;
+  z-index: 1;
 }
 
 @media (min-width: 1200px) {
@@ -695,6 +700,18 @@ a.hg-sitrep-subcard-title:focus-visible {
   color: var(--hg-primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
+}
+
+/* Projects list — Last sync + SitRep T share fixed width so stacked dates wrap the same */
+.hg-projects-list-datetime-col {
+  width: 7.25rem;
+  min-width: 7.25rem;
+  max-width: 7.25rem;
+}
+
+.hg-datetime-stack {
+  display: block;
+  width: 100%;
 }
 
 /* Mimir logo on Import-from-Mimir toolbar buttons (mock) */

@@ -19,16 +19,21 @@ from gjallarhorn.models import ExecutionPlan
 from gjallarhorn.tasks.sitrep_tasks import generate_sitrep_for_project
 from ingestion.models import Project
 from sitrep.models import SitRep
+from ui.services.sitrep_variables_service import aggregate_status_from_snapshot, normalize_snapshot
 
 logger = logging.getLogger(__name__)
 
 
 def _sitrep_row(sr: SitRep) -> dict[str, Any]:
+    snapshot = sr.variables_snapshot or []
+    agg = aggregate_status_from_snapshot(snapshot)
+    local_generated = timezone.localtime(sr.generated_at)
     return {
         "row_type": "completed",
         "_sort_dt": sr.generated_at,
         "id": sr.id,
-        "generated_at": sr.generated_at.strftime("%Y-%m-%d %H:%M"),
+        "generated_at": local_generated.strftime("%Y-%m-%d %H:%M"),
+        "generated_at_dt": local_generated,
         "assessed_period": f"{sr.from_dt.strftime('%a %H:%M')} \u2192 {sr.to_dt.strftime('%H:%M')}",
         "trigger": sr.trigger,
         "trigger_label": "Auto" if sr.trigger == "automatic" else "Manual",
@@ -36,6 +41,9 @@ def _sitrep_row(sr: SitRep) -> dict[str, Any]:
         "decisions_proposed": 0,
         "decisions_accepted": 0,
         "pb_version": sr.roe_version if sr.roe_version is not None else 1,
+        "variables_snapshot": normalize_snapshot(snapshot),
+        "variables_href": reverse("projects-detail", args=[sr.project_id]) + "?tab=variables&period=today",
+        **agg,
     }
 
 
@@ -397,16 +405,23 @@ class SitRepAllListView(LoginRequiredMixin, View):
         for sr in qs:
             local_from = timezone.localtime(sr.from_dt)
             local_to = timezone.localtime(sr.to_dt)
+            snapshot = normalize_snapshot(sr.variables_snapshot)
+            agg = aggregate_status_from_snapshot(sr.variables_snapshot)
+            local_generated = timezone.localtime(sr.generated_at)
             rows.append(
                 {
                     "id": sr.id,
                     "project": sr.project,
-                    "generated_at": timezone.localtime(sr.generated_at).strftime("%Y-%m-%d %H:%M"),
+                    "generated_at": local_generated.strftime("%Y-%m-%d %H:%M"),
+                    "generated_at_dt": local_generated,
                     "assessed_period": f"{local_from.strftime('%a %H:%M')} \u2192 {local_to.strftime('%H:%M')}",
                     "trigger": sr.trigger,
                     "trigger_label": "Auto" if sr.trigger == "automatic" else "Manual",
                     "headline": sr.headline,
                     "pb_version": sr.roe_version if sr.roe_version is not None else 1,
+                    "variables_snapshot": snapshot,
+                    "variables_href": reverse("projects-detail", args=[sr.project_id]) + "?tab=variables&period=today",
+                    **agg,
                 }
             )
         return render(request, self.template_name, {"rows": rows, "active_nav": "sitreps"})
@@ -453,11 +468,23 @@ class SitRepDetailView(LoginRequiredMixin, View):
             chat_url = "#"
 
         generated_at = timezone.localtime(sitrep.generated_at).strftime("%Y-%m-%d %H:%M")
+        agg = aggregate_status_from_snapshot(sitrep.variables_snapshot)
+        variables_snapshot = normalize_snapshot(sitrep.variables_snapshot)
+
+        variables_legacy_broken = False
+        if not sitrep.variables_snapshot and sitrep.source_plan_id:
+            plan = sitrep.source_plan
+            assess_steps = plan.steps.filter(action__startswith="Assess ")
+            if assess_steps.exists() and not plan.steps.filter(is_variable_assessment=True).exists():
+                variables_legacy_broken = True
 
         ctx = {
             "project": project,
             "sitrep": sitrep,
+            "variables_snapshot": variables_snapshot,
             "generated_at": generated_at,
+            "variables_legacy_broken": variables_legacy_broken,
+            **agg,
             "assessed_period": assessed_period,
             "trigger_label": trigger_label,
             "mode_label": mode_label,

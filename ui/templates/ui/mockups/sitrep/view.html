@@ -38,10 +38,10 @@
     <span class="badge bg-secondary align-self-center"
           data-testid="sitrep-mode-badge"
           aria-label="Mode at generation">{{ mode_at_generation }}</span>
-    {# Status badge — grey in narrative phase (no Variables) #}
-    <span class="badge bg-secondary align-self-center"
+    {# Status badge — traffic-light aggregated from variables_snapshot #}
+    <span class="badge {{ agg_color_bs|default:'bg-secondary' }} align-self-center"
           data-testid="sitrep-status-badge"
-          aria-label="Status: No Variables">No Variables</span>
+          aria-label="Status: {{ agg_color_label|default:'No Data' }}">{{ agg_color_label|default:"No Data" }}</span>
     {# Secondary actions #}
     <a class="btn btn-outline-secondary btn-sm"
        href="{% url 'mockup-decisions-list' %}"
@@ -108,24 +108,77 @@
   <article class="card border-0 shadow-sm rounded-3" id="section-situation">
     <div class="card-header bg-white d-flex align-items-center justify-content-between">
       <span class="fw-semibold">1 · Situation Assessment</span>
-      <span class="badge bg-secondary ms-2"
+      <span class="badge {{ agg_color_bs|default:'bg-secondary' }} ms-2"
             data-testid="sitrep-section1-status-chip"
-            aria-label="No Variables computed">No Variables</span>
+            aria-label="Overall status: {{ agg_color_label|default:'No Data' }}">{{ agg_color_label|default:"No Data" }}</span>
     </div>
     <div class="card-body">
       <p class="mb-0" data-testid="sitrep-situation-assessment">{{ situation_assessment }}</p>
     </div>
   </article>
 
-  {# ── Section 2 — Variables Snapshot (placeholder — narrative phase) ──────── #}
-  <article class="card border-0 shadow-sm rounded-3" id="section-variables">
-    <div class="card-header bg-white fw-semibold">2 · Variables Snapshot</div>
-    <div class="card-body">
-      <div class="text-center py-4 text-muted" data-testid="sitrep-variables-placeholder">
-        <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
-        <p class="mb-0 fw-medium">Variables will be available in a future release.</p>
-        <p class="small mb-0 mt-1">Once Variable computation is enabled, this section will show the snapshot Gjallarhorn evaluated.</p>
+  {# ── Section 2 — Variables Snapshot (from SitRep.variables_snapshot JSON) ── #}
+  <article class="card border-0 shadow-sm rounded-3" id="section-variables"
+           data-testid="sitrep-variables-snapshot">
+    <div class="card-header bg-white d-flex align-items-center justify-content-between">
+      <span class="fw-semibold">2 · Variables Snapshot</span>
+      <a href="{% url 'mockup-variables-view' %}?project={{ project|urlencode }}&period=today"
+         class="btn btn-link btn-sm text-muted py-0"
+         data-testid="sitrep-open-variables-btn-section">
+        <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1" aria-hidden="true"></i>Open Variables tab
+      </a>
+    </div>
+    <div class="card-body p-0">
+      {% if variables_snapshot %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Name (abbrev)</th>
+              <th scope="col">Y-axis label</th>
+              <th scope="col">Value</th>
+              <th scope="col">Color</th>
+              <th scope="col">Δ vs. prev</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for v in variables_snapshot %}
+            <tr data-testid="sitrep-snapshot-row-{{ v.abbrev }}">
+              <td>
+                <a href="{% url 'mockup-variables-view' %}?project={{ project|urlencode }}&period=today&state=normal#variable-{{ v.abbrev }}"
+                   class="hg-list-name-link"
+                   data-testid="sitrep-snapshot-link-{{ v.abbrev }}">
+                  {{ v.name }}
+                </a>
+                <span class="text-muted ms-1">({{ v.abbrev }})</span>
+              </td>
+              <td class="text-muted">{{ v.y_axis_label }}</td>
+              <td>
+                {% if v.value %}
+                <strong>{{ v.value }}</strong>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if v.color == 'green' %}bg-success{% elif v.color == 'red' %}bg-danger{% elif v.color == 'orange' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-capitalize"
+                      data-testid="sitrep-snapshot-color-{{ v.abbrev }}">
+                  {{ v.color }}
+                </span>
+              </td>
+              <td class="text-muted">—</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+      {% else %}
+      <div class="text-center py-4 text-muted px-3" data-testid="sitrep-variables-empty">
+        <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+        <p class="mb-0 fw-medium">No Variables computed for this SitRep.</p>
+        <p class="small mb-0 mt-1">This SitRep was generated before Variable computation was enabled.</p>
+      </div>
+      {% endif %}
     </div>
   </article>
 

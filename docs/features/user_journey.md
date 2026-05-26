@@ -31,8 +31,8 @@
 **Time period granularity (systemwide)**: periods in Huginn span hours or days, not just calendar days. Sync can run as frequently as every hour; SitReps can cover sub-day windows ("last 2 hours", "last 4 hours", "today"). Period selectors throughout the UI offer both day-level and hour-level presets. Custom periods use datetime pickers (`from_date` / `to_date`) resolved to the minute. All timestamps and period bounds are stored and displayed in the user's local timezone.
 
 **Project view tabs**: tabs on the Project view are **system-defined**, not RoE-derived:
-- **Vitals** — hardcoded, present on every Project. Contains: Identity / RoE / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `RulesOfEngagementVariable` on the active RoE version (in declared order), showing `name (abbrev)` with value and color on hover.
-- **Variables** — one diagram per `RulesOfEngagementVariable` on the active RoE version, showing `VariableDatapoint` history for the selected period. Period filter supports both hour-level and day-level presets plus a custom datetime range.
+- **Vitals** — hardcoded, present on every Project. Contains: Identity / RoE / Sync metadata cards; a hardcoded **Transparency** card; and the **informer bar** — one colored dot per `RulesOfEngagementVariable` on the active RoE version (in declared order), value and color sourced from the **latest `VariableDatapoint`** for each Variable (hover shows `name (abbrev): value`; grey dot when no datapoint exists).
+- **Variables** — one diagram per `RulesOfEngagementVariable` on the active RoE version, showing all `VariableDatapoint` rows for the selected period as a time-series chart (Y-axis = `y_axis_label` from the datapoint; color of each point reflects the `color` field from Gjallarhorn's assessment). Period filter supports both hour-level and day-level presets plus a custom datetime range.
 - **Adapter-driven tabs** — one tab per registered ingestion adapter. Today: the **Increments** tab, contributed by `ingestion/adapters/gitlab_commits.py`. New adapters add new tabs as they land.
 
 **DataSource credentials**: PATs (GitLab) are user-set and may have an expiry; Jira API tokens generally don't. Huginn tracks an `expires_at` per DataSource and surfaces a warning before expiry. No automatic refresh — the API doesn't support it for PATs.
@@ -507,11 +507,11 @@ Donland clicks **[Import Projects]** (from this screen, Act 1's shortcut, or Act
   - **RoE**: name + version (or "Not assigned" — link to assign)
   - **Sync**: last sync time, next scheduled, current status (idle / syncing / error); **Last SitRep generated**: timestamp + link to `SITREP-VIEW_SITREP-1` for the latest SitRep (shown as "—" when no SitRep exists yet). This is a separate line from "Last sync" — ingestion timing and AI evaluation timing are intentionally distinct.
   - **Transparency card**: hardcoded system-wide health signal — how stale are updates? (See `ingestion/adapters/` for the metric definition.)
-  - **Informer bar**: one colored dot per `RulesOfEngagementVariable` on the active RoE version, in declared order. Hover shows `name (abbrev): value`. When no RoE is assigned, the bar is empty.
+  - **Informer bar**: one colored dot per `RulesOfEngagementVariable` on the active RoE version, in declared order. Value and color sourced from the **latest `VariableDatapoint`** for each Variable; hover shows `name (abbrev): value`. Grey dot when no datapoint exists for a Variable. When no RoE is assigned, the bar shows a placeholder ("No RoE assigned").
 - **Variables tab**:
-  - One diagram per `RulesOfEngagementVariable` on the active RoE version, showing `VariableDatapoint` history.
+  - One diagram per `RulesOfEngagementVariable` on the active RoE version, showing all `VariableDatapoint` rows for the selected period.
   - **Period selector** (top-right, persistent): Last 2h / Last 4h / Last 8h / Today / Yesterday / This week / Previous week / 30 days / Custom datetime range. Default adapts to the project's sync cadence (see Act 7 for full spec).
-  - Each diagram: Variable name + abbrev as title; Y-axis = value; X-axis = time over the selected period. Color of each data point reflects the `interpreting` rule at that time.
+  - Each diagram: Variable name + abbrev as title; Y-axis label = `y_axis_label` from the `VariableDatapoint` (set by Gjallarhorn at generation time, e.g. "increments", "commits"); X-axis = time over the selected period. Color of each data point reflects the `color` field from the `VariableDatapoint` (green / orange / red / grey).
   - Per-card affordances: [View in Chat] (Act 8) with Variable + period pre-loaded | [Create FRAGO from this] → `FRAGOS-CREATE_FRAGO-1` with Variable pre-selected | reasoning-trace drilldown (click a data point to open a right-rail panel showing the originating `VariableDatapoint` row + SitRep + originating **`PlanStep`** from the SitRep `ExecutionPlan`, collapsed by default).
   - Empty states: no RoE assigned → "No RoE assigned. Assign one in the Project view." | Rules of Engagement has no Variables → "This Rules of Engagement defines no Variables." | Variable has no history yet → "No SitReps yet" in place of the chart.
 - **Increments tab** (contributed by `ingestion/adapters/gitlab_commits.py`): system-defined view of ingested commit/increment data. Layout and content defined by the adapter. Further adapter-driven tabs will appear here as new adapters land.
@@ -707,7 +707,25 @@ The daily loop. Donland opens Huginn, scans the **Tactical Plot**, drills into a
 - **Automatic**: fired by the `Sync Complete` event after each successful ingestion run, using a default period of `last_sitrep.generated_at → sync_completed_at` (i.e., everything new since the previous SitRep). If no prior SitRep exists, the default period is the full ingestion history.
 - **Manual**: Commander clicks [Generate SitRep ▾] on `PROJECTS-VIEW_PROJECT-1` and selects a period — either the "Since last SitRep" default or a custom `from_dt → to_dt` window (supports hour-level granularity: "last 2 hours", "last 4 hours", "today", "yesterday", or a custom datetime range).
 
-**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Rules of Engagement workflow + variables, enabled in-window FRAGOs, data: {period: [from_dt, to_dt], …})` and runs a **multi-step `ExecutionPlan`** — one LLM invocation per `PlanStep`, using the **planning model** (Opus) for plan creation and the final narrative-compose step, and the **execution model** (Sonnet) for all per-Variable data-gather and assessment steps. The `period` is stored on the `SitRep` record and displayed in the view header. The final composition steps produce the situation assessment narrative + proposed Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. The variables output is written into `SitRep.variables_snapshot` (canonical, immutable) and denormalized to `VariableDatapoint` rows (used by the Variables tab for trend diagrams); each datapoint links to its producing **`PlanStep`** where applicable. Within a plan run, tool results are cached by argument hash so the same data source (e.g. `list_commits`) is fetched only once across all steps (SAO §17.6).
+**Generation contract**: Gjallarhorn assembles `(SituationalAwareness, active Rules of Engagement workflow + variables, enabled in-window FRAGOs, data: {period: [from_dt, to_dt], …})` and runs a **multi-step `ExecutionPlan`**. The plan structure is:
+1. **Data-collection steps** — fetch commits, contributor activity, active FRAGOs, Situational Awareness (tool calls, no LLM; execution model used where applicable).
+2. **Per-Variable assessment steps** — one LLM step per `RulesOfEngagementVariable` using the **execution model** (Sonnet): applies the Variable's `calculating` + `interpreting` rules to the gathered data and produces a `value` (string) and traffic-light `color` (`green` / `orange` / `red` / `grey` — `grey` means the variable could not be computed, e.g. data unavailable).
+3. **Narrative-composition step** — uses the **planning model** (Opus): synthesises headline, situation assessment, notable activity, and aggregates the computed datapoints.
+
+The full output emitted by the narrative-composition step:
+```json
+{
+  "headline": "…",
+  "situation_assessment": "…",
+  "notable_activity": […],
+  "datapoints": [
+    { "variable_name": "Throughput", "y_axis_label": "increments", "value": "15", "color": "green" },
+    { "variable_name": "Commits",    "y_axis_label": "commits",    "value": "12", "color": "orange" }
+  ]
+}
+```
+
+The `datapoints` array is written into `SitRep.variables_snapshot` (canonical, immutable JSON — the frozen record of what Gjallarhorn computed at generation time) and denormalized into `VariableDatapoint` rows — one row per `RulesOfEngagementVariable` per SitRep — which power the Variables tab trend charts and the Vitals informer bar. Each `VariableDatapoint` stores `variable_name`, `y_axis_label`, `value`, `color`, `from_dt`, `to_dt` (period boundaries from the SitRep), and a FK to its producing **`PlanStep`** for full reasoning traceability. Within a plan run, tool results are cached by argument hash so the same data source (e.g. `list_commits`) is fetched only once across all steps (SAO §17.6).
 
 **Pattern**: LIST+FIND + VIEW. No user-initiated CREATE form (generation is triggered via [Generate SitRep] on the Project view), no EDIT (frozen), no DELETE (audit log).
 
@@ -719,7 +737,7 @@ Donland clicks a Project card on the Dashboard, or **SitReps** from the Project 
 - **Header**: "SitReps — atlas-backend"
 - **Top Actions**: **[Generate SitRep ▾]** — same period-picker dropdown as on `PROJECTS-VIEW_PROJECT-1` (see Act 2). Provides a shortcut so the Commander can trigger generation without navigating away from the SitRep list.
 - **History table** (newest first by default; there is **no** separate pinned "latest SitRep" card — the first row is the latest):
-  - Columns: Generated at | Assessed period | Trigger (Auto / Manual) | Status | Headline | Decisions proposed | Decisions accepted | Rules of Engagement version | Actions
+  - Columns: Generated at | Assessed period | Trigger (Auto / Manual) | Status | **Variables** (colored dot strip from `variables_snapshot` — one dot per RoE Variable, tooltip shows `name (abbrev): value`) | Headline | Decisions proposed | Decisions accepted | Rules of Engagement version | Actions
   - Filter: status, date range, Rules of Engagement version, trigger type
   - **Generating row** — when an `ExecutionPlan` for this project has `sitrep_from_dt` set and `status ∈ {pending, running, waiting_retry}` and no corresponding `SitRep` exists yet, a row floats at the top of the table (above completed rows): `Generated at = "—"`, assessed period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = amber spinner badge "Generating… (N/M steps)"** where N/M come from `progress_current/progress_total`, `Headline = "—"`. No View action — generation is in progress.
   - **Failed row** — when a plan terminates with `status=failed` and no `SitRep` was written, the row remains in the table: `Generated at = plan.created_at`, period from `sitrep_from_dt → sitrep_to_dt`, Trigger badge, **Status = red "Failed" badge**, error reason from `ExecutionPlan.last_error` truncated to ~80 chars in the Headline cell. **Row Actions = [View in Chat]** linking to that plan's `Conversation` (where `_notify_ai_of_plan_failure` posted the recovery analysis with partial results and next-step options).
@@ -742,9 +760,9 @@ Donland opens a SitRep from the list (headline link or row **View**), or follows
   - Key breaches list: each shows Variable name → expected vs. actual → severity badge → link to Variable deep-dive (Act 7)
 
 - **Section 2 — Variables Snapshot**:
-  - One row per RulesOfEngagementVariable on the evaluated RoE version, rendered from the SitRep's embedded `variables_snapshot` JSON (canonical, immutable record of what Gjallarhorn saw at generation time).
-  - Columns: **Name (abbrev)** | **Value** | **Color** (traffic light) | **Hover** | Δ vs. previous SitRep
-  - When a Variable's value could not be computed by the Agent, the row renders with `value = —` and `color = grey`.
+  - One row per `RulesOfEngagementVariable` on the evaluated RoE version, rendered from `SitRep.variables_snapshot` (canonical, immutable JSON — the exact `datapoints` array Gjallarhorn emitted at generation time; not re-computed on read).
+  - Columns: **Name (abbrev)** | **Y-axis label** | **Value** | **Color** (traffic-light: green / orange / red / grey) | Δ vs. previous SitRep
+  - When a Variable's value could not be computed (`color = grey`), the row renders `value = —`.
   - Each row links to `VARIABLES-VIEW-1` (Act 7 / Variables tab) filtered to that Variable.
 
 - **Section 3 — Decisions**:
@@ -882,11 +900,10 @@ Confirmation modal:
   - **Custom…**: datetime range picker (`from_dt` / `to_dt`, resolved to the minute)
   - Default: Today (switches automatically to **Last 4 hours** when the project sync cadence is **hourly** so sub-day resolution stays meaningful — `every 6h`/daily presets still favor day-scale windows unless the Commander picks sub-day manually)
 - **Variable diagrams** (grid, one card per RulesOfEngagementVariable on the active RoE version, in declared order):
-  - **Card header**: Name (abbrev) + current value + color band + status badge (with active FRAGO overrides applied)
-  - **Diagram**: line chart — Y-axis = value, X-axis = time over the selected period; color of each data point reflects the `interpreting` rule at that time
+  - **Card header**: Name (abbrev) + latest value (from most recent `VariableDatapoint` in the selected period) + color band (`green` / `orange` / `red` / `grey`)
+  - **Diagram**: line chart — Y-axis label = `y_axis_label` from `VariableDatapoint`; X-axis = time over the selected period; color of each data point = `VariableDatapoint.color` (green / orange / red / grey)
   - **Calculating** (collapsed by default): the Variable's `calculating` text — JQL, expression, or prompt
   - **Interpreting**: the Variable's `interpreting` rules, with overlay showing any FRAGO overrides currently in effect
-  - **Hover** preview
 - **Per-card affordances**:
   - Click a data point → drill-down panel (right rail) showing that datapoint's `VariableDatapoint` row (with its `from_dt → to_dt` period) + the originating SitRep + the originating **`PlanStep`** (collapsed by default; expands to pre/post reasoning + tool trace for that SitRep execution step)
   - [View in Chat] → opens `CHAT-FULLSCREEN-1` with the Variable + period pre-loaded as context

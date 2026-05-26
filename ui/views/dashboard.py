@@ -7,12 +7,14 @@ from datetime import date, datetime
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from ingestion.models import DataSource, Project
+from ingestion.models import DataSource, IngestionRun, Project
 from roe.markdown_utils import workflow_md_to_html
 from sitrep.models import Frago
+from ui.services.sitrep_variables_service import variables_snapshot_for_project
 from ui.services.situational_awareness_service import (
     active_entries_for,
     get_or_create_awareness,
@@ -51,14 +53,35 @@ def _sources_for_project(project: Project) -> list[dict]:
     return [{"key": raw, "label": raw.replace("_", " ").title(), "si_slug": raw}]
 
 
+def _last_sync_errors(project_ids: list[int]) -> dict[int, str]:
+    """Map project pk → most recent ingestion error message."""
+    out: dict[int, str] = {}
+    for pid in project_ids:
+        run = (
+            IngestionRun.objects.filter(project_id=pid, status=IngestionRun.Status.ERROR)
+            .order_by("-started_at")
+            .first()
+        )
+        if run and run.error_message:
+            out[pid] = run.error_message
+    return out
+
+
 def _project_cards(projects: list[Project]) -> list[dict]:
     """Card payload: GitLab description (prose) and source path are separate lines."""
+    sync_errors = _last_sync_errors([p.pk for p in projects])
     out: list[dict] = []
     for p in projects:
         name = (p.display_name or "").strip() or p.name
         desc = (p.description or "").strip()
         path = (p.source_path or "").strip()
         badge_cls, accent_cls = _sync_visuals(str(p.sync_state))
+        if p.assigned_roe_id:
+            variables_snapshot = variables_snapshot_for_project(p.pk)
+            variables_href = reverse("projects-detail", args=[p.pk]) + "?tab=variables&period=today"
+        else:
+            variables_snapshot = []
+            variables_href = reverse("projects-detail", args=[p.pk])
         out.append(
             {
                 "pk": p.pk,
@@ -70,6 +93,9 @@ def _project_cards(projects: list[Project]) -> list[dict]:
                 "sync_state_display": p.get_sync_state_display(),
                 "sync_badge_class": badge_cls,
                 "sync_accent_class": accent_cls,
+                "sync_error_message": sync_errors.get(p.pk, ""),
+                "variables_snapshot": variables_snapshot,
+                "variables_href": variables_href,
             }
         )
     return out
@@ -173,7 +199,11 @@ class DashboardProjectsView(View):
     template_name = "ui/dashboard/projects.html"
 
     def get(self, request, *args, **kwargs):
-        qs = Project.objects.filter(status=Project.Status.ACTIVE).select_related("datasource").order_by("name")
+        qs = (
+            Project.objects.filter(status=Project.Status.ACTIVE)
+            .select_related("datasource", "assigned_roe")
+            .order_by("name")
+        )
         projects_list = list(qs)
         cards = _project_cards(projects_list)
         plot_last_sync_at = _max_last_sync_among(projects_list)

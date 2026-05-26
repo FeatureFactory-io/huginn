@@ -5,6 +5,24 @@ import re
 
 logger = logging.getLogger(__name__)
 
+DATAPOINT_VALUE_MAX_LENGTH = 64
+
+
+def _normalize_datapoint_value(value) -> str | None:
+    """Coerce LLM output to a string that fits VariableDatapoint.value (varchar 64)."""
+    if value is None:
+        return None
+    text = str(value)
+    if len(text) <= DATAPOINT_VALUE_MAX_LENGTH:
+        return text
+    logger.warning(
+        "Truncating variable value from %d to %d chars: %.40s…",
+        len(text),
+        DATAPOINT_VALUE_MAX_LENGTH,
+        text,
+    )
+    return text[:DATAPOINT_VALUE_MAX_LENGTH]
+
 
 def _extract_json(text: str) -> dict:
     """Best-effort JSON extraction from an LLM response.
@@ -142,6 +160,8 @@ def _persist_sitrep_from_plan(plan):
     """
     import json as _json  # noqa: PLC0415 — used for JSONDecodeError type reference
 
+    from django.db import transaction  # noqa: PLC0415
+
     from sitrep.models import Frago, SitRep  # noqa: PLC0415
 
     logger.info(
@@ -183,9 +203,10 @@ def _persist_sitrep_from_plan(plan):
 
     project = plan.conversation.project
 
-    # Idempotent: if a SitRep already exists for this (project, to_dt) window, return it.
+    # Idempotent: if a SitRep already exists for this (project, to_dt) window, refresh variables.
     existing = SitRep.objects.filter(project=project, to_dt=plan.sitrep_to_dt).first()
     if existing:
+        _persist_variable_datapoints(existing, plan)
         return existing
 
     fragos = Frago.objects.filter(project=project, enabled=True)
@@ -198,22 +219,21 @@ def _persist_sitrep_from_plan(plan):
 
     mode = getattr(project, "gjallarhorn_mode", "semi_auto") or "semi_auto"
 
-    sitrep = SitRep.objects.create(
-        project=project,
-        from_dt=plan.sitrep_from_dt,
-        to_dt=plan.sitrep_to_dt,
-        trigger=plan.sitrep_trigger or "automatic",
-        mode_at_generation=mode,
-        roe_version=roe_version,
-        headline=result["headline"],
-        situation_assessment=result["situation_assessment"],
-        notable_activity=result.get("notable_activity", []),
-        source_plan=plan,
-    )
-    sitrep.fragos_applied.set(fragos)
-
-    # Persist variable datapoints if present
-    _persist_variable_datapoints(sitrep, plan)
+    with transaction.atomic():
+        sitrep = SitRep.objects.create(
+            project=project,
+            from_dt=plan.sitrep_from_dt,
+            to_dt=plan.sitrep_to_dt,
+            trigger=plan.sitrep_trigger or "automatic",
+            mode_at_generation=mode,
+            roe_version=roe_version,
+            headline=result["headline"],
+            situation_assessment=result["situation_assessment"],
+            notable_activity=result.get("notable_activity", []),
+            source_plan=plan,
+        )
+        sitrep.fragos_applied.set(fragos)
+        _persist_variable_datapoints(sitrep, plan)
 
     logger.info("plan=%s sitrep=%s created (headline=%r)", plan.plan_id, sitrep.pk, sitrep.headline)
     return sitrep
@@ -230,20 +250,40 @@ def _persist_variable_datapoints(sitrep, plan):
     project = sitrep.project
     roe = project.assigned_roe
     if not roe:
+        logger.warning(
+            "plan=%s sitrep=%s has %d variable steps but project has no assigned RoE — skipping datapoints",
+            plan.plan_id,
+            sitrep.pk,
+            len(variable_steps),
+        )
         return
 
     roe_version = roe.versions.first()
     if not roe_version:
+        logger.warning(
+            "plan=%s sitrep=%s has variable steps but RoE has no version — skipping datapoints",
+            plan.plan_id,
+            sitrep.pk,
+        )
         return
 
     datapoints = []
+    skipped = 0
 
     for step in variable_steps:
         if not step.result:
+            skipped += 1
+            logger.warning(
+                "plan=%s sitrep=%s variable step %s (%s) has no result — skipping",
+                plan.plan_id,
+                sitrep.pk,
+                step.order,
+                step.action,
+            )
             continue
 
         result_data = step.result if isinstance(step.result, dict) else {}
-        value = result_data.get("value")
+        value = _normalize_datapoint_value(result_data.get("value"))
         color = result_data.get("color", "grey")
 
         if color not in ("green", "orange", "red", "grey"):
@@ -254,6 +294,13 @@ def _persist_variable_datapoints(sitrep, plan):
 
         match = re.match(r"Assess (.+?) \((.+?)\)", step.action)
         if not match:
+            skipped += 1
+            logger.warning(
+                "plan=%s sitrep=%s cannot parse variable name from action %r — skipping",
+                plan.plan_id,
+                sitrep.pk,
+                step.action,
+            )
             continue
 
         variable_name = match.group(1)
@@ -262,6 +309,14 @@ def _persist_variable_datapoints(sitrep, plan):
         # Find the RoE variable
         roe_var = roe_version.variables.filter(name=variable_name).first()
         if not roe_var:
+            skipped += 1
+            logger.warning(
+                "plan=%s sitrep=%s RoE variable %r not found for step %s — skipping",
+                plan.plan_id,
+                sitrep.pk,
+                variable_name,
+                step.order,
+            )
             continue
 
         y_axis_label = roe_var.y_axis_label
@@ -303,3 +358,11 @@ def _persist_variable_datapoints(sitrep, plan):
     if datapoints:
         sitrep.variables_snapshot = datapoints
         sitrep.save(update_fields=["variables_snapshot"])
+    elif skipped:
+        logger.warning(
+            "plan=%s sitrep=%s persisted 0/%d variable datapoints (%d skipped)",
+            plan.plan_id,
+            sitrep.pk,
+            len(variable_steps),
+            skipped,
+        )

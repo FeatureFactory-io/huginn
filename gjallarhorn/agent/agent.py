@@ -202,6 +202,7 @@ class GjallarhornAgent:
             f"INTERPRETING RULE:\n{var_def['interpreting']}\n\n"
             f"COLLECTED PROJECT DATA:\n{collected}\n\n"
             'Compute the variable value and color. Respond with JSON: {"value": "...", "color": "green|orange|red|grey"}\n'
+            'Keep value as a short metric string (max 64 characters), e.g. "15", "92%", "8d" — not prose.\n'
             "If data is insufficient, return: " + '{"value": null, "color": "grey"}'
         )
 
@@ -216,10 +217,10 @@ class GjallarhornAgent:
 
         # Parse response
         try:
-            from gjallarhorn.services.sitrep_service import _extract_json  # noqa: PLC0415
+            from gjallarhorn.services.sitrep_service import _extract_json, _normalize_datapoint_value  # noqa: PLC0415
 
             result = _extract_json(response.content)
-            value = result.get("value")
+            value = _normalize_datapoint_value(result.get("value"))
             color = result.get("color", "grey")
 
             if color not in ("green", "orange", "red", "grey"):
