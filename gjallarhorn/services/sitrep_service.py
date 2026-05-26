@@ -51,12 +51,17 @@ def _extract_json(text: str) -> dict:
 
 
 def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
-    """Return the 5 canonical narrative plan steps for SitRep generation.
+    """Return the canonical narrative plan steps for SitRep generation.
 
     Steps 1–4 are pure data-collection steps (tool calls, no LLM).
-    Step 5 is the single LLM call that synthesises the collected data.
+    Steps 5–N are Variable assessment steps (one per RoE Variable, using execution model).
+    Final step is the narrative-composition step (LLM call using planning model).
+
+    Total: 4 + N + 1, where N = number of Variables (0 if no RoE or no Variables).
     """
-    return [
+    from gjallarhorn.mcp_tools.roe_tools import get_roe_variables  # noqa: PLC0415
+
+    steps = [
         {
             "order": 1,
             "action": "Get commits for period",
@@ -89,15 +94,45 @@ def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
             "expected_outcome": "Current SA capsule.",
             "is_planning": False,
         },
+    ]
+
+    # Insert Variable assessment steps between data-collection and narrative
+    roe_variables = get_roe_variables(project.pk) if project else None
+    if roe_variables:
+        for idx, var in enumerate(roe_variables, start=5):
+            steps.append(
+                {
+                    "order": idx,
+                    "action": f"Assess {var['name']} ({var['abbrev']})",
+                    "tool": "",
+                    "reasoning_why_needed": f"Compute variable value using: {var['calculating'][:100]}...",
+                    "expected_outcome": '{"value": "...", "color": "green|orange|red|grey"}',
+                    "is_planning": False,
+                    "is_variable_assessment": True,
+                }
+            )
+
+    # Final step: narrative composition (always last, order = 4 + N + 1)
+    final_order = len(steps) + 1
+    datapoints_note = (
+        ', "datapoints": [{"variable_name": "...", "abbrev": "...", "y_axis_label": "...", "value": "...", "color": "..."}]'
+        if roe_variables
+        else ""
+    )
+    steps.append(
         {
-            "order": 5,
+            "order": final_order,
             "action": "Compose SitRep narrative",
             "tool": "",
             "reasoning_why_needed": "Synthesise all collected data into headline + assessment.",
-            "expected_outcome": '{"headline": "...", "situation_assessment": "...", "notable_activity": [...]}',
+            "expected_outcome": '{"headline": "...", "situation_assessment": "...", "notable_activity": [...]'
+            + datapoints_note
+            + "}",
             "is_planning": True,
-        },
-    ]
+        }
+    )
+
+    return steps
 
 
 def _persist_sitrep_from_plan(plan):
@@ -176,5 +211,95 @@ def _persist_sitrep_from_plan(plan):
         source_plan=plan,
     )
     sitrep.fragos_applied.set(fragos)
+
+    # Persist variable datapoints if present
+    _persist_variable_datapoints(sitrep, plan)
+
     logger.info("plan=%s sitrep=%s created (headline=%r)", plan.plan_id, sitrep.pk, sitrep.headline)
     return sitrep
+
+
+def _persist_variable_datapoints(sitrep, plan):
+    """Persist VariableDatapoint rows and SitRep.variables_snapshot from variable assessment steps."""
+    from sitrep.models import VariableDatapoint  # noqa: PLC0415
+
+    variable_steps = [s for s in plan.steps.all() if s.is_variable_assessment]
+    if not variable_steps:
+        return
+
+    project = sitrep.project
+    roe = project.assigned_roe
+    if not roe:
+        return
+
+    roe_version = roe.versions.first()
+    if not roe_version:
+        return
+
+    datapoints = []
+
+    for step in variable_steps:
+        if not step.result:
+            continue
+
+        result_data = step.result if isinstance(step.result, dict) else {}
+        value = result_data.get("value")
+        color = result_data.get("color", "grey")
+
+        if color not in ("green", "orange", "red", "grey"):
+            color = "grey"
+
+        # Extract variable name from action: "Assess {name} ({abbrev})"
+        import re
+
+        match = re.match(r"Assess (.+?) \((.+?)\)", step.action)
+        if not match:
+            continue
+
+        variable_name = match.group(1)
+        abbrev = match.group(2)
+
+        # Find the RoE variable
+        roe_var = roe_version.variables.filter(name=variable_name).first()
+        if not roe_var:
+            continue
+
+        y_axis_label = roe_var.y_axis_label
+
+        # Create or update the datapoint
+        datapoint, created = VariableDatapoint.objects.get_or_create(
+            sitrep=sitrep,
+            roe_variable=roe_var,
+            defaults={
+                "variable_name": variable_name,
+                "y_axis_label": y_axis_label,
+                "value": value,
+                "color": color,
+                "from_dt": sitrep.from_dt,
+                "to_dt": sitrep.to_dt,
+                "source_plan_step": step,
+            },
+        )
+
+        if not created:
+            # Idempotent update
+            datapoint.value = value
+            datapoint.color = color
+            datapoint.source_plan_step = step
+            datapoint.save(update_fields=["value", "color", "source_plan_step"])
+
+        # Build snapshot entry
+        datapoints.append(
+            {
+                "variable_name": variable_name,
+                "abbrev": abbrev,
+                "y_axis_label": y_axis_label,
+                "value": value,
+                "color": color,
+            }
+        )
+
+    # Write variables_snapshot to SitRep
+    if datapoints:
+        sitrep.variables_snapshot = datapoints
+        sitrep.save(update_fields=["variables_snapshot"])
