@@ -45,6 +45,7 @@ drift_thresholds:
 scenarios:
   S1:
     title: "Data Model — VariableDatapoint + SitRep.variables_snapshot + RoEVariable.y_axis_label + PlanStep flag"
+    gitlab_issue: 82
     parallel_group: A
     skeleton_commit: null  # no skeleton — implementation slice
     codebase_footprint:
@@ -90,6 +91,7 @@ scenarios:
 
   S2:
     title: "Gjallarhorn Pipeline — get_roe_variables MCP tool + variable-assessment steps + persist datapoints"
+    gitlab_issue: 83
     parallel_group: B
     skeleton_commit: null
     codebase_footprint:
@@ -125,6 +127,7 @@ scenarios:
 
   S3:
     title: "Service Layer — VariableDatapointService (get_latest, get_for_period, get_snapshot)"
+    gitlab_issue: 84
     parallel_group: B
     skeleton_commit: null
     codebase_footprint:
@@ -153,6 +156,7 @@ scenarios:
 
   S4:
     title: "UI Backend — Variables tab view + ECharts endpoint + informer bar + SitRep/Projects list updates"
+    gitlab_issue: 85
     parallel_group: C
     skeleton_commit: null
     codebase_footprint:
@@ -188,6 +192,7 @@ scenarios:
 
   S5:
     title: "UI Templates — Variables tab, informer bar pills, dot-informers, SitRep snapshot, ECharts JS"
+    gitlab_issue: 86
     parallel_group: C
     skeleton_commit: null
     codebase_footprint:
@@ -219,6 +224,7 @@ scenarios:
 
   S6:
     title: "Integration Tests — end-to-end variables pipeline + UI assertions"
+    gitlab_issue: 87
     parallel_group: D
     skeleton_commit: null
     codebase_footprint:
