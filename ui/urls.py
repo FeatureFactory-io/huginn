@@ -41,6 +41,7 @@ from .views.roe import (
 from .views.sitrep import SitRepAllListView, SitRepDetailView, SitRepListView, sitrep_generate_view
 from .views.situational_awareness import SituationalAwarenessEditView, SituationalAwarenessView
 from .views.ux_preview import palette_preview
+from .views.variables import ProjectVariablesEChartsApiView
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
@@ -92,6 +93,11 @@ urlpatterns = [
         "projects/<int:project_pk>/sitreps/<int:pk>/",
         SitRepDetailView.as_view(),
         name="sitrep-view",
+    ),
+    path(
+        "projects/<int:project_pk>/variables/echarts/",
+        ProjectVariablesEChartsApiView.as_view(),
+        name="project-variables-echarts",
     ),
     # TODO(sitrep-sprint): sitrep-view URL lands in SITREP-VIEW_SITREP-1
     path("projects/<int:pk>/", ProjectsDetailView.as_view(), name="projects-detail"),

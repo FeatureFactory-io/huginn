@@ -51,21 +51,19 @@ def _roe_variables_for_variables_tab(project: Project) -> list[dict]:
 
 
 def _informer_bar_dots(project: Project) -> list[dict]:
-    """One dot per RoE Variable — grey until SitRep wiring supplies colors."""
-    ver = _effective_roe_version(project)
-    if ver is None:
-        return []
-    out = []
-    for row in ver.variables.order_by("sort_order").values("name", "abbrev"):
-        out.append(
-            {
-                "name": row["name"],
-                "abbrev": row["abbrev"],
-                "color": "grey",
-                "value": None,
-            },
-        )
-    return out
+    """One dot per RoE Variable with latest color & value from VariableDatapointService."""
+    from ui.services.variable_datapoints_service import get_latest_datapoints  # noqa: PLC0415
+
+    datapoints = get_latest_datapoints(project.pk)
+    return [
+        {
+            "name": dp["variable_name"],
+            "abbrev": dp["abbrev"],
+            "color": dp["color"],
+            "value": dp["value"],
+        }
+        for dp in datapoints
+    ]
 
 
 def _project_detail_query(
@@ -251,6 +249,11 @@ class ProjectsDetailView(View):
     template_name = "ui/projects/detail.html"
 
     def get(self, request: HttpRequest, pk: int) -> HttpResponse:
+        from ui.services.increments_service import time_window_bounds  # noqa: PLC0415
+        from ui.services.variable_datapoints_service import (  # noqa: PLC0415
+            get_datapoints_for_period,
+        )
+
         project = get_object_or_404(
             Project.objects.select_related(
                 "datasource",
@@ -272,6 +275,25 @@ class ProjectsDetailView(View):
         variables_period_choices = [(k, VARIABLES_PERIOD_LABELS[k]) for k in VARIABLES_PERIOD_ORDER]
         roe_variables = _roe_variables_for_variables_tab(project)
         informer_bar_dots = _informer_bar_dots(project)
+
+        # Variables tab: datapoints for the selected period
+        variables_datapoints = []
+        if tab == "variables":
+            from django.utils import timezone as tz  # noqa: PLC0415
+
+            # Map period key to time_window_bounds
+            period_to_range = {
+                "today": "today",
+                "yesterday": "yesterday",
+                "this_week": "this_week",
+                "last_week": "last_week",
+                "last_30d": "last_14d",  # Closest available approximation
+            }
+            range_key = period_to_range.get(variables_period, "this_week")
+            from_dt, to_dt_exclusive = time_window_bounds(range_key)
+            to_dt = to_dt_exclusive if to_dt_exclusive is not None else tz.now()
+            variables_datapoints = get_datapoints_for_period(project.pk, from_dt, to_dt)
+
         return render(
             request,
             self.template_name,
@@ -287,6 +309,7 @@ class ProjectsDetailView(View):
                 "variables_period_choices": variables_period_choices,
                 "roe_variables": roe_variables,
                 "informer_bar_dots": informer_bar_dots,
+                "variables_datapoints": variables_datapoints,
             },
         )
 
