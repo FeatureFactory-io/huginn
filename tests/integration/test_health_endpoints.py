@@ -19,6 +19,15 @@ def test_health_json_includes_celery_checks(commander_client):
 
 
 @pytest.mark.django_db
+def test_health_json_revision_from_env(commander_client, monkeypatch):
+    monkeypatch.setenv("HUGINN_GIT_REVISION", "0.5.1")
+    r = commander_client.get(reverse("health-json"))
+    assert r.status_code == 200
+    data = json.loads(r.content.decode())
+    assert data["revision"] == "0.5.1"
+
+
+@pytest.mark.django_db
 def test_welcome_page_lists_celery_rows(commander_client):
     r = commander_client.get(reverse("welcome"))
     assert r.status_code == 200

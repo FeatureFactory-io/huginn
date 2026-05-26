@@ -141,9 +141,10 @@ infra: ## Deploy all CDK stacks (use with caution on existing infra)
 #   (1) CI_COMMIT_SHORT_SHA if set (CI), else (2) BRANCH=… (any git ref), else (3) HEAD.
 # GNU Make: use `make staging BRANCH=release/0.0.6` (not `--branch=`).
 #
-# swap / promote: **no BRANCH**. Promotes **whatever EB VersionLabel is on the inactive env now**
+# swap / promote: **no BRANCH**. Promotes **whatever is on staging now**
 # (after you tested on staging; bugfix loop = redeploy staging, then swap). Optional CI_COMMIT_SHORT_SHA
-# must match that label or the script aborts (GitLab sets it to the pipeline SHA).
+# must match inactive VersionLabel or the script aborts (GitLab sets it to the pipeline SHA).
+# Prod smoke compares /health/ revision from staging (release tag), not the EB VersionLabel.
 
 .PHONY: staging
 staging: ## Deploy chosen revision to inactive EB (staging smoke). Optional BRANCH=git-ref; default HEAD. CI sets CI_COMMIT_SHORT_SHA.
@@ -155,7 +156,7 @@ staging: ## Deploy chosen revision to inactive EB (staging smoke). Optional BRAN
 	CI_COMMIT_SHORT_SHA="$$sha" bash scripts/deploy-staging.sh
 
 .PHONY: swap
-swap: ## Promote **current staging** (inactive EB) to prod — not HEAD/BRANCH. Same SHA as inactive VersionLabel (or CI_COMMIT_SHORT_SHA must match it).
+swap: ## Promote **current staging** (inactive EB) to prod — not HEAD/BRANCH. SHA guard on VersionLabel; prod smoke vs staging /health/ revision.
 	bash scripts/promote-prod.sh
 
 ##@ CI glue (GitLab)

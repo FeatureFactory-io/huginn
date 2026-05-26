@@ -7,6 +7,7 @@
 #   EB_APP_NAME, EB_BLUE_ENV, EB_GREEN_ENV, ECR_REGISTRY, CI_COMMIT_SHORT_SHA
 #
 # Optional:
+#   CI_COMMIT_TAG — release tag (e.g. 0.5.1); when set, surfaced in /health/ as HUGINN_GIT_REVISION
 #   CI_PROJECT_DIR — if set, staging.env is written there; else repo root (parent of scripts/).
 
 set -euo pipefail
@@ -19,6 +20,7 @@ set -euo pipefail
 
 ROOT_DIR="${CI_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export ECR_IMAGE="${ECR_REGISTRY}/huginn:${CI_COMMIT_SHORT_SHA}"
+GIT_REVISION="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
 
 BLUE_CNAME=$(aws elasticbeanstalk describe-environments \
   --application-name "$EB_APP_NAME" \
@@ -36,6 +38,7 @@ fi
 echo "Live env:     $LIVE_ENV"
 echo "Inactive env: $INACTIVE_ENV  ← deploying here (staging for review)"
 echo "Image:        $ECR_IMAGE"
+echo "Revision:     $GIT_REVISION  (EB VersionLabel: $CI_COMMIT_SHORT_SHA)"
 
 # Fetch secrets from SSM (SecureString, --with-decryption required).
 # These are injected as EB environment properties so Docker Compose picks them up.
@@ -74,6 +77,7 @@ aws elasticbeanstalk update-environment \
   --version-label "$CI_COMMIT_SHORT_SHA" \
   --option-settings \
     "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ANTHROPIC_API_KEY,Value=${ANTHROPIC_API_KEY}" \
+    "Namespace=aws:elasticbeanstalk:application:environment,OptionName=HUGINN_GIT_REVISION,Value=${GIT_REVISION}" \
   --output text > /dev/null
 echo "Deployment triggered on $INACTIVE_ENV — waiting..."
 
@@ -99,8 +103,8 @@ if [ "$HTTP_STATUS" != "200" ]; then
 fi
 
 REVISION=$(python3 -c 'import json,sys; print(json.load(open("/tmp/health.json")).get("revision","unknown"))')
-echo "Staging /health/ revision: $REVISION  (expected: $CI_COMMIT_SHORT_SHA)"
-if [ "$REVISION" != "$CI_COMMIT_SHORT_SHA" ]; then
+echo "Staging /health/ revision: $REVISION  (expected: $GIT_REVISION)"
+if [ "$REVISION" != "$GIT_REVISION" ]; then
   echo "Staging smoke test FAILED — revision mismatch."
   exit 1
 fi

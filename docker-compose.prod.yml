@@ -4,6 +4,8 @@
 # NOTE: No 'db' service — production uses RDS PostgreSQL.
 # EB exports all environment properties as shell env vars before running docker
 # compose, so ${VAR} substitution here is satisfied automatically at deploy time.
+#
+# HUGINN_GIT_REVISION — set by deploy-staging.sh to CI_COMMIT_TAG (or SHA for local staging).
 
 services:
   redis:
@@ -32,6 +34,7 @@ services:
       REDIS_URL: ${REDIS_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       HUGINN_RESET_DB: ${HUGINN_RESET_DB:-}
+      HUGINN_GIT_REVISION: ${HUGINN_GIT_REVISION:-unknown}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       EXTRA_CSRF_ORIGINS: ${EXTRA_CSRF_ORIGINS:-}
     depends_on:
@@ -51,6 +54,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_URL: ${REDIS_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      HUGINN_GIT_REVISION: ${HUGINN_GIT_REVISION:-unknown}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       EXTRA_CSRF_ORIGINS: ${EXTRA_CSRF_ORIGINS:-}
     depends_on:
@@ -70,6 +74,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_URL: ${REDIS_URL}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      HUGINN_GIT_REVISION: ${HUGINN_GIT_REVISION:-unknown}
     depends_on:
       redis:
         condition: service_healthy

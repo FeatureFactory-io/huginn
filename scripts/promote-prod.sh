@@ -3,18 +3,18 @@
 # Run only after human acceptance of **whatever is currently deployed on the inactive env**
 # (deploy → test on staging → [bugfix → redeploy staging → regression] → then promote).
 #
-# Revision source:
+# Revision guards:
 #   • If CI_COMMIT_SHORT_SHA is set (e.g. GitLab promote job): must equal the inactive env's
 #     EB VersionLabel — otherwise abort (prevents promoting a pipeline SHA that isn't staged).
-#   • If unset (e.g. local `make swap`): use the inactive env's VersionLabel — i.e. promote
-#     **exactly what is on staging now**, not HEAD and not BRANCH=.
+#   • Prod smoke compares /health/ revision to staging /health/ revision (release tag or SHA),
+#     not to the EB VersionLabel.
 #
 # Required env vars:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
 #   EB_APP_NAME, EB_BLUE_ENV, EB_GREEN_ENV
 #
 # Optional:
-#   CI_COMMIT_SHORT_SHA — when set, must match staging; when omitted, taken from inactive env
+#   CI_COMMIT_SHORT_SHA — when set, must match staging VersionLabel; when omitted, no SHA guard
 #   HUGINN_PROD_URL — default https://huginn.featurefactory.io
 
 set -euo pipefail
@@ -57,12 +57,25 @@ if [ -n "${CI_COMMIT_SHORT_SHA:-}" ]; then
     echo "Deploy that SHA to staging first, or omit CI_COMMIT_SHORT_SHA to promote whatever is on staging."
     exit 1
   fi
-  EXPECTED_SHA="$CI_COMMIT_SHORT_SHA"
+  echo "SHA guard passed: $CI_COMMIT_SHORT_SHA matches staging VersionLabel."
 else
-  export CI_COMMIT_SHORT_SHA="$INACTIVE_SHA"
-  EXPECTED_SHA="$INACTIVE_SHA"
-  echo "CI_COMMIT_SHORT_SHA unset — promoting staging revision $EXPECTED_SHA (not git HEAD)."
+  echo "CI_COMMIT_SHORT_SHA unset — promoting whatever is on staging ($INACTIVE_SHA)."
 fi
+
+INACTIVE_CNAME=$(aws elasticbeanstalk describe-environments \
+  --application-name "$EB_APP_NAME" \
+  --environment-names "$INACTIVE_ENV" \
+  --query 'Environments[0].CNAME' --output text)
+echo "Reading staging health: http://${INACTIVE_CNAME}/health/ ..."
+STAGING_STATUS=$(curl -o /tmp/staging-health.json -s -w "%{http_code}" \
+  --max-time 15 "http://${INACTIVE_CNAME}/health/" || echo "000")
+if [ "$STAGING_STATUS" != "200" ]; then
+  echo "ERROR: staging /health/ returned HTTP $STAGING_STATUS"
+  cat /tmp/staging-health.json || true
+  exit 1
+fi
+EXPECTED_REVISION=$(python3 -c 'import json; print(json.load(open("/tmp/staging-health.json")).get("revision","unknown"))')
+echo "Staging revision (for prod smoke): $EXPECTED_REVISION"
 
 echo "Swapping $INACTIVE_ENV (staging) <-> $LIVE_ENV (prod) ..."
 aws elasticbeanstalk swap-environment-cnames \
@@ -84,8 +97,8 @@ if [ "$PROD_STATUS" != "200" ]; then
 fi
 
 PROD_REVISION=$(python3 -c 'import json; print(json.load(open("/tmp/health-prod.json")).get("revision","unknown"))')
-echo "Prod /health/ revision: $PROD_REVISION  (expected: $EXPECTED_SHA)"
-if [ "$PROD_REVISION" != "$EXPECTED_SHA" ]; then
+echo "Prod /health/ revision: $PROD_REVISION  (expected: $EXPECTED_REVISION)"
+if [ "$PROD_REVISION" != "$EXPECTED_REVISION" ]; then
   echo "Prod smoke test FAILED — revision mismatch."
   exit 1
 fi

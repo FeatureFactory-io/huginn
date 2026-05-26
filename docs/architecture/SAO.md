@@ -422,22 +422,22 @@ lint (make ci-lint)
 
 **`scripts/deploy-staging.sh` (staging only):**
 1. Resolve `LIVE_ENV` / `INACTIVE_ENV` from which EB env currently holds the `huginn-prod` CNAME.
-2. Bake `ECR_IMAGE` (`huginn:${CI_COMMIT_SHORT_SHA}`) into Compose, bundle `deploy.zip`, upload, create EB application version, `update-environment` on **inactive** env, wait.
-3. Smoke-test `http://<inactive-cname>/health/` (revision must match `CI_COMMIT_SHORT_SHA`).
+2. Bake `ECR_IMAGE` (`huginn:${CI_COMMIT_SHORT_SHA}`) into Compose, bundle `deploy.zip`, upload, create EB application version (label = short SHA), `update-environment` on **inactive** env with `HUGINN_GIT_REVISION` = `CI_COMMIT_TAG` (or short SHA when no tag), wait.
+3. Smoke-test `http://<inactive-cname>/health/` (`revision` must match `HUGINN_GIT_REVISION` / release tag, e.g. `0.5.1`).
 4. Clear `HUGINN_RESET_DB` on the inactive env if set.
 5. Write `staging.env` with `STAGING_URL` for the GitLab **staging** environment URL. **Does not** swap prod CNAME.
 
 **`scripts/promote-prod.sh` (production promotion):**
-1. Re-resolve live/inactive; read inactive env’s **VersionLabel** (the revision **currently on staging**).
-2. If **`CI_COMMIT_SHORT_SHA`** is set (GitLab), it **must** equal that label — otherwise abort (avoids promoting a pipeline commit that was never deployed to staging). If unset (e.g. local `make swap`), use the inactive label as the expected revision for prod smoke.
-3. `swap-environment-cnames` between inactive and live; smoke `https://huginn.featurefactory.io/health/` for that revision.
+1. Re-resolve live/inactive; read inactive env’s **VersionLabel** (short SHA of the deployment **currently on staging**).
+2. If **`CI_COMMIT_SHORT_SHA`** is set (GitLab), it **must** equal that label — otherwise abort (avoids promoting a pipeline commit that was never deployed to staging).
+3. Read inactive staging `/health/` `revision` (release tag or SHA); `swap-environment-cnames` between inactive and live; smoke `https://huginn.featurefactory.io/health/` for **that** revision (not the EB VersionLabel).
 
 **Local / operator commands (same scripts, AWS credentials required):**
 
 | Make target | Role |
 |---|---|
 | `make staging` | Deploy a chosen revision **to** inactive EB: **`CI_COMMIT_SHORT_SHA`**, or **`BRANCH=`** ref, or **HEAD**. Image must exist in ECR. |
-| `make swap`    | Promote **whatever is on staging now** (inactive env `VersionLabel`) to prod — **no `BRANCH=`**. Optional `CI_COMMIT_SHORT_SHA` must match staging or the script aborts (CI uses this guard). |
+| `make swap`    | Promote **whatever is on staging now** — **no `BRANCH=`**. Optional `CI_COMMIT_SHORT_SHA` must match inactive `VersionLabel` (CI guard); prod smoke compares `/health/` revision from staging. |
 | `make ci-build` | Runs `scripts/ci-kaniko-build.sh` (expects `/kaniko/executor` — use from CI or a matching environment). |
 
 **GitLab CI variables (project-level secrets):**
@@ -464,7 +464,7 @@ lint (make ci-lint)
 
 **Deployment strategy:** Blue/green via **`aws elasticbeanstalk swap-environment-cnames`**. Two EB environments (`huginn-blue`, `huginn-green`) are always running. **Staging:** new bits land on the *inactive* env first; smoke and review use that env’s EB CNAME (`STAGING_URL` from the deploy job). **Production:** the manual **`promote_production`** job swaps the `huginn-prod` CNAME to the env that **currently holds the staging deployment** (inactive), then smoke-tests `https://huginn.featurefactory.io` — i.e. you promote **the staging payload you already validated**, not a freshly chosen git ref. **Application deploys do not change Route53** for the public hostname — CloudFront origin remains the `huginn-prod` EB CNAME; only CDK-driven DNS work (e.g. `HuginnCdn`) changes Route53.
 
-**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) labels EB application versions and the primary ECR tag. `CI_COMMIT_TAG` (e.g. `1.2.3`) is the additional ECR tag. **GitLab Release** is created in the pipeline after a successful staging deploy.
+**Version tagging:** Git short SHA (`CI_COMMIT_SHORT_SHA`) labels EB application versions and the primary ECR tag. `CI_COMMIT_TAG` (e.g. `0.5.1`) is surfaced in `/health/` via `HUGINN_GIT_REVISION` and is also an ECR tag. **GitLab Release** is created in the pipeline after a successful staging deploy.
 
 **Rollback:** Run **`promote_production` again** only after the *other* env holds the desired bits, or swap CNAMEs again from AWS / EB so traffic returns to the previously live environment (same mechanism as forward promotion). Target: on the order of minutes.
 

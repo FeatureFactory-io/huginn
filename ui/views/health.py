@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from datetime import datetime
 
@@ -12,6 +11,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
+
+from huginn.versioning import get_deployed_revision
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +153,7 @@ def health_json(request):
     payload = {
         "status": status,
         "timestamp": timezone.now().isoformat(),
-        "revision": os.environ.get("HUGINN_GIT_REVISION", "unknown"),
+        "revision": get_deployed_revision(),
         "python_version": sys.version.split()[0],
         "django_version": django.__version__,
         "checks": checks,
