@@ -25,6 +25,7 @@ from tests.factories import (
     FragoFactory,
     ProjectFactory,
     RulesOfEngagementFactory,
+    RulesOfEngagementVariableFactory,
     RulesOfEngagementVersionFactory,
     UserFactory,
 )
@@ -357,6 +358,167 @@ def test_sitrep_persisted_with_correct_content(project_ctx):
 
     # FRAGOs attached at generation time are linked
     assert sitrep.fragos_applied.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# 6. Variables pipeline: assessment steps, LLM calls, datapoints, snapshot
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def project_ctx_with_vars(db):
+    """Project with RoE and 2 defined variables — proves the variables pipeline."""
+    user = UserFactory()
+    roe = RulesOfEngagementFactory()
+    version = RulesOfEngagementVersionFactory(roe=roe, version_number=1)
+    RulesOfEngagementVariableFactory(
+        roe_version=version,
+        sort_order=1,
+        name="Throughput",
+        abbrev="Tp",
+        y_axis_label="MRs",
+        calculating="Count merged MRs in period",
+        interpreting="Green if > 10",
+    )
+    RulesOfEngagementVariableFactory(
+        roe_version=version,
+        sort_order=2,
+        name="Cycle Time",
+        abbrev="CT",
+        y_axis_label="days",
+        calculating="Median days from first commit to merge",
+        interpreting="Green if < 5 days",
+    )
+    project = ProjectFactory(imported_by=user, assigned_roe=roe)
+    now = timezone.now()
+    return {
+        "project": project,
+        "user": user,
+        "from_dt": now - timedelta(hours=8),
+        "to_dt": now,
+        "version": version,
+    }
+
+
+@pytest.mark.django_db
+def test_plan_with_variables_has_correct_step_count(project_ctx_with_vars):
+    """Plan for a project with 2 variables has 4 data + 2 var + 1 narrative = 7 steps."""
+    project = project_ctx_with_vars["project"]
+    from_dt = project_ctx_with_vars["from_dt"]
+    to_dt = project_ctx_with_vars["to_dt"]
+
+    # 2 variable steps need LLM responses; 1 narrative step needs 1 more
+    var_response = LLMResponse(
+        content='{"value": "12", "color": "green"}',
+        stop_reason="end_turn",
+        usage={},
+        tool_calls=[],
+        model="test-model",
+    )
+    responses = [var_response, var_response, _END_TURN]  # 2 vars + 1 narrative
+    llm = ScriptedLLM(responses)
+    te = MagicMock()
+    te.execute.return_value = {"success": True, "result": None, "error": None}
+    agent = GjallarhornAgent(llm=llm, tool_executor=te)
+
+    with patch("gjallarhorn.tasks.plan_tasks._build_agent_for_plan", return_value=agent):
+        plan_id = generate_sitrep_for_project(
+            project_id=project.pk,
+            from_dt=from_dt.isoformat(),
+            to_dt=to_dt.isoformat(),
+            trigger="manual",
+        )
+
+    plan = ExecutionPlan.objects.get(plan_id=plan_id)
+    assert plan.progress_total == 7, "4 data + 2 variable + 1 narrative"
+
+    steps = list(plan.steps.order_by("order"))
+    assert len(steps) == 7
+
+    var_steps = [s for s in steps if s.is_variable_assessment]
+    assert len(var_steps) == 2
+    assert var_steps[0].action == "Assess Throughput (Tp)"
+    assert var_steps[1].action == "Assess Cycle Time (CT)"
+
+    assert steps[-1].is_planning is True
+
+
+@pytest.mark.django_db
+def test_variables_pipeline_full_e2e(project_ctx_with_vars):
+    """Full pipeline: generate_sitrep_for_project → variable steps executed → datapoints persisted."""
+    from sitrep.models import VariableDatapoint
+
+    project = project_ctx_with_vars["project"]
+    from_dt = project_ctx_with_vars["from_dt"]
+    to_dt = project_ctx_with_vars["to_dt"]
+
+    tp_response = LLMResponse(
+        content='{"value": "15", "color": "green"}',
+        stop_reason="end_turn",
+        usage={},
+        tool_calls=[],
+        model="test-model",
+    )
+    ct_response = LLMResponse(
+        content='{"value": "3.2", "color": "green"}',
+        stop_reason="end_turn",
+        usage={},
+        tool_calls=[],
+        model="test-model",
+    )
+    responses = [tp_response, ct_response, _END_TURN]  # 2 var assessments + narrative
+    llm = ScriptedLLM(responses)
+    te = MagicMock()
+    te.execute.return_value = {"success": True, "result": None, "error": None}
+    agent = GjallarhornAgent(llm=llm, tool_executor=te)
+
+    with patch("gjallarhorn.tasks.plan_tasks._build_agent_for_plan", return_value=agent):
+        plan_id = generate_sitrep_for_project(
+            project_id=project.pk,
+            from_dt=from_dt.isoformat(),
+            to_dt=to_dt.isoformat(),
+            trigger="manual",
+        )
+
+    # Plan completed with all 7 steps
+    plan = ExecutionPlan.objects.get(plan_id=plan_id)
+    assert plan.status == "completed"
+    assert plan.steps.filter(status="completed").count() == 7
+
+    # LLM called 3 times: 2 variable assessments + 1 narrative
+    assert len(llm.calls) == 3
+
+    # Variable assessment LLM calls contain the variable name
+    assert "Throughput" in llm.calls[0]["messages"][0]["content"]
+    assert "Cycle Time" in llm.calls[1]["messages"][0]["content"]
+
+    # SitRep was persisted
+    sitrep = SitRep.objects.filter(project=project).first()
+    assert sitrep is not None
+    assert sitrep.headline == _NARRATIVE["headline"]
+
+    # VariableDatapoints were created
+    dps = list(VariableDatapoint.objects.filter(sitrep=sitrep).order_by("roe_variable__sort_order"))
+    assert len(dps) == 2
+
+    assert dps[0].variable_name == "Throughput"
+    assert dps[0].value == "15"
+    assert dps[0].color == "green"
+    assert dps[0].y_axis_label == "MRs"
+
+    assert dps[1].variable_name == "Cycle Time"
+    assert dps[1].value == "3.2"
+    assert dps[1].color == "green"
+    assert dps[1].y_axis_label == "days"
+
+    # variables_snapshot is populated on the SitRep
+    assert len(sitrep.variables_snapshot) == 2
+    snap = {v["variable_name"]: v for v in sitrep.variables_snapshot}
+    assert snap["Throughput"]["value"] == "15"
+    assert snap["Throughput"]["color"] == "green"
+    assert snap["Throughput"]["abbrev"] == "Tp"
+    assert snap["Cycle Time"]["value"] == "3.2"
+    assert snap["Cycle Time"]["color"] == "green"
 
 
 @pytest.mark.django_db

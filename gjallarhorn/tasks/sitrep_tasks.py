@@ -105,6 +105,7 @@ def generate_sitrep_for_project(
                 expected_outcome=s["expected_outcome"],
                 status="pending",
                 is_planning=s.get("is_planning", False),
+                is_variable_assessment=s.get("is_variable_assessment", False),
             )
 
     logger.info(
