@@ -1,0 +1,256 @@
+iteration:
+  goal: "Implement Variables & Datapoints: RoE variables → Gjallarhorn computation → VariableDatapoint storage → informer bar / Variables tab / SitRep columns UI"
+  doctrine_version: "2.0"
+  created_at: "2026-05-26T14:00:00-04:00"
+  branch: "iteration/20260526-variables-and-datapoints"
+  feature_files:
+    - docs/features/act-7-variables/variables-datapoints.feature
+    - docs/features/act-7-variables/variables-view.feature
+  total_bdd_scenarios: 58
+
+conflict_map:
+  roe/models.py: [S1]
+  sitrep/models/sitrep.py: [S1]
+  sitrep/models/variable_datapoint.py: [S1]
+  gjallarhorn/models/plan_step.py: [S1]
+  gjallarhorn/mcp_tools/roe_tools.py: [S2]
+  gjallarhorn/services/sitrep_service.py: [S2]
+  gjallarhorn/agent/agent.py: [S2]
+  sitrep/services/variable_datapoint_service.py: [S3]
+  ui/views/variables.py: [S4]
+  ui/views/projects_view.py: [S4]
+  ui/views/sitrep.py: [S4]
+  ui/urls.py: [S4]
+  ui/templates/ui/variables/view.html: [S5]
+  ui/templates/ui/projects/view.html: [S5]
+  ui/templates/ui/sitrep/list.html: [S5]
+  ui/templates/ui/sitrep/view.html: [S5]
+  tests/integration/test_variables_pipeline_e2e.py: [S6]
+
+parallel_groups:
+  A: [S1]
+  B: [S2, S3]
+  C: [S4, S5]
+  D: [S6]
+
+drift_thresholds:
+  absorbed:
+    checkpoint_fail_retry: 1
+  escalated:
+    footprint_violation: true
+    method_explosion: true
+    sao_violation: true
+    checkpoint_fail_after_retry: true
+
+scenarios:
+  S1:
+    title: "Data Model — VariableDatapoint + SitRep.variables_snapshot + RoEVariable.y_axis_label + PlanStep flag"
+    parallel_group: A
+    skeleton_commit: null  # no skeleton — implementation slice
+    codebase_footprint:
+      - roe/models.py
+      - roe/admin.py
+      - roe/seed_constants.py
+      - sitrep/models/sitrep.py
+      - sitrep/models/variable_datapoint.py
+      - sitrep/models/__init__.py
+      - sitrep/admin.py
+      - gjallarhorn/models/plan_step.py
+      - tests/factories.py
+      - tests/unit/test_roe_variable_model.py
+      - tests/unit/test_sitrep_model.py
+      - tests/unit/test_variable_datapoint_model.py
+      - tests/unit/test_plan_step_model.py
+      - "roe/migrations/000X_add_y_axis_label.py"
+      - "sitrep/migrations/000X_add_variables_snapshot.py"
+      - "sitrep/migrations/000X_add_variable_datapoint.py"
+      - "gjallarhorn/migrations/000X_add_is_variable_assessment.py"
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-datapoints.feature
+    system_dependencies: []
+    checkpoint:
+      command: "pytest tests/unit/test_roe_variable_model.py tests/unit/test_sitrep_model.py tests/unit/test_variable_datapoint_model.py tests/unit/test_plan_step_model.py -x"
+      expected_exit_code: 0
+    dependencies: []
+    context_map:
+      - "roe/models.py:60-79 — RulesOfEngagementVariable; add y_axis_label here"
+      - "sitrep/models/sitrep.py:1-54 — SitRep; add variables_snapshot JSONField"
+      - "gjallarhorn/models/plan_step.py:1-40 — PlanStep; add is_variable_assessment BooleanField"
+      - "tests/factories.py:1-40 — add RulesOfEngagementVariableFactory + VariableDatapointFactory"
+      - "sitrep/models/__init__.py — export VariableDatapoint"
+    do_not_do:
+      - "Do NOT create a new Django app — VariableDatapoint lives in sitrep/"
+      - "Do NOT use FloatField for value — use CharField(max_length=64, null=True, blank=True)"
+      - "Do NOT use 'amber' — use 'orange' for the orange traffic-light color"
+      - "Do NOT FK to PlaybookVariable — FK to roe.RulesOfEngagementVariable"
+      - "Do NOT rename is_planning on PlanStep — add is_variable_assessment alongside it"
+    sao_sections:
+      - "§1 Application Blocks — VariableDatapoint lives in sitrep/"
+      - "§17 Variables — VariableDatapoint pseudo-code (use corrected schema from feature spec)"
+
+  S2:
+    title: "Gjallarhorn Pipeline — get_roe_variables MCP tool + variable-assessment steps + persist datapoints"
+    parallel_group: B
+    skeleton_commit: null
+    codebase_footprint:
+      - gjallarhorn/mcp_tools/roe_tools.py
+      - gjallarhorn/services/sitrep_service.py
+      - gjallarhorn/agent/agent.py
+      - tests/gjallarhorn/test_roe_tools.py
+      - tests/gjallarhorn/test_sitrep_service_steps.py
+      - tests/gjallarhorn/test_variable_assessment_step.py
+      - tests/gjallarhorn/test_sitrep_service_persist.py
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-datapoints.feature
+    system_dependencies:
+      - task_queue  # Celery — already exists
+    checkpoint:
+      command: "pytest tests/gjallarhorn/test_roe_tools.py tests/gjallarhorn/test_sitrep_service_steps.py tests/gjallarhorn/test_variable_assessment_step.py tests/gjallarhorn/test_sitrep_service_persist.py -x"
+      expected_exit_code: 0
+    dependencies: [S1]
+    context_map:
+      - "gjallarhorn/mcp_tools/roe_tools.py:1-20 — follow get_active_roe pattern; add get_roe_variables"
+      - "gjallarhorn/services/sitrep_service.py:53-100 — build_narrative_plan_steps; insert Variable steps before narrative"
+      - "gjallarhorn/agent/agent.py:60-150 — execute_single_step; add is_variable_assessment branch"
+      - "gjallarhorn/services/sitrep_service.py — _persist_sitrep_from_plan; call _persist_variable_datapoints after SitRep.objects.create"
+      - "tests/gjallarhorn/test_sitrep_service_steps.py:1-40 — test_no_variable_or_decision_language must be updated"
+    do_not_do:
+      - "Do NOT add async (no async def, no asyncio) — Celery + Django ORM, synchronous throughout"
+      - "Do NOT build a REST API — ECharts data endpoint is a plain Django view returning JSON, not DRF"
+      - "Do NOT re-run completed PlanSteps — get_next_pending_step() filters by status=pending; trust this"
+      - "Do NOT use planning model (Opus) for variable assessment — use execution model (Sonnet)"
+    sao_sections:
+      - "§17.6 Token Economy — Variable assessment uses execution model; narrative uses planning model"
+      - "§17.7 SitRep Generation Flow — extend to 4+N+1 plan"
+
+  S3:
+    title: "Service Layer — VariableDatapointService (get_latest, get_for_period, get_snapshot)"
+    parallel_group: B
+    skeleton_commit: null
+    codebase_footprint:
+      - sitrep/services/variable_datapoint_service.py
+      - tests/unit/test_variable_datapoint_service.py
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-view.feature
+    system_dependencies: []
+    checkpoint:
+      command: "pytest tests/unit/test_variable_datapoint_service.py -x"
+      expected_exit_code: 0
+    dependencies: [S1]
+    context_map:
+      - "sitrep/models/variable_datapoint.py — VariableDatapoint QuerySet API; order_by sitrep, roe_variable__sort_order"
+      - "sitrep/models/sitrep.py — variables_snapshot JSONField; fall back for legacy SitReps"
+      - "sitrep/services/ — add variable_datapoint_service.py here following existing service patterns"
+      - "gjallarhorn/services/sitrep_service.py — understand how VariableDatapoints are written to understand query shape"
+      - "tests/factories.py — use VariableDatapointFactory for test fixtures"
+    do_not_do:
+      - "Do NOT add a manager/repository layer — services call the ORM directly"
+      - "Do NOT add VariableDatapoint to analytics/ — it belongs in sitrep/ per SAO §1"
+      - "Do NOT add async — synchronous ORM throughout"
+    sao_sections:
+      - "§1 Application Blocks — sitrep/ owns VariableDatapoint; ui/ reads it via this service"
+      - "§1 Dependency Rules — ui/ may import from sitrep/ services"
+
+  S4:
+    title: "UI Backend — Variables tab view + ECharts endpoint + informer bar + SitRep/Projects list updates"
+    parallel_group: C
+    skeleton_commit: null
+    codebase_footprint:
+      - ui/views/variables.py
+      - ui/views/projects_view.py
+      - ui/views/sitrep.py
+      - ui/urls.py
+      - tests/ui/test_variables_view.py
+      - tests/ui/test_variables_chart_data.py
+      - tests/ui/test_projects_view.py
+      - tests/ui/test_sitrep_list_scenarios.py
+      - tests/ui/test_sitrep_view_scenarios.py
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-view.feature
+    system_dependencies: []
+    checkpoint:
+      command: "pytest tests/ui/test_variables_view.py tests/ui/test_variables_chart_data.py tests/ui/test_projects_view.py tests/ui/test_sitrep_list_scenarios.py tests/ui/test_sitrep_view_scenarios.py -x"
+      expected_exit_code: 0
+    dependencies: [S2, S3]
+    context_map:
+      - "ui/views/projects_view.py — existing project view; add informer_bar_data context + variables tab branch"
+      - "ui/views/sitrep.py — SitRepListView + SitRepDetailView; add variables_snapshot context per row"
+      - "ui/urls.py — add /projects/<pk>/variables/ and /projects/<pk>/variables/chart-data/ patterns"
+      - "sitrep/models/sitrep.py — add agg_color @property (max severity: red > orange > green > grey)"
+      - "sitrep/services/variable_datapoint_service.py — inject via S3"
+    do_not_do:
+      - "Do NOT build a DRF REST API — ECharts endpoint is a plain Django JsonResponse view"
+      - "Do NOT add a new Django app — views live in ui/"
+      - "Do NOT add async — synchronous Django views throughout"
+    sao_sections:
+      - "§1 Dependency Rules — ui/ reads from sitrep/ services; correct direction"
+      - "§3 Code Organization — tests in tests/ui/"
+
+  S5:
+    title: "UI Templates — Variables tab, informer bar pills, dot-informers, SitRep snapshot, ECharts JS"
+    parallel_group: C
+    skeleton_commit: null
+    codebase_footprint:
+      - ui/templates/ui/variables/view.html
+      - ui/templates/ui/projects/view.html
+      - ui/templates/ui/sitrep/list.html
+      - ui/templates/ui/sitrep/view.html
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-view.feature
+    system_dependencies: []
+    checkpoint:
+      command: "pytest tests/ui/test_variables_view.py tests/ui/test_projects_view.py tests/ui/test_sitrep_list_scenarios.py tests/ui/test_sitrep_view_scenarios.py -x"
+      expected_exit_code: 0
+    dependencies: [S4]
+    context_map:
+      - "ui/templates/ui/mockups/variables/view.html — reference mockup for Variables tab layout"
+      - "ui/templates/ui/mockups/projects/view.html — reference mockup for informer bar pill chips"
+      - "ui/templates/ui/mockups/sitrep/list.html — reference mockup for dot-informer style in list"
+      - "ui/templates/ui/mockups/sitrep/view.html — reference mockup for Variables Snapshot table"
+      - "docs/features/act-7-variables/variables-view.feature — VIEW-24..29 full pills; VIEW-30..33, 44..46 dot-informers"
+    do_not_do:
+      - "Do NOT use FOB-* Screen IDs — use VARIABLES-VIEW-1 (Huginn scheme: ENTITY-OPERATION-VERSION)"
+      - "Do NOT hardcode variable data — all loops driven by context variables from the view"
+      - "Do NOT use inline styles — use Bootstrap 5 utilities and project CSS classes"
+      - "Do NOT add a new static JS file for charts — embed ECharts init script in variables/view.html block"
+    sao_sections:
+      - "§1 UI Stack — Django MTV, HTMX, Bootstrap 5, Apache ECharts"
+      - "§3 Code Organization — templates in ui/templates/ui/"
+
+  S6:
+    title: "Integration Tests — end-to-end variables pipeline + UI assertions"
+    parallel_group: D
+    skeleton_commit: null
+    codebase_footprint:
+      - tests/integration/test_variables_pipeline_e2e.py
+      - tests/unit/test_roe_variable_model.py
+      - tests/unit/test_sitrep_model.py
+      - tests/unit/test_variable_datapoint_model.py
+      - tests/unit/test_plan_step_model.py
+      - tests/unit/test_variable_datapoint_service.py
+      - tests/gjallarhorn/test_roe_tools.py
+      - tests/gjallarhorn/test_sitrep_service_steps.py
+      - tests/gjallarhorn/test_variable_assessment_step.py
+      - tests/gjallarhorn/test_sitrep_service_persist.py
+      - tests/ui/test_variables_view.py
+      - tests/ui/test_variables_chart_data.py
+    feature_file_paths:
+      - docs/features/act-7-variables/variables-datapoints.feature
+      - docs/features/act-7-variables/variables-view.feature
+    system_dependencies: []
+    checkpoint:
+      command: "pytest tests/integration/test_variables_pipeline_e2e.py tests/ -x"
+      expected_exit_code: 0
+    dependencies: [S4, S5]
+    context_map:
+      - "tests/factories.py — RulesOfEngagementVariableFactory, SitRepFactory, VariableDatapointFactory"
+      - "gjallarhorn/services/sitrep_service.py — _persist_sitrep_from_plan is the integration seam"
+      - "sitrep/models/sitrep.py — variables_snapshot JSON field; assert populated after pipeline"
+      - "sitrep/models/variable_datapoint.py — VariableDatapoint rows; assert count + fields"
+      - "ui/views/variables.py + ui/urls.py — chart-data endpoint; assert JSON shape"
+    do_not_do:
+      - "Do NOT write integration tests that hit real LLM APIs — mock the LLM call in test fixtures"
+      - "Do NOT add test files to repo root — tests/integration/ only"
+      - "Do NOT duplicate unit test coverage — integration tests test the full pipeline seam only"
+    sao_sections:
+      - "§3 Code Organization — integration tests in tests/integration/"
