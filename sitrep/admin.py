@@ -2,7 +2,14 @@
 
 from django.contrib import admin
 
-from sitrep.models import Frago, FragoAuditEvent, SitRep, SituationalAwareness, SituationalAwarenessVersion
+from sitrep.models import (
+    Frago,
+    FragoAuditEvent,
+    SitRep,
+    SituationalAwareness,
+    SituationalAwarenessVersion,
+    VariableDatapoint,
+)
 
 
 class FragoAuditEventInline(admin.TabularInline):
@@ -53,7 +60,33 @@ class SitRepAdmin(admin.ModelAdmin):
         "headline",
         "situation_assessment",
         "notable_activity",
+        "variables_snapshot",
         "source_plan",
+    )
+
+    def has_add_permission(self, request) -> bool:
+        return False
+
+    def has_delete_permission(self, request, obj=None) -> bool:
+        return request.user.is_superuser
+
+
+@admin.register(VariableDatapoint)
+class VariableDatapointAdmin(admin.ModelAdmin):
+    list_display = ("variable_name", "sitrep", "value", "color", "created_at")
+    list_filter = ("color",)
+    search_fields = ("variable_name",)
+    readonly_fields = (
+        "sitrep",
+        "roe_variable",
+        "variable_name",
+        "y_axis_label",
+        "value",
+        "color",
+        "from_dt",
+        "to_dt",
+        "source_plan_step",
+        "created_at",
     )
 
     def has_add_permission(self, request) -> bool:

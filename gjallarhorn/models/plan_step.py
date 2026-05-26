@@ -23,6 +23,7 @@ class PlanStep(models.Model):
     outcome_assessment = models.TextField(blank=True)
     is_critical = models.BooleanField(default=True)
     is_planning = models.BooleanField(default=False)
+    is_variable_assessment = models.BooleanField(default=False)
     tool = models.CharField(max_length=64, blank=True, default="")
     model_used = models.CharField(max_length=64, blank=True, default="")
 

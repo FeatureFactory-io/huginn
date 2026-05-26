@@ -8,7 +8,7 @@ from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
 from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
 from roe.models import RulesOfEngagement, RulesOfEngagementVariable, RulesOfEngagementVersion
-from sitrep.models import Frago, SituationalAwareness, SituationalAwarenessVersion
+from sitrep.models import Frago, SitRep, SituationalAwareness, SituationalAwarenessVersion, VariableDatapoint
 
 
 class UserFactory(DjangoModelFactory):
@@ -46,6 +46,7 @@ class RulesOfEngagementVariableFactory(DjangoModelFactory):
     sort_order = factory.Sequence(lambda n: n)
     name = factory.Sequence(lambda n: f"Variable {n}")
     abbrev = factory.Sequence(lambda n: f"V{n}")
+    y_axis_label = ""
 
 
 class DataSourceFactory(DjangoModelFactory):
@@ -133,3 +134,30 @@ class ContributorDTOFactory(factory.Factory):
     email = "alice@example.com"
     name = "Alice"
     handle = None
+
+
+class SitRepFactory(DjangoModelFactory):
+    class Meta:
+        model = SitRep
+
+    project = factory.SubFactory(ProjectFactory)
+    from_dt = factory.LazyFunction(timezone.now)
+    to_dt = factory.LazyFunction(timezone.now)
+    trigger = "automatic"
+    mode_at_generation = "semi_auto"
+    headline = factory.Faker("sentence", nb_words=5)
+    situation_assessment = factory.Faker("text")
+
+
+class VariableDatapointFactory(DjangoModelFactory):
+    class Meta:
+        model = VariableDatapoint
+
+    sitrep = factory.SubFactory(SitRepFactory)
+    roe_variable = factory.SubFactory(RulesOfEngagementVariableFactory)
+    variable_name = factory.LazyAttribute(lambda o: o.roe_variable.name if o.roe_variable else "Variable")
+    y_axis_label = factory.LazyAttribute(lambda o: o.roe_variable.y_axis_label if o.roe_variable else "")
+    value = "42"
+    color = "green"
+    from_dt = factory.LazyAttribute(lambda o: o.sitrep.from_dt)
+    to_dt = factory.LazyAttribute(lambda o: o.sitrep.to_dt)

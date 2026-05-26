@@ -32,6 +32,7 @@ class SitRep(models.Model):
         related_name="sitreps_applied_to",
     )
     notable_activity = models.JSONField(default=list, blank=True)
+    variables_snapshot = models.JSONField(default=list, blank=True)
     source_plan = models.ForeignKey(
         "gjallarhorn.ExecutionPlan",
         null=True,

@@ -7,6 +7,7 @@ from sitrep.models.situational_awareness import (
     SituationalAwarenessEntry,
     SituationalAwarenessVersion,
 )
+from sitrep.models.variable_datapoint import VariableDatapoint
 
 __all__ = [
     "Frago",
@@ -15,4 +16,5 @@ __all__ = [
     "SituationalAwareness",
     "SituationalAwarenessEntry",
     "SituationalAwarenessVersion",
+    "VariableDatapoint",
 ]

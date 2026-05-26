@@ -71,6 +71,7 @@ class RulesOfEngagementVariable(models.Model):
     calculating = models.TextField(blank=True, default="")
     interpreting = models.TextField(blank=True, default="")
     hover = models.TextField(blank=True, default="")
+    y_axis_label = models.CharField(max_length=128, blank=True, default="")
 
     class Meta:
         ordering = ["sort_order"]
