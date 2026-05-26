@@ -120,15 +120,35 @@
     </div>
   </article>
 
-  {# ── Section 2 — Variables Snapshot (placeholder — narrative phase) ──────── #}
+  {# ── Section 2 — Variables Snapshot ──────────────────────────────────────── #}
   <article class="card border-0 shadow-sm rounded-3" id="section-variables">
     <div class="card-header bg-white fw-semibold">2 · Variables Snapshot</div>
-    <div class="card-body">
-      <div class="text-center py-4 text-muted" data-testid="sitrep-variables-placeholder">
-        <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
-        <p class="mb-0 fw-medium">Variables will be available in a future release.</p>
-        <p class="small mb-0 mt-1">Once Variable computation is enabled, this section will show the snapshot Gjallarhorn evaluated.</p>
-      </div>
+    <div class="card-body" data-testid="sitrep-variables-snapshot">
+      {% if sitrep.variables_snapshot %}
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          {% for var in sitrep.variables_snapshot %}
+            <span class="hg-variable-pill hg-variable-pill--{{ var.color }}"
+                  data-testid="variable-pill-{{ var.abbrev }}"
+                  title="{{ var.variable_name }}: {% if var.value %}{{ var.value }}{% else %}—{% endif %}{% if var.y_axis_label %} {{ var.y_axis_label }}{% endif %}"
+                  tabindex="0"
+                  aria-label="{{ var.variable_name }}: {% if var.value %}{{ var.value }}{% if var.y_axis_label %} {{ var.y_axis_label }}{% endif %}{% else %}no data{% endif %}">
+              <strong class="hg-variable-pill__abbrev">{{ var.abbrev }}</strong>
+              <span class="hg-variable-pill__name">{{ var.variable_name }}</span>
+              {% if var.value %}
+                <span class="hg-variable-pill__value">{{ var.value }}{% if var.y_axis_label %} <span class="hg-variable-pill__units">{{ var.y_axis_label }}</span>{% endif %}</span>
+              {% else %}
+                <span class="hg-variable-pill__value hg-variable-pill__value--empty">—</span>
+              {% endif %}
+            </span>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center py-4 text-muted" data-testid="sitrep-variables-empty">
+          <i class="fa-solid fa-chart-bar fa-2x mb-3 d-block" style="color: var(--hg-border);" aria-hidden="true"></i>
+          <p class="mb-0 fw-medium">No Variables computed for this SitRep.</p>
+          <p class="small mb-0 mt-1">Variables require an assigned RoE with defined variables.</p>
+        </div>
+      {% endif %}
     </div>
   </article>
 

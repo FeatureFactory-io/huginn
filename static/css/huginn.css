@@ -746,6 +746,71 @@ a.hg-sitrep-subcard-title:focus-visible {
   color: var(--bs-secondary-color, #495057);
 }
 
+/* SitRep detail — variable pills (full variables with name + value + units) */
+.hg-variable-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: default;
+  transition: transform 0.1s;
+}
+
+.hg-variable-pill:hover,
+.hg-variable-pill:focus {
+  transform: translateY(-1px);
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.hg-variable-pill__abbrev {
+  font-family: var(--bs-font-monospace, ui-monospace, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.hg-variable-pill__name {
+  font-weight: 500;
+}
+
+.hg-variable-pill__value {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.hg-variable-pill__value--empty {
+  opacity: 0.5;
+}
+
+.hg-variable-pill__units {
+  font-weight: 400;
+  opacity: 0.8;
+  font-size: 0.8125rem;
+}
+
+.hg-variable-pill--green {
+  background-color: var(--bs-success-bg-subtle, #d1e7dd);
+  color: var(--bs-success-text-emphasis, #0a3622);
+}
+
+.hg-variable-pill--orange {
+  background-color: var(--bs-warning-bg-subtle, #fff3cd);
+  color: var(--bs-warning-text-emphasis, #664d03);
+}
+
+.hg-variable-pill--red {
+  background-color: var(--bs-danger-bg-subtle, #f8d7da);
+  color: var(--bs-danger-text-emphasis, #58151c);
+}
+
+.hg-variable-pill--grey {
+  background-color: var(--bs-secondary-bg, #e9ecef);
+  color: var(--bs-secondary-color, #495057);
+}
+
+
 /* LIST+FIND filter controls — IA guidelines §5.2 (soft fields on page background) */
 select.form-select-sm.hg-filter-control,
 input.form-control-sm.hg-filter-control {
