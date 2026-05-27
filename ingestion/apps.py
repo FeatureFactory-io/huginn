@@ -6,4 +6,7 @@ class IngestionConfig(AppConfig):
     name = "ingestion"
 
     def ready(self) -> None:
-        import ingestion.adapters.gitlab_commits  # noqa: F401 — registers GitLab adapters
+        import ingestion.adapters.gitlab_commits  # noqa: F401
+        import ingestion.adapters.gitlab_issues  # noqa: F401
+        import ingestion.adapters.gitlab_merge_requests  # noqa: F401
+        import ingestion.adapters.gitlab_milestones  # noqa: F401
