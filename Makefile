@@ -150,8 +150,8 @@ infra: ## Deploy all CDK stacks (use with caution on existing infra)
 staging: ## Deploy chosen revision to inactive EB (staging smoke). Optional BRANCH=git-ref; default HEAD. CI sets CI_COMMIT_SHORT_SHA.
 	@set -e; \
 	if [ -n "$$CI_COMMIT_SHORT_SHA" ]; then sha="$$CI_COMMIT_SHORT_SHA"; \
-	elif [ -n "$(BRANCH)" ]; then sha=$$(git rev-parse --short "$(BRANCH)"); \
-	else sha=$$(git rev-parse --short HEAD); fi; \
+	elif [ -n "$(BRANCH)" ]; then sha=$$(git rev-parse --short=8 "$(BRANCH)"); \
+	else sha=$$(git rev-parse --short=8 HEAD); fi; \
 	if [ -n "$(BRANCH)" ]; then echo "Using ECR/huginn:$$sha (from ref $(BRANCH))"; else echo "Using ECR/huginn:$$sha (HEAD)"; fi; \
 	CI_COMMIT_SHORT_SHA="$$sha" bash scripts/deploy-staging.sh
 
