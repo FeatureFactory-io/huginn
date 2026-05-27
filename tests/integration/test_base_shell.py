@@ -9,6 +9,7 @@ from django.urls import reverse
 from tests.factories import (
     FragoFactory,
     ProjectFactory,
+    SitRepFactory,
     SituationalAwarenessFactory,
     SituationalAwarenessVersionFactory,
 )
@@ -123,3 +124,26 @@ def test_tactical_plot_rails_use_workspace_sa_and_fragos(commander_client):
     assert "May 01, 2026" in body or "May 1, 2026" in body
     assert "No deploys on Fridays" in body
     assert "project: Acme API" in body
+
+
+@pytest.mark.django_db
+def test_tactical_plot_project_card_layout_description_then_dots_then_sitrep(commander_client):
+    p = ProjectFactory(
+        name="huginn",
+        display_name="huginn",
+        description="Human-AI command composite to manage projects.",
+        source_path="dp2580/huginn",
+    )
+    sitrep = SitRepFactory(project=p, headline="GREEN — delivery pace steady")
+    r = commander_client.get(reverse("tactical-plot"))
+    assert r.status_code == 200
+    body = r.content.decode()
+
+    desc_idx = body.index('data-testid="dashboard-card-' + str(p.pk) + '-gitlab-description"')
+    vars_idx = body.index('data-testid="dashboard-card-' + str(p.pk) + '-variables"')
+    sitrep_idx = body.index('data-testid="dashboard-card-' + str(p.pk) + '-sitrep-link"')
+    assert desc_idx < vars_idx < sitrep_idx
+
+    assert "Human-AI command composite to manage projects." in body
+    assert "GREEN — delivery pace steady" in body
+    assert reverse("sitrep-view", kwargs={"project_pk": p.pk, "pk": sitrep.pk}) in body

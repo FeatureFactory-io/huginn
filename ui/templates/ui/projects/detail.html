@@ -159,6 +159,7 @@
                    style="min-height: 160px;"
                    data-chart-var="{{ var.abbrev }}"
                    data-chart-name="{{ var.name }}"
+                   data-chart-y-label="{{ var.y_axis_label|default:'' }}"
                    data-chart-period="{{ variables_period }}"
                    data-testid="variable-chart-{{ var.abbrev }}"></div>
             </div>
@@ -257,17 +258,66 @@
           });
           return;
         }
+        const numericPoints = series.data.filter(function (pt) { return pt.plot_y != null; });
+        const hasNumericY = numericPoints.length > 0;
+        const chartData = series.data.map(function (pt) {
+          var y;
+          if (pt.plot_y != null) {
+            y = pt.plot_y;
+          } else if (hasNumericY) {
+            y = null;
+          } else {
+            y = 1;
+          }
+          return {
+            value: [pt.value[0], y],
+            display_value: pt.display_value,
+            plot_y: pt.plot_y,
+            itemStyle: pt.itemStyle,
+          };
+        });
+        const yLabel = (series.y_axis_label || el.dataset.chartYLabel || "").trim();
+        const axisMuted = "#5a6478";
+        const axisLine = "#dee2e6";
+        const splitLine = "#e3e7ee";
         chart.setOption({
-          tooltip: { trigger: "axis" },
-          grid: { left: 40, right: 12, top: 12, bottom: 28 },
-          xAxis: { type: "time" },
-          yAxis: { type: "value", scale: true },
+          tooltip: {
+            trigger: "axis",
+            formatter: function (params) {
+              const row = Array.isArray(params) ? params[0] : params;
+              const pt = row.data;
+              const label = (pt && pt.display_value) ? pt.display_value : row.value[1];
+              return row.axisValueLabel + "<br/>" + label;
+            },
+          },
+          grid: { left: 8, right: 12, top: yLabel ? 20 : 12, bottom: 28, containLabel: true },
+          xAxis: {
+            type: "time",
+            axisLine: { show: true, lineStyle: { color: axisLine } },
+            axisTick: { show: true },
+            axisLabel: { color: axisMuted, fontSize: 10 },
+          },
+          yAxis: {
+            type: "value",
+            name: yLabel,
+            nameLocation: "end",
+            nameGap: 6,
+            nameTextStyle: { color: axisMuted, fontSize: 10, fontWeight: "normal" },
+            scale: hasNumericY,
+            min: hasNumericY ? undefined : 0,
+            max: hasNumericY ? undefined : 2,
+            axisLine: { show: true, lineStyle: { color: axisLine } },
+            axisTick: { show: true },
+            axisLabel: { show: true, color: axisMuted, fontSize: 10 },
+            splitLine: { show: true, lineStyle: { color: splitLine } },
+          },
           series: [{
             name: name,
-            type: "line",
-            smooth: true,
+            type: hasNumericY ? "line" : "scatter",
+            smooth: false,
+            connectNulls: false,
             showSymbol: true,
-            data: series.data.map(function (pt) { return pt.value; }),
+            data: chartData,
           }],
         });
       });

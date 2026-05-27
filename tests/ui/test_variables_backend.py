@@ -124,7 +124,9 @@ def test_project_variables_echarts_api_returns_json(client):
     assert len(data["series"]) == 1
     assert data["series"][0]["name"] == "TestVar"
     assert len(data["series"][0]["data"]) == 1
-    assert data["series"][0]["data"][0]["value"][1] == "42"
+    assert data["series"][0]["data"][0]["value"][1] == 42.0
+    assert data["series"][0]["data"][0]["display_value"] == "42"
+    assert data["series"][0]["data"][0]["plot_y"] == 42.0
     assert data["series"][0]["data"][0]["itemStyle"]["color"] == "#4CAF50"
 
 
@@ -179,4 +181,86 @@ def test_project_variables_echarts_api_filters_by_period(client):
 
     # Should only include recent datapoint from this week
     assert len(data["series"][0]["data"]) == 1
-    assert data["series"][0]["data"][0]["value"][1] == "Recent"
+    assert data["series"][0]["data"][0]["display_value"] == "Recent"
+
+
+@pytest.mark.django_db
+def test_project_variables_echarts_api_includes_incremental_sitrep_for_today(client):
+    """ECharts API includes incremental SitReps when to_dt is today but from_dt is older."""
+    user = UserFactory()
+    roe = RulesOfEngagementFactory()
+    version = RulesOfEngagementVersionFactory(roe=roe)
+    var = RulesOfEngagementVariableFactory(roe_version=version, name="Complexity", abbrev="CX")
+
+    project = ProjectFactory(assigned_roe=roe)
+
+    now = timezone.now()
+    week_ago = now - timezone.timedelta(days=7)
+
+    from gjallarhorn.models import Conversation, ExecutionPlan
+
+    conversation = Conversation.objects.create(user=user, project=project, conversation_type="sitrep")
+    plan = ExecutionPlan.objects.create(conversation=conversation, goal="Incremental")
+    sitrep = SitRepFactory(project=project, from_dt=week_ago, to_dt=now, source_plan=plan)
+    VariableDatapointFactory(
+        sitrep=sitrep,
+        roe_variable=var,
+        variable_name="Complexity",
+        value="~18 files/MR (2 MRs, est.)",
+        color="green",
+    )
+
+    client.force_login(user)
+    url = reverse("project-variables-echarts", args=[project.pk]) + "?period=today"
+    response = client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert len(data["series"]) == 1
+    assert len(data["series"][0]["data"]) == 1
+    assert data["series"][0]["data"][0]["display_value"] == "~18 files/MR (2 MRs, est.)"
+    assert data["series"][0]["data"][0]["plot_y"] == 18.0
+    assert data["series"][0]["data"][0]["itemStyle"]["color"] == "#4CAF50"
+
+
+@pytest.mark.django_db
+def test_project_variables_echarts_api_null_plot_y_not_zero(client):
+    """Non-numeric/null values must not be coerced to y=0 (avoids false drop-to-zero lines)."""
+    user = UserFactory()
+    roe = RulesOfEngagementFactory()
+    version = RulesOfEngagementVersionFactory(roe=roe)
+    var = RulesOfEngagementVariableFactory(roe_version=version, name="Cycle & Lead Time", abbrev="CLT")
+
+    project = ProjectFactory(assigned_roe=roe)
+
+    base = timezone.now()
+    t1 = base - timezone.timedelta(hours=6)
+    t2 = base - timezone.timedelta(hours=2)
+
+    from gjallarhorn.models import Conversation, ExecutionPlan
+
+    conversation = Conversation.objects.create(user=user, project=project, conversation_type="sitrep")
+    plan1 = ExecutionPlan.objects.create(conversation=conversation, goal="P1")
+    plan2 = ExecutionPlan.objects.create(conversation=conversation, goal="P2")
+
+    sitrep1 = SitRepFactory(project=project, from_dt=t1, to_dt=t1, source_plan=plan1)
+    sitrep2 = SitRepFactory(project=project, from_dt=t2, to_dt=t2, source_plan=plan2)
+
+    VariableDatapointFactory(sitrep=sitrep1, roe_variable=var, variable_name="Cycle & Lead Time", value="10 commits")
+    VariableDatapointFactory(
+        sitrep=sitrep2, roe_variable=var, variable_name="Cycle & Lead Time", value=None, color="grey"
+    )
+
+    client.force_login(user)
+    url = reverse("project-variables-echarts", args=[project.pk]) + "?period=today"
+    response = client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    points = data["series"][0]["data"]
+
+    assert len(points) == 2
+    assert points[0]["plot_y"] == 10.0
+    assert points[1]["plot_y"] is None
+    assert points[1]["value"][1] is None

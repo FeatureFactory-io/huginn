@@ -73,8 +73,10 @@ def get_latest_datapoints(project_id: int) -> list[dict]:
     return result
 
 
-def get_datapoints_for_period(project_id: int, from_dt, to_dt) -> list[dict]:
-    """Return all variable datapoints in the [from_dt, to_dt] window.
+def get_datapoints_for_period(project_id: int, start, end_exclusive=None) -> list[dict]:
+    """Return variable datapoints whose ``to_dt`` falls in ``[start, end_exclusive)``.
+
+    When ``end_exclusive`` is ``None`` (rolling window), includes datapoints up to now.
 
     Returns list of dicts:
       - variable_name: str
@@ -88,6 +90,8 @@ def get_datapoints_for_period(project_id: int, from_dt, to_dt) -> list[dict]:
     Ordered by sitrep__to_dt, roe_variable__sort_order.
     Returns empty list if no datapoints in range.
     """
+    from django.utils import timezone  # noqa: PLC0415
+
     from ingestion.models import Project  # noqa: PLC0415
 
     try:
@@ -95,14 +99,18 @@ def get_datapoints_for_period(project_id: int, from_dt, to_dt) -> list[dict]:
     except Project.DoesNotExist:
         return []
 
-    datapoints = (
-        VariableDatapoint.objects.filter(
-            sitrep__project=project,
-            from_dt__gte=from_dt,
-            to_dt__lte=to_dt,
-        )
-        .select_related("roe_variable", "sitrep")
-        .order_by("sitrep__to_dt", "roe_variable__sort_order")
+    qs = VariableDatapoint.objects.filter(
+        sitrep__project=project,
+        to_dt__gte=start,
+    )
+    if end_exclusive is not None:
+        qs = qs.filter(to_dt__lt=end_exclusive)
+    else:
+        qs = qs.filter(to_dt__lte=timezone.now())
+
+    datapoints = qs.select_related("roe_variable", "sitrep").order_by(
+        "sitrep__to_dt",
+        "roe_variable__sort_order",
     )
 
     result = []

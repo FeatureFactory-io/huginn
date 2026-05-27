@@ -45,18 +45,23 @@ def test_variables_deep_link_period_selected(commander_client):
 
 
 @pytest.mark.django_db
-def test_variables_default_period_this_week(commander_client):
+def test_variables_default_period_today(commander_client):
     p = ProjectFactory(name="vdef", slug="vdef", sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(_detail_url(p.pk, tab="variables")).content.decode()
-    assert 'data-testid="variables-period-this_week"' in body
-    assert "?tab=variables&amp;period=this_week" in body or "?tab=variables&period=this_week" in body
+    assert 'data-testid="variables-period-today"' in body
+    idx_today = body.index('data-testid="variables-period-today"')
+    snippet = body[max(0, idx_today - 160) : idx_today + 40]
+    assert "btn-primary" in snippet
 
 
 @pytest.mark.django_db
-def test_variables_period_buttons(commander_client):
+def test_variables_period_buttons_order(commander_client):
     p = ProjectFactory(name="vper", slug="vper", sync_state=Project.SyncState.ACTIVE)
     body = commander_client.get(_detail_url(p.pk, tab="variables")).content.decode()
-    for key in ("today", "yesterday", "this_week", "last_week", "last_30d"):
+    keys = ("last_week", "yesterday", "today", "this_week", "last_30d")
+    positions = [body.index(f'data-testid="variables-period-{key}"') for key in keys]
+    assert positions == sorted(positions)
+    for key in keys:
         assert f'data-testid="variables-period-{key}"' in body
 
 
@@ -66,7 +71,7 @@ def test_variables_invalid_period_normalizes(commander_client):
     r = commander_client.get(_detail_url(p.pk, tab="variables", period="not_real"))
     assert r.status_code == 200
     body = r.content.decode()
-    assert 'data-testid="variables-period-this_week"' in body
+    assert 'data-testid="variables-period-today"' in body
 
 
 @pytest.mark.django_db

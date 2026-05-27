@@ -22,16 +22,16 @@ from ui.services.projects_service import ProjectsService
 VARIABLES_PERIOD_LABELS: dict[str, str] = {
     "today": "Today",
     "yesterday": "Yesterday",
-    "this_week": "This week",
+    "this_week": "This Week",
     "last_week": "Last week",
     "last_30d": "30 days",
 }
-VARIABLES_PERIOD_ORDER = ("today", "yesterday", "this_week", "last_week", "last_30d")
+VARIABLES_PERIOD_ORDER = ("last_week", "yesterday", "today", "this_week", "last_30d")
 
 
 def _normalize_variables_period(raw: str | None) -> str:
     key = (raw or "").strip().lower()
-    return key if key in VARIABLES_PERIOD_LABELS else "this_week"
+    return key if key in VARIABLES_PERIOD_LABELS else "today"
 
 
 def _effective_roe_version(project: Project) -> RulesOfEngagementVersion | None:
@@ -55,6 +55,7 @@ def _roe_variables_for_variables_tab(project: Project) -> list[dict]:
             {
                 "name": var.name,
                 "abbrev": var.abbrev,
+                "y_axis_label": var.y_axis_label,
                 "latest_value": lat.get("value"),
                 "latest_color": lat.get("color", "grey"),
             }
@@ -304,8 +305,6 @@ class ProjectsDetailView(View):
         # Variables tab: datapoints for the selected period
         variables_datapoints = []
         if tab == "variables":
-            from django.utils import timezone as tz  # noqa: PLC0415
-
             # Map period key to time_window_bounds
             period_to_range = {
                 "today": "today",
@@ -314,10 +313,9 @@ class ProjectsDetailView(View):
                 "last_week": "last_week",
                 "last_30d": "last_14d",  # Closest available approximation
             }
-            range_key = period_to_range.get(variables_period, "this_week")
-            from_dt, to_dt_exclusive = time_window_bounds(range_key)
-            to_dt = to_dt_exclusive if to_dt_exclusive is not None else tz.now()
-            variables_datapoints = get_datapoints_for_period(project.pk, from_dt, to_dt)
+            range_key = period_to_range.get(variables_period, "today")
+            start, end_exclusive = time_window_bounds(range_key)
+            variables_datapoints = get_datapoints_for_period(project.pk, start, end_exclusive)
 
         variables_echarts_url = reverse("project-variables-echarts", args=[project.pk])
 

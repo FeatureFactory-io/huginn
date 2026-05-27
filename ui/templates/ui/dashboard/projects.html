@@ -153,16 +153,23 @@
                   data-testid="dashboard-card-{{ card.pk }}-sync-error"
                   {% endif %}>{{ card.sync_state_display }}</span>
           </div>
-          <div class="mb-2" data-testid="dashboard-card-{{ card.pk }}-variables">
-            {% include "ui/components/_variables_dot_strip.html" with variables_snapshot=card.variables_snapshot variables_href=card.variables_href row_id=card.pk testid_prefix="plot" %}
-          </div>
           {% if card.description %}
-          <div data-testid="dashboard-card-{{ card.pk }}-body">
+          <div class="mb-2" data-testid="dashboard-card-{{ card.pk }}-body">
             <p class="mb-0 text-body-secondary lh-sm" data-testid="dashboard-card-{{ card.pk }}-gitlab-description">{{ card.description }}</p>
           </div>
           {% elif not card.source_path %}
-          <div data-testid="dashboard-card-{{ card.pk }}-body">
+          <div class="mb-2" data-testid="dashboard-card-{{ card.pk }}-body">
             <p class="mb-0 text-muted fst-italic" style="font-size:0.75rem;" data-testid="dashboard-card-{{ card.pk }}-empty-subtitle">—</p>
+          </div>
+          {% endif %}
+          <div class="mb-2" data-testid="dashboard-card-{{ card.pk }}-variables">
+            {% include "ui/components/_variables_dot_strip.html" with variables_snapshot=card.variables_snapshot variables_href=card.variables_href row_id=card.pk testid_prefix="plot" %}
+          </div>
+          {% if card.last_sitrep_href and card.last_sitrep_headline %}
+          <div data-testid="dashboard-card-{{ card.pk }}-sitrep">
+            <a href="{{ card.last_sitrep_href }}"
+               class="hg-list-name-link fw-medium d-inline-block text-break"
+               data-testid="dashboard-card-{{ card.pk }}-sitrep-link">{{ card.last_sitrep_headline }}</a>
           </div>
           {% endif %}
         </div>

@@ -13,7 +13,7 @@ from django.views import View
 
 from ingestion.models import DataSource, IngestionRun, Project
 from roe.markdown_utils import workflow_md_to_html
-from sitrep.models import Frago
+from sitrep.models import Frago, SitRep
 from ui.services.sitrep_variables_service import variables_snapshot_for_project
 from ui.services.situational_awareness_service import (
     active_entries_for,
@@ -67,6 +67,14 @@ def _last_sync_errors(project_ids: list[int]) -> dict[int, str]:
     return out
 
 
+def _last_sitrep_for_project(project: Project) -> tuple[str | None, str | None]:
+    latest = SitRep.objects.filter(project=project).order_by("-generated_at").first()
+    if not latest:
+        return None, None
+    href = reverse("sitrep-view", kwargs={"project_pk": project.pk, "pk": latest.pk})
+    return href, latest.headline
+
+
 def _project_cards(projects: list[Project]) -> list[dict]:
     """Card payload: GitLab description (prose) and source path are separate lines."""
     sync_errors = _last_sync_errors([p.pk for p in projects])
@@ -82,6 +90,7 @@ def _project_cards(projects: list[Project]) -> list[dict]:
         else:
             variables_snapshot = []
             variables_href = reverse("projects-detail", args=[p.pk])
+        last_sitrep_href, last_sitrep_headline = _last_sitrep_for_project(p)
         out.append(
             {
                 "pk": p.pk,
@@ -96,6 +105,8 @@ def _project_cards(projects: list[Project]) -> list[dict]:
                 "sync_error_message": sync_errors.get(p.pk, ""),
                 "variables_snapshot": variables_snapshot,
                 "variables_href": variables_href,
+                "last_sitrep_href": last_sitrep_href,
+                "last_sitrep_headline": last_sitrep_headline,
             }
         )
     return out

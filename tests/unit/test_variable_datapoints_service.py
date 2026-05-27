@@ -143,6 +143,40 @@ def test_get_datapoints_for_period_filters_by_time_window():
 
 
 @pytest.mark.django_db
+def test_get_datapoints_for_period_includes_incremental_sitrep_by_to_dt():
+    """Incremental SitReps are included when to_dt falls in the period, even if from_dt is older."""
+    from ui.services.increments_service import time_window_bounds
+
+    roe = RulesOfEngagementFactory()
+    version = RulesOfEngagementVersionFactory(roe=roe)
+    var = RulesOfEngagementVariableFactory(roe_version=version, name="Complexity", abbrev="CX")
+
+    project = ProjectFactory(assigned_roe=roe)
+    user = UserFactory()
+
+    now = timezone.now()
+    week_ago = now - timezone.timedelta(days=7)
+
+    from gjallarhorn.models import Conversation, ExecutionPlan
+
+    conversation = Conversation.objects.create(user=user, project=project, conversation_type="sitrep")
+    plan = ExecutionPlan.objects.create(conversation=conversation, goal="Incremental")
+    sitrep = SitRepFactory(project=project, from_dt=week_ago, to_dt=now, source_plan=plan)
+    VariableDatapointFactory(
+        sitrep=sitrep,
+        roe_variable=var,
+        variable_name="Complexity",
+        value="~18 files/MR (2 MRs, est.)",
+    )
+
+    start, end_exclusive = time_window_bounds("today")
+    result = get_datapoints_for_period(project.pk, start, end_exclusive)
+
+    assert len(result) == 1
+    assert result[0]["value"] == "~18 files/MR (2 MRs, est.)"
+
+
+@pytest.mark.django_db
 def test_get_datapoints_for_period_empty_when_no_data():
     """When no datapoints exist in range, return empty list."""
     project = ProjectFactory()
