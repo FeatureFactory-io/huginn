@@ -9,6 +9,9 @@ from gjallarhorn.mcp_tools import (
     get_contributor_activity,
     list_active_fragos,
     list_commits,
+    list_issues,
+    list_merge_requests,
+    list_milestones,
 )
 
 PLANNING_MODEL = "claude-opus-4-5"
@@ -44,4 +47,7 @@ def build_executor(user, project, plan_id: str | None = None) -> ToolExecutor:
     executor.register("get_active_roe", get_active_roe)
     executor.register("get_active_situational_awareness", get_active_situational_awareness)
     executor.register("list_active_fragos", list_active_fragos)
+    executor.register("list_issues", list_issues)
+    executor.register("list_milestones", list_milestones)
+    executor.register("list_merge_requests", list_merge_requests)
     return executor

@@ -81,4 +81,4 @@ class TestSitRepSignal:
 
         sitrep = SitRep.objects.filter(project=project).first()
         assert sitrep is not None
-        assert sitrep.source_plan.steps.filter(status="completed").count() == 5
+        assert sitrep.source_plan.steps.filter(status="completed").count() == 8

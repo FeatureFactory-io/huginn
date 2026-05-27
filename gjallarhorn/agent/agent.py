@@ -250,9 +250,11 @@ class GjallarhornAgent:
 
     def _resolve_tool_kwargs(self, tool_name: str, plan: ExecutionPlan) -> dict:
         """Return the kwargs to pass to a data tool based on the plan's time window."""
-        if tool_name in ("list_commits", "get_contributor_activity"):
+        if tool_name in ("list_commits", "get_contributor_activity", "list_issues", "list_merge_requests"):
             return {"from_dt": plan.sitrep_from_dt, "to_dt": plan.sitrep_to_dt}
         if tool_name == "list_active_fragos":
+            return {"at_dt": plan.sitrep_to_dt}
+        if tool_name == "list_milestones":
             return {"at_dt": plan.sitrep_to_dt}
         return {}
 

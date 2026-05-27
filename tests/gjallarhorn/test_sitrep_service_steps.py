@@ -12,15 +12,18 @@ from tests.factories import (
 
 
 class TestBuildNarrativePlanSteps:
-    def test_returns_five_steps_when_no_project(self):
-        """When project is None, returns 5 steps (4 data + narrative, no variables)."""
+    def test_returns_eight_steps_when_no_project(self):
+        """When project is None, returns 8 steps (7 data + narrative, no variables)."""
         steps = build_narrative_plan_steps(project=None, from_dt=None, to_dt=None)
-        assert len(steps) == 5
+        assert len(steps) == 8
 
     def test_canonical_order(self):
         steps = build_narrative_plan_steps(project=None, from_dt=None, to_dt=None)
         assert "commit" in steps[0]["action"].lower()
-        assert "narrative" in steps[4]["action"].lower()
+        assert steps[4]["tool"] == "list_issues"
+        assert steps[5]["tool"] == "list_milestones"
+        assert steps[6]["tool"] == "list_merge_requests"
+        assert "narrative" in steps[7]["action"].lower()
 
     def test_narrative_only_mode_has_no_variable_steps(self):
         """When project has no RoE or no variables, no Variable assessment steps are inserted."""
@@ -38,8 +41,8 @@ class TestBuildNarrativePlanSteps:
             assert step.get("expected_outcome")
 
     @pytest.mark.django_db
-    def test_with_two_variables_returns_seven_steps(self):
-        """4 data + 2 variable assessment + 1 narrative = 7 steps."""
+    def test_with_two_variables_returns_ten_steps(self):
+        """7 data + 2 variable assessment + 1 narrative = 10 steps."""
         roe = RulesOfEngagementFactory()
         version = RulesOfEngagementVersionFactory(roe=roe)
         RulesOfEngagementVariableFactory(roe_version=version, name="Var1", abbrev="V1")
@@ -48,18 +51,18 @@ class TestBuildNarrativePlanSteps:
 
         steps = build_narrative_plan_steps(project, from_dt=None, to_dt=None)
 
-        assert len(steps) == 7
+        assert len(steps) == 10
 
     @pytest.mark.django_db
-    def test_with_no_variables_still_returns_five_steps(self):
-        """4 data + 0 variables + 1 narrative = 5 steps."""
+    def test_with_no_variables_still_returns_eight_steps(self):
+        """7 data + 0 variables + 1 narrative = 8 steps."""
         roe = RulesOfEngagementFactory()
         RulesOfEngagementVersionFactory(roe=roe, version_number=1)
         project = ProjectFactory(assigned_roe=roe)
 
         steps = build_narrative_plan_steps(project, from_dt=None, to_dt=None)
 
-        assert len(steps) == 5
+        assert len(steps) == 8
 
     @pytest.mark.django_db
     def test_variable_steps_are_between_data_and_narrative(self):
@@ -71,14 +74,14 @@ class TestBuildNarrativePlanSteps:
 
         steps = build_narrative_plan_steps(project, from_dt=None, to_dt=None)
 
-        assert len(steps) == 6  # 4 + 1 + 1
+        assert len(steps) == 9  # 7 + 1 + 1
         assert steps[0]["order"] == 1  # data
-        assert steps[3]["order"] == 4  # last data step
-        assert steps[4]["order"] == 5  # variable assessment
-        assert steps[4].get("is_variable_assessment") is True
-        assert "Assess TestVar" in steps[4]["action"]
-        assert steps[5]["order"] == 6  # narrative
-        assert steps[5].get("is_planning") is True
+        assert steps[6]["order"] == 7  # last data step
+        assert steps[7]["order"] == 8  # variable assessment
+        assert steps[7].get("is_variable_assessment") is True
+        assert "Assess TestVar" in steps[7]["action"]
+        assert steps[8]["order"] == 9  # narrative
+        assert steps[8].get("is_planning") is True
 
     @pytest.mark.django_db
     def test_build_variable_steps_one_per_variable(self):
