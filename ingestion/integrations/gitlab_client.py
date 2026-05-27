@@ -250,3 +250,90 @@ class GitlabClient:
                 break
 
         return results
+
+    def _paginate(
+        self,
+        path: str,
+        *,
+        params: dict[str, str] | None = None,
+        per_page: int = 100,
+        max_pages: int = 100,
+        timeout: int = 60,
+    ) -> list[dict[str, Any]]:
+        if not self._token.strip():
+            raise ValueError("Token is blank")
+        base_params = dict(params or {})
+        base_params.setdefault("per_page", str(per_page))
+        results: list[dict[str, Any]] = []
+        page = 1
+        pages_read = 0
+        while pages_read < max_pages:
+            q = dict(base_params)
+            q["page"] = str(page)
+            qs = urlencode(q)
+            url = f"{self.base_url}{path}?{qs}"
+            req = Request(url, headers={"PRIVATE-TOKEN": self._token})
+            try:
+                with urlopen(req, timeout=timeout) as resp:  # noqa: S310
+                    raw = resp.read().decode()
+                    data = json.loads(raw)
+                    next_page = resp.headers.get("X-Next-Page") or resp.headers.get("x-next-page") or ""
+            except HTTPError as exc:
+                raise ConnectionError(f"GitLab responded with HTTP {exc.code}") from exc
+            except URLError as exc:
+                raise ConnectionError("Unable to reach GitLab.") from exc
+
+            if not isinstance(data, list) or not data:
+                break
+            for item in data:
+                if isinstance(item, dict):
+                    results.append(item)
+            pages_read += 1
+            if not next_page or next_page == "0":
+                break
+            try:
+                page = int(next_page)
+            except ValueError:
+                page += 1
+            if len(data) < per_page:
+                break
+        return results
+
+    def list_issues(
+        self,
+        project_id: int,
+        *,
+        updated_after: datetime | None = None,
+        state: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, str] = {}
+        if updated_after is not None:
+            params["updated_after"] = updated_after.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        if state:
+            params["state"] = state
+        return self._paginate(f"/api/v4/projects/{int(project_id)}/issues", params=params)
+
+    def list_milestones(
+        self,
+        project_id: int,
+        *,
+        updated_after: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, str] = {}
+        if updated_after is not None:
+            params["updated_after"] = updated_after.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return self._paginate(f"/api/v4/projects/{int(project_id)}/milestones", params=params)
+
+    def list_merge_requests(
+        self,
+        project_id: int,
+        *,
+        updated_after: datetime | None = None,
+        state: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, str] = {}
+        if updated_after is not None:
+            params["updated_after"] = updated_after.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        if state:
+            params["state"] = state
+        return self._paginate(f"/api/v4/projects/{int(project_id)}/merge_requests", params=params)

@@ -154,8 +154,8 @@ def test_sitrep_not_requested_without_roe(db):
 
 
 @pytest.mark.django_db
-def test_plan_created_with_5_steps(project_ctx, patch_claude_llm):
-    """ExecutionPlan is created with exactly 5 PlanSteps in the correct order."""
+def test_plan_created_with_8_steps(project_ctx, patch_claude_llm):
+    """ExecutionPlan is created with exactly 8 PlanSteps in the correct order."""
     patch_claude_llm([_END_TURN])
     project = project_ctx["project"]
     from_dt = project_ctx["from_dt"]
@@ -169,11 +169,11 @@ def test_plan_created_with_5_steps(project_ctx, patch_claude_llm):
     )
 
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
-    assert plan.progress_total == 5
+    assert plan.progress_total == 8
 
     steps = list(plan.steps.order_by("order"))
-    assert len(steps) == 5
-    assert [s.order for s in steps] == [1, 2, 3, 4, 5]
+    assert len(steps) == 8
+    assert [s.order for s in steps] == [1, 2, 3, 4, 5, 6, 7, 8]
 
     assert steps[-1].is_planning is True
     assert plan.conversation.project == project
@@ -187,7 +187,7 @@ def test_plan_created_with_5_steps(project_ctx, patch_claude_llm):
 
 @pytest.mark.django_db
 def test_all_steps_executed_with_progress(project_ctx, patch_claude_llm):
-    """All 5 steps run to completion and progress_current reaches 5."""
+    """All 8 steps run to completion and progress_current reaches 8."""
     llm_holder = patch_claude_llm([_END_TURN])
     project = project_ctx["project"]
     from_dt = project_ctx["from_dt"]
@@ -202,8 +202,8 @@ def test_all_steps_executed_with_progress(project_ctx, patch_claude_llm):
 
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
     assert plan.status == "completed"
-    assert plan.progress_current == 5
-    assert plan.steps.filter(status="completed").count() == 5
+    assert plan.progress_current == 8
+    assert plan.steps.filter(status="completed").count() == 8
     assert plan.steps.filter(status="pending").count() == 0
 
     assert len(llm_holder["llm"].calls) == 1
@@ -248,7 +248,7 @@ def test_sitrep_persisted_with_correct_content(project_ctx, patch_claude_llm):
 
 @pytest.mark.django_db
 def test_plan_with_variables_has_correct_step_count(project_ctx_with_vars, patch_claude_llm):
-    """Plan for a project with 2 variables has 4 data + 2 var + 1 narrative = 7 steps."""
+    """Plan for a project with 2 variables has 7 data + 2 var + 1 narrative = 10 steps."""
     var_response = LLMResponse(
         content='{"value": "12", "color": "green"}',
         stop_reason="end_turn",
@@ -269,10 +269,10 @@ def test_plan_with_variables_has_correct_step_count(project_ctx_with_vars, patch
     )
 
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
-    assert plan.progress_total == 7, "4 data + 2 variable + 1 narrative"
+    assert plan.progress_total == 10, "7 data + 2 variable + 1 narrative"
 
     steps = list(plan.steps.order_by("order"))
-    assert len(steps) == 7
+    assert len(steps) == 10
 
     var_steps = [s for s in steps if s.is_variable_assessment]
     assert len(var_steps) == 2
@@ -314,7 +314,7 @@ def test_variables_pipeline_full_e2e(project_ctx_with_vars, patch_claude_llm):
 
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
     assert plan.status == "completed"
-    assert plan.steps.filter(status="completed").count() == 7
+    assert plan.steps.filter(status="completed").count() == 10
 
     assert len(llm_holder["llm"].calls) == 3
     assert "Throughput" in llm_holder["llm"].calls[0]["messages"][0]["content"]

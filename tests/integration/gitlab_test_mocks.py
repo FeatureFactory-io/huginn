@@ -10,6 +10,9 @@ def gitlab_catalog_urlopen_side_effect(
     project_rows: list[dict],
     *,
     single_project_by_id: dict[int, dict] | None = None,
+    milestones: list[dict] | None = None,
+    issues: list[dict] | None = None,
+    merge_requests: list[dict] | None = None,
 ):
     """Callable for ``urlopen`` mock: catalog endpoints + empty sync (no branches/commits).
 
@@ -22,6 +25,9 @@ def gitlab_catalog_urlopen_side_effect(
     """
 
     user_bytes = b'{"username":"catalog-user"}'
+    milestones_payload = milestones or []
+    issues_payload = issues or []
+    merge_requests_payload = merge_requests or []
 
     def side_effect(req, *args, **kwargs):
         url = getattr(req, "full_url", str(req))
@@ -51,10 +57,34 @@ def gitlab_catalog_urlopen_side_effect(
         if "/repository/commits" in url:
             enter.read.return_value = b"[]"
             return cm
+        if "/milestones" in url:
+            enter.read.return_value = json.dumps(milestones_payload).encode()
+            return cm
+        if "/issues" in url:
+            enter.read.return_value = json.dumps(issues_payload).encode()
+            return cm
+        if "/merge_requests" in url:
+            enter.read.return_value = json.dumps(merge_requests_payload).encode()
+            return cm
         msg = f"Unexpected GitLab URL in mock: {url!r}"
         raise AssertionError(msg)
 
     return side_effect
+
+
+def gitlab_work_items_sync_urlopen_side_effect(
+    *,
+    milestones: list[dict] | None = None,
+    issues: list[dict] | None = None,
+    merge_requests: list[dict] | None = None,
+):
+    """``urlopen`` side_effect for SyncEngine work-item ingestion tests."""
+    return gitlab_catalog_urlopen_side_effect(
+        [],
+        milestones=milestones or [],
+        issues=issues or [],
+        merge_requests=merge_requests or [],
+    )
 
 
 def gitlab_catalog_mocks(project_rows: list[dict], **kwargs):

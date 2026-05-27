@@ -47,6 +47,18 @@ def test_sync_project_enqueues_sitrep_only_on_successful_engine_run(
     }
     with (
         patch(
+            "ingestion.integrations.gitlab_client.GitlabClient.list_milestones",
+            return_value=[],
+        ),
+        patch(
+            "ingestion.integrations.gitlab_client.GitlabClient.list_issues",
+            return_value=[],
+        ),
+        patch(
+            "ingestion.integrations.gitlab_client.GitlabClient.list_merge_requests",
+            return_value=[],
+        ),
+        patch(
             "ingestion.adapters.gitlab_commits.GitlabClient.list_branch_names",
             return_value=["main"],
         ),

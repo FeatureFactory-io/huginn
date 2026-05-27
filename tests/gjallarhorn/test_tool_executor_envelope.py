@@ -70,16 +70,19 @@ class TestToolExecutorEnvelope:
         assert result["result"] is None
         assert "Tool failed intentionally" in result["error"]
 
-    def test_build_executor_registers_five_tools(self):
-        """build_executor returns ToolExecutor with 5 tools registered."""
+    def test_build_executor_registers_eight_tools(self):
+        """build_executor returns ToolExecutor with 8 tools registered."""
         user = User.objects.create_user(email="test@example.com", password="test")
         project = Project.objects.create(name="test-proj", slug="test-proj")
 
         executor = build_executor(user=user, project=project)
 
-        assert len(executor._registry) == 5
+        assert len(executor._registry) == 8
         assert "list_commits" in executor._registry
         assert "get_contributor_activity" in executor._registry
         assert "get_active_roe" in executor._registry
         assert "get_active_situational_awareness" in executor._registry
         assert "list_active_fragos" in executor._registry
+        assert "list_issues" in executor._registry
+        assert "list_milestones" in executor._registry
+        assert "list_merge_requests" in executor._registry

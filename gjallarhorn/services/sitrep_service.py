@@ -71,11 +71,11 @@ def _extract_json(text: str) -> dict:
 def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
     """Return the canonical narrative plan steps for SitRep generation.
 
-    Steps 1–4 are pure data-collection steps (tool calls, no LLM).
-    Steps 5–N are Variable assessment steps (one per RoE Variable, using execution model).
+    Steps 1–7 are pure data-collection steps (tool calls, no LLM).
+    Steps 8–N are Variable assessment steps (one per RoE Variable, using execution model).
     Final step is the narrative-composition step (LLM call using planning model).
 
-    Total: 4 + N + 1, where N = number of Variables (0 if no RoE or no Variables).
+    Total: 7 + N + 1, where N = number of Variables (0 if no RoE or no Variables).
     """
     from gjallarhorn.mcp_tools.roe_tools import get_roe_variables  # noqa: PLC0415
 
@@ -112,12 +112,36 @@ def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
             "expected_outcome": "Current SA capsule.",
             "is_planning": False,
         },
+        {
+            "order": 5,
+            "action": "Get issues for period",
+            "tool": "list_issues",
+            "reasoning_why_needed": "Backlog state drives flow and rework Variables.",
+            "expected_outcome": "List of ingested GitLab issues in the window.",
+            "is_planning": False,
+        },
+        {
+            "order": 6,
+            "action": "Get milestones",
+            "tool": "list_milestones",
+            "reasoning_why_needed": "Planning targets anchor burndown assessment.",
+            "expected_outcome": "Active and recent milestones for the project.",
+            "is_planning": False,
+        },
+        {
+            "order": 7,
+            "action": "Get merge requests for period",
+            "tool": "list_merge_requests",
+            "reasoning_why_needed": "Review flow complements commit activity.",
+            "expected_outcome": "List of ingested merge requests in the window.",
+            "is_planning": False,
+        },
     ]
 
     # Insert Variable assessment steps between data-collection and narrative
     roe_variables = get_roe_variables(project.pk) if project else None
     if roe_variables:
-        for idx, var in enumerate(roe_variables, start=5):
+        for idx, var in enumerate(roe_variables, start=8):
             steps.append(
                 {
                     "order": idx,
@@ -130,7 +154,7 @@ def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
                 }
             )
 
-    # Final step: narrative composition (always last, order = 4 + N + 1)
+    # Final step: narrative composition (always last, order = 7 + N + 1)
     final_order = len(steps) + 1
     datapoints_note = (
         ', "datapoints": [{"variable_name": "...", "abbrev": "...", "y_axis_label": "...", "value": "...", "color": "..."}]'

@@ -37,7 +37,11 @@ def _stub_classes(dtos: list):
 def test_sync_engine_success_inserts_increment() -> None:
     ds = DataSourceFactory()
     p = ProjectFactory(datasource=ds, gitlab_project_id=1)
-    engine = SyncEngine(classes_for=lambda _t: _stub_classes(_dtos()))
+    engine = SyncEngine(
+        classes_for=lambda _t: _stub_classes(_dtos()),
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
     run = engine.run_for_project(p.pk)
     assert run is not None
     assert run.status == IngestionRun.Status.SUCCESS
@@ -51,7 +55,11 @@ def test_sync_engine_idempotent_second_run() -> None:
     ds = DataSourceFactory()
     p = ProjectFactory(datasource=ds, gitlab_project_id=1)
     dtos = _dtos()
-    engine = SyncEngine(classes_for=lambda _t: _stub_classes(dtos))
+    engine = SyncEngine(
+        classes_for=lambda _t: _stub_classes(dtos),
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
     engine.run_for_project(p.pk)
     engine.run_for_project(p.pk)
     assert Increment.objects.filter(project=p).count() == 1
@@ -60,7 +68,11 @@ def test_sync_engine_idempotent_second_run() -> None:
 @pytest.mark.django_db
 def test_sync_engine_skips_archived() -> None:
     p = ProjectFactory(status=Project.Status.ARCHIVED)
-    engine = SyncEngine(classes_for=lambda _t: _stub_classes(_dtos()))
+    engine = SyncEngine(
+        classes_for=lambda _t: _stub_classes(_dtos()),
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
     assert engine.run_for_project(p.pk) is None
 
 
@@ -69,14 +81,22 @@ def test_sync_engine_skips_when_run_in_progress() -> None:
     ds = DataSourceFactory()
     p = ProjectFactory(datasource=ds, gitlab_project_id=1)
     IngestionRun.objects.create(project=p, datasource=ds, status=IngestionRun.Status.RUNNING)
-    engine = SyncEngine(classes_for=lambda _t: _stub_classes(_dtos()))
+    engine = SyncEngine(
+        classes_for=lambda _t: _stub_classes(_dtos()),
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
     assert engine.run_for_project(p.pk) is None
 
 
 @pytest.mark.django_db
 def test_sync_engine_error_no_datasource() -> None:
     p = ProjectFactory(datasource=None)
-    engine = SyncEngine(classes_for=lambda _t: _stub_classes(_dtos()))
+    engine = SyncEngine(
+        classes_for=lambda _t: _stub_classes(_dtos()),
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
     run = engine.run_for_project(p.pk)
     assert run is not None
     assert run.status == IngestionRun.Status.ERROR

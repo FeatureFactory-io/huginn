@@ -11,6 +11,8 @@ from ui.services.projects_service import ProjectsService
 
 
 @pytest.mark.django_db
+@patch("ingestion.services.sync_engine.milestone_adapter_classes_for", lambda _t: [])
+@patch("ingestion.services.sync_engine.work_adapter_classes_for", lambda _t: [])
 @patch("ingestion.services.sync_engine.adapter_classes_for", lambda _t: [])
 def test_sync_placeholder_sets_active_and_last_sync_at() -> None:
     p = ProjectFactory(
@@ -37,6 +39,8 @@ def test_sync_placeholder_skips_archived_project() -> None:
 
 
 @pytest.mark.django_db
+@patch("ingestion.services.sync_engine.milestone_adapter_classes_for", lambda _t: [])
+@patch("ingestion.services.sync_engine.work_adapter_classes_for", lambda _t: [])
 @patch("ingestion.services.sync_engine.adapter_classes_for", lambda _t: [])
 def test_sync_placeholder_preserves_source_path_and_url() -> None:
     p = ProjectFactory(
@@ -62,6 +66,8 @@ def test_enqueue_immediate_project_sync_sets_syncing_before_task() -> None:
 
 
 @pytest.mark.django_db
+@patch("ingestion.services.sync_engine.milestone_adapter_classes_for", lambda _t: [])
+@patch("ingestion.services.sync_engine.work_adapter_classes_for", lambda _t: [])
 @patch("ingestion.services.sync_engine.adapter_classes_for", lambda _t: [])
 def test_enqueue_immediate_project_sync_eager_sets_active() -> None:
     """With CELERY_TASK_ALWAYS_EAGER, placeholder runs and ends in ACTIVE."""

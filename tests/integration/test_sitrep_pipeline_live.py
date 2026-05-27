@@ -2,8 +2,8 @@
 
 Proves the complete sequence with realistic fake data and a real playbook:
   1. SitRep is requested.
-  2. ExecutionPlan with 5 steps is created in DB.
-  3. All 5 steps are executed by Claude (claude-sonnet-4-6).
+  2. ExecutionPlan with 8 steps is created in DB.
+  3. All 8 steps are executed by Claude (claude-sonnet-4-6).
   4. A non-critical data step failure does NOT crash the plan.
   5. A real SitRep is persisted and ready to display.
 
@@ -225,8 +225,8 @@ def test_sitrep_full_pipeline_with_real_ai(live_world, caplog):
 
     Sequence:
       1. generate_sitrep_for_project is called → returns a plan_id
-      2. ExecutionPlan with 5 steps is created
-      3. All 5 steps are executed by Claude (no mocking)
+      2. ExecutionPlan with 8 steps is created
+      3. All 8 steps are executed by Claude (no mocking)
       4. SitRep is persisted with a non-empty headline and assessment
       5. SitRep content is printed for human inspection
     """
@@ -251,18 +251,18 @@ def test_sitrep_full_pipeline_with_real_ai(live_world, caplog):
 
     # ── 2. ExecutionPlan created with correct structure ───────────────────────
     plan = ExecutionPlan.objects.get(plan_id=plan_id)
-    assert plan.progress_total == 5
+    assert plan.progress_total == 8
     steps = list(plan.steps.order_by("order"))
-    assert len(steps) == 5
+    assert len(steps) == 8
     assert steps[-1].is_planning is True  # final composition step
 
     # ── 3. All steps executed ─────────────────────────────────────────────────
     plan.refresh_from_db()
     assert plan.status == "completed", f"Plan status is '{plan.status}'; last_error: {plan.last_error!r}"
-    assert plan.progress_current == 5
+    assert plan.progress_current == 8
     completed = plan.steps.filter(status="completed")
-    assert completed.count() == 5, (
-        f"Expected 5 completed steps, got {completed.count()}. Steps: {[(s.order, s.status) for s in steps]}"
+    assert completed.count() == 8, (
+        f"Expected 8 completed steps, got {completed.count()}. Steps: {[(s.order, s.status) for s in steps]}"
     )
 
     # ── 5. SitRep persisted with real content ─────────────────────────────────
@@ -372,7 +372,7 @@ def test_sitrep_live_non_critical_step_skipped(live_world, caplog):
     # Step 1 (list_commits) failed at the LLM system-block building stage;
     # the agent swallowed it as non-critical.
     assert steps[1].status == "failed", "Step 1 must be marked failed"
-    assert steps[5].status == "completed", "Final composition step must complete"
+    assert steps[8].status == "completed", "Final composition step must complete"
 
     sitrep = SitRep.objects.filter(project=project).first()
     assert sitrep is not None, "SitRep must still be created despite step 1 failure"

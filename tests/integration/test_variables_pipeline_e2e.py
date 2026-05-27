@@ -133,7 +133,7 @@ def test_full_variables_pipeline_integration(variables_pipeline_world):
     from_dt = variables_pipeline_world["from_dt"]
     to_dt = variables_pipeline_world["to_dt"]
     n_vars = variables_pipeline_world["variable_count"]
-    expected_steps = 4 + n_vars + 1  # data + variable assessments + narrative
+    expected_steps = 7 + n_vars + 1  # data + variable assessments + narrative
     api_key = os.environ["ANTHROPIC_API_KEY"]
 
     with override_settings(ANTHROPIC_API_KEY=api_key):
