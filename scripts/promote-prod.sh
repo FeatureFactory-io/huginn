@@ -52,7 +52,9 @@ fi
 echo "Staging (inactive) EB version label: $INACTIVE_SHA"
 
 if [ -n "${CI_COMMIT_SHORT_SHA:-}" ]; then
-  if [ "$INACTIVE_SHA" != "$CI_COMMIT_SHORT_SHA" ]; then
+  # deploy-staging.sh labels EB versions as "${CI_COMMIT_SHORT_SHA}-staging"
+  staging_sha="${INACTIVE_SHA%-staging}"
+  if [ "$staging_sha" != "$CI_COMMIT_SHORT_SHA" ] && [ "$INACTIVE_SHA" != "$CI_COMMIT_SHORT_SHA" ]; then
     echo "ERROR: CI_COMMIT_SHORT_SHA=$CI_COMMIT_SHORT_SHA does not match staging ($INACTIVE_SHA)."
     echo "Deploy that SHA to staging first, or omit CI_COMMIT_SHORT_SHA to promote whatever is on staging."
     exit 1
