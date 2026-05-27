@@ -40,6 +40,15 @@ echo "Inactive env: $INACTIVE_ENV  ← deploying here (staging for review)"
 echo "Image:        $ECR_IMAGE"
 echo "Revision:     $GIT_REVISION  (EB VersionLabel: $CI_COMMIT_SHORT_SHA)"
 
+INACTIVE_CNAME=$(aws elasticbeanstalk describe-environments \
+  --application-name "$EB_APP_NAME" \
+  --environment-names "$INACTIVE_ENV" \
+  --query 'Environments[0].CNAME' --output text)
+STAGING_CSRF_ORIGIN="http://${INACTIVE_CNAME}"
+STAGING_VERSION_LABEL="${CI_COMMIT_SHORT_SHA}-staging"
+echo "Staging CSRF origin: $STAGING_CSRF_ORIGIN (COOKIE_SECURE=false for HTTP review)"
+echo "EB version label:  $STAGING_VERSION_LABEL"
+
 # Fetch secrets from SSM (SecureString, --with-decryption required).
 # These are injected as EB environment properties so Docker Compose picks them up.
 echo "Fetching secrets from SSM..."
@@ -50,6 +59,14 @@ ANTHROPIC_API_KEY=$(aws ssm get-parameter \
 
 cd "$ROOT_DIR"
 envsubst '${ECR_IMAGE}' < docker-compose.prod.yml > docker-compose.yml
+python3 -c "
+from pathlib import Path
+origin = '''${STAGING_CSRF_ORIGIN}'''
+text = Path('docker-compose.yml').read_text()
+text = text.replace('COOKIE_SECURE: \${COOKIE_SECURE:-true}', 'COOKIE_SECURE: \"false\"')
+text = text.replace('EXTRA_CSRF_ORIGINS: \${EXTRA_CSRF_ORIGINS:-}', f'EXTRA_CSRF_ORIGINS: \"{origin}\"')
+Path('docker-compose.yml').write_text(text)
+"
 zip -q deploy.zip docker-compose.yml
 if [ -d .ebextensions ]; then
   zip -qr deploy.zip .ebextensions/
@@ -58,23 +75,23 @@ echo "Created deploy.zip (docker-compose.yml with baked image: $ECR_IMAGE)"
 
 EB_BUCKET=$(aws elasticbeanstalk create-storage-location \
   --query 'S3Bucket' --output text)
-S3_KEY="huginn/${CI_COMMIT_SHORT_SHA}.zip"
+S3_KEY="huginn/${STAGING_VERSION_LABEL}.zip"
 aws s3 cp deploy.zip "s3://${EB_BUCKET}/${S3_KEY}" --quiet
 echo "Uploaded s3://${EB_BUCKET}/${S3_KEY}"
 
 aws elasticbeanstalk create-application-version \
   --application-name "$EB_APP_NAME" \
-  --version-label "$CI_COMMIT_SHORT_SHA" \
+  --version-label "$STAGING_VERSION_LABEL" \
   --source-bundle "S3Bucket=${EB_BUCKET},S3Key=${S3_KEY}" \
   --no-auto-create-application \
   --output text > /dev/null 2>&1 \
-  || echo "Application version $CI_COMMIT_SHORT_SHA already exists — reusing."
-echo "Application version: $CI_COMMIT_SHORT_SHA"
+  || echo "Application version $STAGING_VERSION_LABEL already exists — reusing."
+echo "Application version: $STAGING_VERSION_LABEL"
 
 aws elasticbeanstalk update-environment \
   --application-name "$EB_APP_NAME" \
   --environment-name "$INACTIVE_ENV" \
-  --version-label "$CI_COMMIT_SHORT_SHA" \
+  --version-label "$STAGING_VERSION_LABEL" \
   --option-settings \
     "Namespace=aws:elasticbeanstalk:application:environment,OptionName=ANTHROPIC_API_KEY,Value=${ANTHROPIC_API_KEY}" \
     "Namespace=aws:elasticbeanstalk:application:environment,OptionName=HUGINN_GIT_REVISION,Value=${GIT_REVISION}" \
