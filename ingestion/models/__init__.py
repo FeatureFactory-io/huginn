@@ -247,6 +247,128 @@ class Increment(models.Model):
         return f"{self.kind}:{self.external_id[:12]}"
 
 
+class Milestone(models.Model):
+    """Planning container mirrored from GitLab milestone (or Jira version post-MVP)."""
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="milestones",
+    )
+    datasource = models.ForeignKey(
+        DataSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="milestones",
+    )
+    external_id = models.CharField(max_length=128, db_index=True)
+    title = models.CharField(max_length=512)
+    state = models.CharField(max_length=32, db_index=True)
+    due_date = models.DateField(null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    updated_at = models.DateTimeField(db_index=True)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-updated_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "external_id"],
+                name="ingestion_milestone_proj_ext_uniq",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"milestone:{self.external_id}"
+
+
+class UnitOfWork(models.Model):
+    """Canonical work item — GitLab issue or merge request in MVP."""
+
+    class Kind(models.TextChoices):
+        ISSUE = "issue", "Issue"
+        MERGE_REQUEST = "merge_request", "Merge request"
+
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="units_of_work",
+    )
+    datasource = models.ForeignKey(
+        DataSource,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="units_of_work",
+    )
+    kind = models.CharField(max_length=32, choices=Kind.choices, db_index=True)
+    external_id = models.CharField(max_length=128, db_index=True)
+    iid = models.PositiveIntegerField()
+    title = models.CharField(max_length=512)
+    state = models.CharField(max_length=32, db_index=True)
+    milestone = models.ForeignKey(
+        Milestone,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="units_of_work",
+    )
+    assignee = models.ForeignKey(
+        Contributor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_work",
+    )
+    labels = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField(db_index=True)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    record_created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-updated_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "kind", "external_id"],
+                name="ingestion_uow_proj_kind_ext_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "kind", "updated_at"]),
+            models.Index(fields=["project", "state"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.kind}:{self.iid}"
+
+
+class UoWStateChange(models.Model):
+    """Append-only state transition history for a UnitOfWork."""
+
+    unit_of_work = models.ForeignKey(
+        UnitOfWork,
+        on_delete=models.CASCADE,
+        related_name="state_changes",
+    )
+    from_state = models.CharField(max_length=32, blank=True, default="")
+    to_state = models.CharField(max_length=32)
+    recorded_at = models.DateTimeField(default=timezone.now, db_index=True)
+    source = models.CharField(max_length=32, default="gitlab")
+
+    class Meta:
+        ordering = ["recorded_at", "id"]
+        indexes = [
+            models.Index(fields=["unit_of_work", "recorded_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.unit_of_work_id}: {self.from_state!r} → {self.to_state!r}"
+
+
 class IngestionRun(models.Model):
     """One execution of sync for a project."""
 
@@ -273,6 +395,8 @@ class IngestionRun(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
     cursor_to = models.DateTimeField(null=True, blank=True)
     increments_ingested = models.IntegerField(default=0)
+    work_items_ingested = models.IntegerField(default=0)
+    milestones_ingested = models.IntegerField(default=0)
     contributors_touched = models.IntegerField(default=0)
     error_message = models.TextField(blank=True)
 

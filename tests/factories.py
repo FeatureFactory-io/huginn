@@ -6,7 +6,7 @@ from factory.django import DjangoModelFactory
 import factory
 from accounts.models import User
 from ingestion.domain.increments import ContributorDTO
-from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Project
+from ingestion.models import Contributor, DataSource, Increment, IngestionRun, Milestone, Project, UnitOfWork
 from roe.models import RulesOfEngagement, RulesOfEngagementVariable, RulesOfEngagementVersion
 from sitrep.models import Frago, SitRep, SituationalAwareness, SituationalAwarenessVersion, VariableDatapoint
 
@@ -115,6 +115,36 @@ class IncrementFactory(DjangoModelFactory):
     external_id = factory.Sequence(lambda n: f"{n:040x}")
     occurred_at = factory.LazyFunction(timezone.now)
     summary = factory.Faker("sentence", nb_words=4)
+    payload = factory.LazyFunction(dict)
+
+
+class MilestoneFactory(DjangoModelFactory):
+    class Meta:
+        model = Milestone
+
+    project = factory.SubFactory(ProjectFactory)
+    datasource = factory.LazyAttribute(lambda o: o.project.datasource)
+    external_id = factory.Sequence(lambda n: str(n + 100))
+    title = factory.Sequence(lambda n: f"Milestone {n}")
+    state = "active"
+    updated_at = factory.LazyFunction(timezone.now)
+    payload = factory.LazyFunction(dict)
+
+
+class UnitOfWorkFactory(DjangoModelFactory):
+    class Meta:
+        model = UnitOfWork
+
+    project = factory.SubFactory(ProjectFactory)
+    datasource = factory.LazyAttribute(lambda o: o.project.datasource)
+    kind = UnitOfWork.Kind.ISSUE
+    external_id = factory.Sequence(lambda n: str(n + 1000))
+    iid = factory.Sequence(lambda n: n + 1)
+    title = factory.Sequence(lambda n: f"Issue {n}")
+    state = "opened"
+    labels = factory.LazyFunction(list)
+    created_at = factory.LazyFunction(timezone.now)
+    updated_at = factory.LazyFunction(timezone.now)
     payload = factory.LazyFunction(dict)
 
 
