@@ -46,7 +46,7 @@ class GitlabIssueAdapter(WorkItemAdapter):
     def fetch_work_items(self, project: Project, *, since: datetime | None) -> Iterator[UnitOfWorkDTO]:
         client = gitlab_client_for(project)
         since_eff = since_aware(since)
-        issues = client.list_issues(int(project.gitlab_project_id), updated_after=since_eff)
+        issues = client.list_issues(int(project.external_project_id), updated_after=since_eff)
         for issue in issues:
             if not issue.get("id"):
                 continue

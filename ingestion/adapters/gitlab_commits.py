@@ -73,14 +73,14 @@ class GitlabCommitAdapter(DataSourceAdapter):
     """Fetches git commits across all branches visible to the token."""
 
     def fetch_increments(self, project: Project, *, since: datetime | None) -> Iterator[CommitIncrementDTO]:
-        if not project.gitlab_project_id or not project.datasource:
-            raise RuntimeError(f"Project {project.pk} has no gitlab_project_id configured — cannot ingest.")
+        if not project.external_project_id or not project.datasource:
+            raise RuntimeError(f"Project {project.pk} has no external_project_id configured — cannot ingest.")
         token = (project.datasource.encrypted_token_ciphertext or "").strip()
         if not token:
             raise RuntimeError(f"DataSource {project.datasource_id} has no access token configured — cannot ingest.")
 
         client = GitlabClient(project.datasource.base_url, token)
-        gid = int(project.gitlab_project_id)
+        gid = int(project.external_project_id)
         try:
             branches = client.list_branch_names(gid)
         except (ConnectionError, OSError, ValueError):

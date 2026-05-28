@@ -23,7 +23,7 @@ def _register_gitlab_adapters() -> None:
 def test_sync_engine_work_items_e2e(mock_urlopen) -> None:
     _register_gitlab_adapters()
     ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="tok")
-    project = ProjectFactory(datasource=ds, gitlab_project_id=99)
+    project = ProjectFactory(datasource=ds, external_project_id=99)
     now = timezone.now().isoformat()
 
     mock_urlopen.side_effect = gitlab_work_items_sync_urlopen_side_effect(

@@ -118,7 +118,7 @@ def test_create_05_test_connection_shows_error(commander_client) -> None:
             },
         )
     assert r.status_code == 200
-    assert "Unable to reach GitLab" in r.content.decode()
+    assert "fail" in r.content.decode()
 
 
 @pytest.mark.django_db
@@ -232,7 +232,7 @@ def test_create_12_cancel_on_step_two(commander_client) -> None:
 
 
 @pytest.mark.django_db
-def test_create_13_save_disabled_until_client_script(commander_client) -> None:
+def test_create_13_save_enabled_without_javascript(commander_client) -> None:
     commander_client.get(reverse("datasources-create"))
     r = commander_client.post(
         reverse("datasources-create"),
@@ -240,12 +240,12 @@ def test_create_13_save_disabled_until_client_script(commander_client) -> None:
     )
     body = r.content.decode()
     idx = body.index('data-testid="datasource-save"')
-    snippet = body[max(0, idx - 40) : idx + 80]
-    assert "disabled" in snippet
+    snippet = body[max(0, idx - 80) : idx + 80]
+    assert "disabled" not in snippet
 
 
 @pytest.mark.django_db
-def test_create_14_test_connection_disabled_initially(commander_client) -> None:
+def test_create_14_test_connection_enabled_without_javascript(commander_client) -> None:
     commander_client.get(reverse("datasources-create"))
     r = commander_client.post(
         reverse("datasources-create"),
@@ -253,8 +253,8 @@ def test_create_14_test_connection_disabled_initially(commander_client) -> None:
     )
     body = r.content.decode()
     idx = body.index('data-testid="datasource-test-connection"')
-    snippet = body[max(0, idx - 40) : idx + 80]
-    assert "disabled" in snippet
+    snippet = body[max(0, idx - 80) : idx + 80]
+    assert "disabled" not in snippet
 
 
 @pytest.mark.django_db

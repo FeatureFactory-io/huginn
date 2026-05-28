@@ -33,11 +33,18 @@
             <input class="form-control" id="ename" name="name" required data-testid="datasource-name-input"
                    value="{{ preserve_name|default:datasource.name }}">
           </div>
+          {% if datasource.datasource_type == 'github' %}
+          <div>
+            <label class="form-label">API endpoint</label>
+            <p class="form-control-plaintext mb-0" data-testid="datasource-github-endpoint">GitHub.com</p>
+          </div>
+          {% else %}
           <div>
             <label class="form-label" for="eurl">Base URL <span class="text-danger">*</span></label>
             <input class="form-control" id="eurl" name="base_url" type="url" required data-testid="datasource-base-url-input"
                    value="{{ preserve_base_url|default:datasource.base_url }}">
           </div>
+          {% endif %}
           <div>
             <label class="form-label" for="e-expiry">Token expires on</label>
             <input type="date" class="form-control w-auto" id="e-expiry" name="token_expires_at"
@@ -57,9 +64,9 @@
             </div>
             <div id="new-token-section" class="{% if not preserve_replace %}d-none{% endif %}">
               <label class="form-label" for="etoken-new">New token</label>
-              <input type="password" class="form-control font-monospace" id="etoken-new" name="new_token"
-                     autocomplete="new-password" data-testid="datasource-new-token-input"
-                     value="{{ preserve_new_token|default:'' }}" placeholder="glpat-…">
+              <input type="text" class="form-control font-monospace" id="etoken-new" name="new_token"
+                     spellcheck="false" autocomplete="off" data-testid="datasource-new-token-input"
+                     value="{{ preserve_new_token|default:'' }}" placeholder="glpat-… or ghp_…">
             </div>
           </div>
           <button type="submit" name="action" value="test-connection" class="btn btn-outline-secondary w-fit"

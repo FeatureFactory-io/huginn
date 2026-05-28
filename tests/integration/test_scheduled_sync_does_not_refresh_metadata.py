@@ -20,7 +20,7 @@ def test_scheduled_sync_does_not_refresh_metadata() -> None:
     ds = DataSourceFactory()
     p = ProjectFactory(
         datasource=ds,
-        gitlab_project_id=123,
+        external_project_id=123,
         description="stale-desc-should-not-change",
         name="frozen-name",
     )

@@ -23,14 +23,14 @@
   </div>
 {% endif %}
 
-{% if no_connected_gitlab %}
+{% if no_connected_import_sources %}
   <div class="alert alert-info" data-testid="projects-import-no-connected" role="alert">
-    No GitLab data sources are connected. Fix the connection or add a token, then return here.
+    No connected GitLab or GitHub data sources. Fix the connection or add a token, then return here.
     <a href="{% url 'datasources-list' %}" class="alert-link">Manage data sources</a>
   </div>
 {% elif not datasources %}
   <div class="alert alert-info" data-testid="projects-import-empty-datasources" role="alert">
-    Connect a GitLab data source first, then return here.
+    Connect a GitLab or GitHub data source first, then return here.
     <a href="{% url 'datasources-create' %}" class="alert-link">Add data source</a>
   </div>
 {% else %}
@@ -40,7 +40,7 @@
     </div>
   {% elif catalog.entries and not catalog.error %}
     <div class="alert alert-secondary py-2 small mb-3" data-testid="projects-import-catalog-login">
-      Signed in to GitLab as <strong>{{ catalog.login }}</strong>
+      Signed in as <strong>{{ catalog.login }}</strong>
     </div>
     {% if catalog.all_imported %}
     <div class="alert alert-info" data-testid="projects-import-all-imported" role="alert">

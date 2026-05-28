@@ -27,6 +27,7 @@ _RAIL_SA_TITLE_FALLBACK_BLOCK = frozenset(("content", "disposition", "standing c
 
 _DS_SOURCE_META = {
     DataSource.Type.GITLAB: {"key": "gitlab", "label": "GitLab", "si_slug": "gitlab"},
+    DataSource.Type.GITHUB: {"key": "github", "label": "GitHub", "si_slug": "github"},
     DataSource.Type.JIRA: {"key": "jira", "label": "Jira", "si_slug": "jira"},
 }
 

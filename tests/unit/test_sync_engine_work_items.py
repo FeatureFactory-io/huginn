@@ -89,7 +89,7 @@ def _engine(commit_dtos=None, work_dtos=None, milestone_dtos=None):
 @pytest.mark.django_db
 def test_sync_engine_persists_work_items_and_milestones() -> None:
     ds = DataSourceFactory()
-    project = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    project = ProjectFactory(datasource=ds, external_project_id=1)
     run = _engine().run_for_project(project.pk)
     assert run is not None
     assert run.work_items_ingested == 1
@@ -101,7 +101,7 @@ def test_sync_engine_persists_work_items_and_milestones() -> None:
 @pytest.mark.django_db
 def test_sync_engine_appends_state_change_on_reopen() -> None:
     ds = DataSourceFactory()
-    project = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    project = ProjectFactory(datasource=ds, external_project_id=1)
     engine_closed = _engine(work_dtos=_work_dtos("closed"))
     engine_closed.run_for_project(project.pk)
     assert UoWStateChange.objects.filter(unit_of_work__project=project).count() == 0
@@ -116,7 +116,7 @@ def test_sync_engine_appends_state_change_on_reopen() -> None:
 @pytest.mark.django_db
 def test_sync_engine_idempotent_work_resync_no_duplicate_state() -> None:
     ds = DataSourceFactory()
-    project = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    project = ProjectFactory(datasource=ds, external_project_id=1)
     engine = _engine()
     engine.run_for_project(project.pk)
     engine.run_for_project(project.pk)

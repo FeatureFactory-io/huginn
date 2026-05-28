@@ -15,7 +15,7 @@ from tests.factories import ProjectFactory
 def test_refresh_project_metadata_updates_description(mock_urlopen, db):
     p = ProjectFactory(
         datasource__encrypted_token_ciphertext="glpat-x",
-        gitlab_project_id=12,
+        external_project_id=12,
         description="old",
         name="stay",
         source_path="grp/old",
@@ -48,7 +48,7 @@ def test_refresh_project_metadata_updates_description(mock_urlopen, db):
 def test_refresh_project_metadata_handles_connection_error(_mock_gp, mock_log, db):
     p = ProjectFactory(
         datasource__encrypted_token_ciphertext="glpat-x",
-        gitlab_project_id=9,
+        external_project_id=9,
         description="unchanged",
     )
 
@@ -57,5 +57,6 @@ def test_refresh_project_metadata_handles_connection_error(_mock_gp, mock_log, d
     p.refresh_from_db()
     assert p.description == "unchanged"
     assert mock_log.warning.call_count >= 1
-    fmt, project_id, reason = mock_log.warning.call_args[0]
-    assert "project metadata refresh skipped" in fmt
+    args = mock_log.warning.call_args[0]
+    assert "project metadata refresh skipped" in args[0]
+    assert args[2] == p.pk

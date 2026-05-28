@@ -32,7 +32,7 @@ def test_snapshot_marks_already_imported_entries(mock_gc_class) -> None:
         datasource=ds,
         name="old",
         slug="old-5",
-        gitlab_project_id=5,
+        external_project_id=5,
         sync_state=Project.SyncState.ACTIVE,
     )
 
@@ -72,7 +72,7 @@ def test_snapshot_sets_all_imported_when_every_row_imported(mock_gc_class) -> No
         datasource=ds,
         name="x",
         slug="x-5",
-        gitlab_project_id=5,
+        external_project_id=5,
     )
 
     inst = MagicMock()

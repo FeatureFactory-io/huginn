@@ -1,5 +1,8 @@
 """Unit tests for Variables UI backend."""
 
+from datetime import datetime
+from datetime import time as dt_time
+
 import pytest
 from django.urls import reverse
 from django.utils import timezone
@@ -13,6 +16,13 @@ from tests.factories import (
     UserFactory,
     VariableDatapointFactory,
 )
+
+
+def _noon_today() -> datetime:
+    """Anchor SitRep timestamps at local noon — stable for period=today near UTC midnight."""
+    tz = timezone.get_current_timezone()
+    local = timezone.localtime(timezone.now(), tz)
+    return timezone.make_aware(datetime.combine(local.date(), dt_time(12, 0)), tz)
 
 
 @pytest.mark.django_db
@@ -64,7 +74,7 @@ def test_projects_detail_variables_tab_shows_datapoints_for_period(client):
 
     project = ProjectFactory(assigned_roe=roe)
 
-    base = timezone.now()
+    base = _noon_today()
     t1 = base - timezone.timedelta(hours=2)
     t2 = base - timezone.timedelta(hours=1)
 
@@ -234,7 +244,7 @@ def test_project_variables_echarts_api_null_plot_y_not_zero(client):
 
     project = ProjectFactory(assigned_roe=roe)
 
-    base = timezone.now()
+    base = _noon_today()
     t1 = base - timezone.timedelta(hours=6)
     t2 = base - timezone.timedelta(hours=2)
 

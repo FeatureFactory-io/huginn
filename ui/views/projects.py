@@ -105,12 +105,12 @@ def _import_success_message(imported_count: int) -> str:
     return f"{imported_count} projects imported. {tail}"
 
 
-def _connected_gitlab_datasources() -> list[DataSource]:
+def _connected_import_datasources() -> list[DataSource]:
     out: list[DataSource] = []
     for ds in DataSource.objects.all().order_by("name"):
         if ds.computed_status != DataSource.Status.CONNECTED:
             continue
-        if ds.datasource_type != DataSource.Type.GITLAB:
+        if ds.datasource_type not in (DataSource.Type.GITLAB, DataSource.Type.GITHUB):
             continue
         out.append(ds)
     return out
@@ -183,12 +183,12 @@ class ProjectsImportView(View):
     template_name = "ui/projects/import.html"
 
     def _import_page_context(self, request: HttpRequest, **extra: object) -> dict:
-        datasources = _connected_gitlab_datasources()
+        datasources = _connected_import_datasources()
         ctx: dict = {
             "active_nav": "projects",
             "datasources": datasources,
             "catalog": request.session.get("projects_import_catalog"),
-            "no_connected_gitlab": DataSource.objects.exists() and len(datasources) == 0,
+            "no_connected_import_sources": DataSource.objects.exists() and len(datasources) == 0,
         }
         ctx.update(extra)
         return ctx
@@ -200,7 +200,7 @@ class ProjectsImportView(View):
         action = (request.POST.get("action") or "").strip()
         datasource_raw = request.POST.get("datasource_id", "").strip()
         datasource_id = int(datasource_raw) if datasource_raw.isdigit() else 0
-        datasources = _connected_gitlab_datasources()
+        datasources = _connected_import_datasources()
 
         if action == "refresh-catalog":
             if datasource_id == 0 or not any(ds.pk == datasource_id for ds in datasources):

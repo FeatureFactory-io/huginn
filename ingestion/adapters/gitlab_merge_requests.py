@@ -42,7 +42,7 @@ class GitlabMergeRequestAdapter(WorkItemAdapter):
     def fetch_work_items(self, project: Project, *, since: datetime | None) -> Iterator[UnitOfWorkDTO]:
         client = gitlab_client_for(project)
         since_eff = since_aware(since)
-        items = client.list_merge_requests(int(project.gitlab_project_id), updated_after=since_eff)
+        items = client.list_merge_requests(int(project.external_project_id), updated_after=since_eff)
         for item in items:
             if not item.get("id"):
                 continue

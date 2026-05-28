@@ -6,6 +6,10 @@ class IngestionConfig(AppConfig):
     name = "ingestion"
 
     def ready(self) -> None:
+        import ingestion.adapters.github_commits  # noqa: F401
+        import ingestion.adapters.github_issues  # noqa: F401
+        import ingestion.adapters.github_milestones  # noqa: F401
+        import ingestion.adapters.github_pull_requests  # noqa: F401
         import ingestion.adapters.gitlab_commits  # noqa: F401
         import ingestion.adapters.gitlab_issues  # noqa: F401
         import ingestion.adapters.gitlab_merge_requests  # noqa: F401

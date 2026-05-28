@@ -36,7 +36,7 @@ def _stub_classes(dtos: list):
 @pytest.mark.django_db
 def test_sync_engine_success_inserts_increment() -> None:
     ds = DataSourceFactory()
-    p = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    p = ProjectFactory(datasource=ds, external_project_id=1)
     engine = SyncEngine(
         classes_for=lambda _t: _stub_classes(_dtos()),
         work_classes_for=lambda _t: [],
@@ -53,7 +53,7 @@ def test_sync_engine_success_inserts_increment() -> None:
 @pytest.mark.django_db
 def test_sync_engine_idempotent_second_run() -> None:
     ds = DataSourceFactory()
-    p = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    p = ProjectFactory(datasource=ds, external_project_id=1)
     dtos = _dtos()
     engine = SyncEngine(
         classes_for=lambda _t: _stub_classes(dtos),
@@ -79,7 +79,7 @@ def test_sync_engine_skips_archived() -> None:
 @pytest.mark.django_db
 def test_sync_engine_skips_when_run_in_progress() -> None:
     ds = DataSourceFactory()
-    p = ProjectFactory(datasource=ds, gitlab_project_id=1)
+    p = ProjectFactory(datasource=ds, external_project_id=1)
     IngestionRun.objects.create(project=p, datasource=ds, status=IngestionRun.Status.RUNNING)
     engine = SyncEngine(
         classes_for=lambda _t: _stub_classes(_dtos()),

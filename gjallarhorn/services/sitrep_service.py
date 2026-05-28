@@ -117,7 +117,7 @@ def build_narrative_plan_steps(project, from_dt, to_dt) -> list[dict]:
             "action": "Get issues for period",
             "tool": "list_issues",
             "reasoning_why_needed": "Backlog state drives flow and rework Variables.",
-            "expected_outcome": "List of ingested GitLab issues in the window.",
+            "expected_outcome": "List of ingested issues in the window.",
             "is_planning": False,
         },
         {

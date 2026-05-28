@@ -1,5 +1,6 @@
 """Operational DataSource routes (Acts 1)."""
 
+import logging
 from datetime import timedelta
 
 from django.contrib import messages
@@ -13,8 +14,11 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 
+from ingestion.integrations.github_client import normalize_github_token
 from ingestion.models import DataSource, Project
 from ui.services.datasources_service import DataSourcesService
+
+logger = logging.getLogger("ingestion.datasources")
 
 
 def _create_post_context(**kwargs) -> dict:
@@ -26,7 +30,7 @@ def _create_post_context(**kwargs) -> dict:
 
 def _datasources_filtered_get_queryset(*, type_filter: str, status_filter: str):
     qs = DataSource.objects.all().order_by("name")
-    if type_filter in (DataSource.Type.GITLAB, DataSource.Type.JIRA):
+    if type_filter in (DataSource.Type.GITLAB, DataSource.Type.GITHUB, DataSource.Type.JIRA):
         qs = qs.filter(datasource_type=type_filter)
     now = timezone.now()
     expires_soon_limit = now + timedelta(days=30)
@@ -43,6 +47,40 @@ def _datasources_filtered_get_queryset(*, type_filter: str, status_filter: str):
     return qs
 
 
+def _connection_test_message(meta: dict, *, noun: str) -> str:
+    username = meta.get("username") or meta.get("login") or meta.get("name") or "unknown"
+    count = meta.get("visible_project_count")
+    count_str = "?" if count is None else str(count)
+    return f"Connected as {username} — your token can see {count_str} {noun}"
+
+
+def _connection_error_message(exc: Exception, *, label: str) -> str:
+    msg = str(exc).strip()
+    if "HTTP 401" in msg and label == "GitHub":
+        return (
+            "GitHub rejected this token (401 Bad credentials). "
+            "Use a classic PAT (ghp_…) from Settings → Developer settings → "
+            "Personal access tokens → Tokens (classic) with the repo scope."
+        )
+    if "HTTP 401" in msg:
+        if ": " in msg:
+            detail = msg.rsplit(": ", 1)[-1].strip()
+            if detail and detail != msg:
+                return f"Invalid {label} token: {detail}"
+        return f"Invalid {label} token — check that it is active and has not expired."
+    if "HTTP 403" in msg:
+        detail = msg.rsplit(": ", 1)[-1].strip() if ": " in msg else ""
+        base = f"{label} denied access — token may lack required scopes."
+        return f"{base} {detail}".strip() if detail and detail != msg else base
+    if "invalid characters" in msg.lower():
+        return "Token contains invalid characters. Paste only the ghp_… string from GitHub."
+    if "blank" in msg.lower():
+        return "Personal Access Token is required."
+    if msg:
+        return msg
+    return f"Unable to reach {label}."
+
+
 @method_decorator(login_required, name="dispatch")
 class DataSourcesListView(View):
     template_name = "ui/datasources/list.html"
@@ -57,6 +95,7 @@ class DataSourcesListView(View):
         type_choices = [
             ("", "All"),
             (DataSource.Type.GITLAB, "GitLab"),
+            (DataSource.Type.GITHUB, "GitHub"),
             (DataSource.Type.JIRA, "Jira"),
         ]
         status_choices = [
@@ -89,24 +128,26 @@ class DataSourcesCreateView(View):
         return render(request, self.template_name, _create_post_context())
 
     def post(self, request: HttpRequest) -> HttpResponse:
-        if request.POST.get("type") == DataSource.Type.GITLAB:
+        selected = request.POST.get("type")
+        if selected in (DataSource.Type.GITLAB, DataSource.Type.GITHUB):
             return render(
                 request,
                 self.template_name,
-                _create_post_context(step=2, selected_type=DataSource.Type.GITLAB),
+                _create_post_context(step=2, selected_type=selected),
             )
 
         if request.POST.get("step") != "2":
             return redirect(reverse("datasources-create"))
 
         svc = DataSourcesService()
-        base_url = request.POST.get("base_url", "").strip()
+        selected_type = request.POST.get("selected_type", DataSource.Type.GITLAB)
         token = request.POST.get("token", "").strip()
         name = request.POST.get("name", "").strip()
         token_expires_raw = request.POST.get("token_expires_at", "").strip()
+        base_url = request.POST.get("base_url", "").strip()
         base_ctx = {
             "step": 2,
-            "selected_type": DataSource.Type.GITLAB,
+            "selected_type": selected_type,
             "preserve_name": name,
             "preserve_base_url": base_url,
             "preserve_token": token,
@@ -115,21 +156,35 @@ class DataSourcesCreateView(View):
 
         if request.POST.get("action") == "test-connection":
             try:
-                meta = svc.test_gitlab_connection(base_url=base_url, token=token)
-                username = meta.get("username") or meta.get("name") or "unknown"
-                count = meta.get("visible_project_count")
-                count_str = "?" if count is None else str(count)
-                msg = f"Connected as {username} — your token can see {count_str} projects"
+                if selected_type == DataSource.Type.GITHUB:
+                    meta = svc.test_github_connection(token=token)
+                    msg = _connection_test_message(meta, noun="repositories")
+                else:
+                    meta = svc.test_gitlab_connection(base_url=base_url, token=token)
+                    msg = _connection_test_message(meta, noun="projects")
                 return render(
                     request,
                     self.template_name,
                     _create_post_context(**base_ctx, form_success=msg),
                 )
-            except (ConnectionError, ValueError, OSError):
+            except (ConnectionError, ValueError, OSError) as exc:
+                label = "GitHub" if selected_type == DataSource.Type.GITHUB else "GitLab"
+                norm_len = (
+                    len(normalize_github_token(token)) if selected_type == DataSource.Type.GITHUB and token else 0
+                )
+                logger.warning(
+                    "datasource create %s failed type=%s raw_len=%d normalized_len=%d: %s",
+                    request.POST.get("action"),
+                    selected_type,
+                    len(token),
+                    norm_len,
+                    exc,
+                    exc_info=exc,
+                )
                 return render(
                     request,
                     self.template_name,
-                    _create_post_context(**base_ctx, form_error="Unable to reach GitLab."),
+                    _create_post_context(**base_ctx, form_error=_connection_error_message(exc, label=label)),
                 )
 
         if request.POST.get("action") == "save":
@@ -140,12 +195,19 @@ class DataSourcesCreateView(View):
                     _create_post_context(**base_ctx, form_error="Name is required."),
                 )
             try:
-                ds = svc.create_gitlab_source(
-                    name=name,
-                    base_url=base_url,
-                    token=token,
-                    token_expires_at=token_expires_raw or None,
-                )
+                if selected_type == DataSource.Type.GITHUB:
+                    ds = svc.create_github_source(
+                        name=name,
+                        token=token,
+                        token_expires_at=token_expires_raw or None,
+                    )
+                else:
+                    ds = svc.create_gitlab_source(
+                        name=name,
+                        base_url=base_url,
+                        token=token,
+                        token_expires_at=token_expires_raw or None,
+                    )
             except ValueError as exc:
                 return render(
                     request,
@@ -178,25 +240,54 @@ class DataSourcesDetailView(View):
 
 @method_decorator(login_required, name="dispatch")
 class DataSourcesTestConnectionView(View):
-    """HTMX endpoint — POST-only GitLab probe."""
+    """HTMX endpoint — POST-only connection probe."""
 
     http_method_names = ["post"]
     template_name = "ui/datasources/partials/test_connection_result.html"
 
     def post(self, request: HttpRequest, pk: int) -> HttpResponse:
         ds = get_object_or_404(DataSource.objects.all(), pk=pk)
+        svc = DataSourcesService()
+        if ds.datasource_type == DataSource.Type.GITHUB:
+            try:
+                meta = svc.test_github_connection(token=ds.encrypted_token_ciphertext)
+                username = (meta.get("login") or meta.get("username") or meta.get("name") or "unknown").strip()
+                count = meta.get("visible_project_count")
+                ds.connected_user = username[:255]
+                ds.visible_project_count = count
+                ds.status = DataSource.Status.CONNECTED
+                ds.last_error_message = ""
+                ds.save(
+                    update_fields=[
+                        "connected_user",
+                        "visible_project_count",
+                        "status",
+                        "last_error_message",
+                        "updated_at",
+                    ]
+                )
+                msg = _connection_test_message(meta, noun="repositories")
+                return render(request, self.template_name, {"ok": True, "message": msg})
+            except (ConnectionError, ValueError, OSError):
+                ds.status = DataSource.Status.CONNECTION_ERROR
+                ds.last_error_message = "Test connection failed."
+                ds.save(update_fields=["status", "last_error_message", "updated_at"])
+                return render(
+                    request,
+                    self.template_name,
+                    {"ok": False, "message": "Unable to reach GitHub or token is invalid."},
+                )
+
         if ds.datasource_type != DataSource.Type.GITLAB:
             return render(
                 request,
                 self.template_name,
-                {"ok": False, "message": "Test connection is only available for GitLab data sources."},
+                {"ok": False, "message": "Test connection is only available for GitLab and GitHub data sources."},
             )
-        svc = DataSourcesService()
         try:
             meta = svc.test_gitlab_connection(base_url=ds.base_url, token=ds.encrypted_token_ciphertext)
             username = (meta.get("username") or meta.get("name") or "").strip() or "unknown"
             count = meta.get("visible_project_count")
-            count_str = "?" if count is None else str(count)
             ds.connected_user = username[:255]
             ds.visible_project_count = count
             ds.status = DataSource.Status.CONNECTED
@@ -210,7 +301,7 @@ class DataSourcesTestConnectionView(View):
                     "updated_at",
                 ]
             )
-            msg = f"Connected as {username} — your token can see {count_str} projects"
+            msg = _connection_test_message(meta, noun="projects")
             return render(request, self.template_name, {"ok": True, "message": msg})
         except (ConnectionError, ValueError, OSError):
             ds.status = DataSource.Status.CONNECTION_ERROR
@@ -246,6 +337,7 @@ class DataSourcesEditView(View):
         replace = request.POST.get("replace_token") == "1"
         new_tok = request.POST.get("new_token", "").strip()
         expires = request.POST.get("token_expires_at", "").strip()
+        is_github = datasource.datasource_type == DataSource.Type.GITHUB
 
         def _ctx(**extra):
             base = {
@@ -261,20 +353,26 @@ class DataSourcesEditView(View):
             return base
 
         if request.POST.get("action") == "test-connection":
-            if not base_url:
+            if not is_github and not base_url:
                 return render(request, self.template_name, _ctx(form_error="Base URL is required."))
             if replace and not new_tok:
                 return render(request, self.template_name, _ctx(form_error="Enter a new token before testing."))
             token_for_test = new_tok if replace else datasource.encrypted_token_ciphertext
             try:
-                meta = svc.test_gitlab_connection(base_url=base_url, token=token_for_test)
-                username = meta.get("username") or meta.get("name") or "unknown"
-                count = meta.get("visible_project_count")
-                cstr = "?" if count is None else str(count)
-                msg = f"Connected as {username} — your token can see {cstr} projects"
+                if is_github:
+                    meta = svc.test_github_connection(token=token_for_test)
+                    msg = _connection_test_message(meta, noun="repositories")
+                else:
+                    meta = svc.test_gitlab_connection(base_url=base_url, token=token_for_test)
+                    msg = _connection_test_message(meta, noun="projects")
                 return render(request, self.template_name, _ctx(test_success=msg))
-            except (ConnectionError, ValueError, OSError):
-                return render(request, self.template_name, _ctx(form_error="Unable to reach GitLab."))
+            except (ConnectionError, ValueError, OSError) as exc:
+                label = "GitHub" if is_github else "GitLab"
+                return render(
+                    request,
+                    self.template_name,
+                    _ctx(form_error=_connection_error_message(exc, label=label)),
+                )
 
         if request.POST.get("action") == "save":
             if not name:
@@ -282,13 +380,21 @@ class DataSourcesEditView(View):
             if replace and not new_tok:
                 return render(request, self.template_name, _ctx(form_error="New token is required when replacing."))
             try:
-                svc.update_gitlab_source(
-                    datasource.id,
-                    name=name,
-                    base_url=base_url,
-                    token_expires_at=expires or None,
-                    new_token=new_tok if replace else None,
-                )
+                if is_github:
+                    svc.update_github_source(
+                        datasource.id,
+                        name=name,
+                        token_expires_at=expires or None,
+                        new_token=new_tok if replace else None,
+                    )
+                else:
+                    svc.update_gitlab_source(
+                        datasource.id,
+                        name=name,
+                        base_url=base_url,
+                        token_expires_at=expires or None,
+                        new_token=new_tok if replace else None,
+                    )
             except ValueError as exc:
                 return render(request, self.template_name, _ctx(form_error=str(exc)))
             except IntegrityError:
@@ -323,6 +429,6 @@ class DataSourcesDeleteView(View):
         datasource = get_object_or_404(DataSource.objects.all(), pk=pk)
         name = datasource.name
         svc = DataSourcesService()
-        svc.soft_delete_gitlab_source(datasource.id)
+        svc.soft_delete_source(datasource.id)
         messages.success(request, f"{name} has been disconnected.")
         return redirect(reverse("datasources-list"))

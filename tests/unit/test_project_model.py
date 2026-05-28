@@ -47,7 +47,7 @@ def test_project_gitlab_id_uniqueness_constraint_per_datasource() -> None:
         datasource=ds1,
         name="a",
         slug="proj-a",
-        gitlab_project_id=gid,
+        external_project_id=gid,
     )
     with transaction.atomic():
         with pytest.raises(IntegrityError):
@@ -55,16 +55,16 @@ def test_project_gitlab_id_uniqueness_constraint_per_datasource() -> None:
                 datasource=ds1,
                 name="b",
                 slug="proj-b",
-                gitlab_project_id=gid,
+                external_project_id=gid,
             )
 
     Project.objects.create(
         datasource=ds2,
         name="c",
         slug="proj-c",
-        gitlab_project_id=gid,
+        external_project_id=gid,
     )
-    assert Project.objects.filter(gitlab_project_id=gid).count() == 2
+    assert Project.objects.filter(external_project_id=gid).count() == 2
 
 
 @pytest.mark.django_db

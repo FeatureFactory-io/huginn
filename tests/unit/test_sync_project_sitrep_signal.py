@@ -17,7 +17,7 @@ def test_sync_project_does_not_enqueue_sitrep_when_sync_errors(
     mock_signal_send: MagicMock,
 ) -> None:
     ds = DataSourceFactory(encrypted_token_ciphertext="")
-    p = ProjectFactory(datasource=ds, gitlab_project_id=42)
+    p = ProjectFactory(datasource=ds, external_project_id=42)
 
     sync_project(p.pk)
 
@@ -35,7 +35,7 @@ def test_sync_project_enqueues_sitrep_only_on_successful_engine_run(
     ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="glpat-x")
     p = ProjectFactory(
         datasource=ds,
-        gitlab_project_id=42,
+        external_project_id=42,
         sync_state=Project.SyncState.SYNCING,
     )
     commit = {

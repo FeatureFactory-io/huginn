@@ -70,7 +70,7 @@ def test_projects_import_refresh_then_import(mock_urlopen, commander_client, db)
         },
     )
     assert imp.status_code == 302
-    proj = Project.objects.get(datasource=ds, gitlab_project_id=42)
+    proj = Project.objects.get(datasource=ds, external_project_id=42)
     assert proj.slug == "acme-demo"
     assert proj.sync_state == Project.SyncState.ACTIVE
     assert proj.source_path == "acme/demo"
@@ -176,7 +176,7 @@ def test_import_09_sync_job_sets_active_state(mock_urlopen, commander_client, db
             "remote_keys": ["99"],
         },
     )
-    proj = Project.objects.get(datasource=ds, gitlab_project_id=99)
+    proj = Project.objects.get(datasource=ds, external_project_id=99)
     assert proj.sync_state == Project.SyncState.ACTIVE
 
 
@@ -243,7 +243,7 @@ def test_projects_import_skips_already_imported_row(mock_urlopen, commander_clie
         name="Ex",
         slug="g-ex",
         source_path="g/ex",
-        gitlab_project_id=7,
+        external_project_id=7,
         sync_state=Project.SyncState.ACTIVE,
     )
 
@@ -258,7 +258,7 @@ def test_projects_import_skips_already_imported_row(mock_urlopen, commander_clie
     )
     r = commander_client.get(reverse("projects-import"))
     assert "Already imported" in r.content.decode()
-    assert Project.objects.filter(datasource=ds, gitlab_project_id=7).count() == 1
+    assert Project.objects.filter(datasource=ds, external_project_id=7).count() == 1
 
 
 @pytest.mark.django_db
@@ -282,7 +282,7 @@ def test_projects_import_disconnected_datasource_hidden(commander_client, db):
     r = commander_client.get(reverse("projects-import"))
     body = r.content.decode()
     assert "ds-broken" not in body
-    assert "projects-import-no-connected" in body or "No GitLab data sources" in body
+    assert "projects-import-no-connected" in body or "No connected GitLab or GitHub" in body
 
 
 @pytest.mark.django_db
@@ -312,7 +312,7 @@ def test_import_17_all_imported_shows_info_message(mock_urlopen, commander_clien
         name="Ex",
         slug="g-ex",
         source_path="g/ex",
-        gitlab_project_id=7,
+        external_project_id=7,
         sync_state=Project.SyncState.ACTIVE,
     )
 

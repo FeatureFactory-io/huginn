@@ -13,7 +13,7 @@ from tests.factories import DataSourceFactory, ProjectFactory
 @pytest.mark.django_db
 def test_gitlab_commit_adapter_yields_one_per_sha_dedupes_branches() -> None:
     ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="tok")
-    p = ProjectFactory(datasource=ds, gitlab_project_id=99)
+    p = ProjectFactory(datasource=ds, external_project_id=99)
     commit = {
         "id": "deadbeef",
         "title": "fix things",
@@ -51,7 +51,7 @@ def test_gitlab_commit_adapter_yields_one_per_sha_dedupes_branches() -> None:
 def test_gitlab_commit_adapter_uses_author_email_from_commit_root() -> None:
     """Matches GitLab GET …/repository/commits shape (author_* at root, sparse nested author)."""
     ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="tok")
-    p = ProjectFactory(datasource=ds, gitlab_project_id=42)
+    p = ProjectFactory(datasource=ds, external_project_id=42)
     commit = {
         "id": "cafebabe",
         "title": "docs only",

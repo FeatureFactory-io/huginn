@@ -14,6 +14,7 @@ class DataSource(models.Model):
 
     class Type(models.TextChoices):
         GITLAB = "gitlab", "GitLab"
+        GITHUB = "github", "GitHub"
         JIRA = "jira", "Jira"
 
     class Status(models.TextChoices):
@@ -150,7 +151,7 @@ class Project(models.Model):
         blank=True,
         related_name="pinned_projects",
     )
-    gitlab_project_id = models.BigIntegerField(null=True, blank=True, db_index=True)
+    external_project_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     source_url = models.URLField(max_length=1024, blank=True)
     description = models.TextField(blank=True, default="")
     sync_state = models.CharField(
@@ -188,9 +189,9 @@ class Project(models.Model):
         ordering = ["name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["datasource", "gitlab_project_id"],
-                condition=models.Q(gitlab_project_id__isnull=False),
-                name="ingestion_project_ds_gitlab_id_uniq",
+                fields=["datasource", "external_project_id"],
+                condition=models.Q(external_project_id__isnull=False),
+                name="ingestion_project_ds_external_id_uniq",
             ),
         ]
 

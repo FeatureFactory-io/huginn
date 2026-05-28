@@ -29,7 +29,7 @@ def test_projects_sync_now_refreshes_description(mock_urlopen, mock_delay, comma
         datasource=ds,
         name="p",
         slug="sync-meta-proj",
-        gitlab_project_id=77,
+        external_project_id=77,
         source_path="a/b",
         source_url="https://gitlab.example.com/a/b",
         description="before",
@@ -74,7 +74,7 @@ def test_projects_sync_now_metadata_failure_does_not_break_sync(mock_delay, comm
         datasource=ds,
         name="dead",
         slug="sync-meta-fail-proj",
-        gitlab_project_id=88,
+        external_project_id=88,
         description="sticky",
         sync_state=Project.SyncState.ACTIVE,
     )

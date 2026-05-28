@@ -278,5 +278,5 @@ class SyncEngine:
                     from_state=prior_state[:32],
                     to_state=(dto.state or "")[:32],
                     recorded_at=timezone.now(),
-                    source="gitlab",
+                    source=str(project.datasource.datasource_type) if project.datasource else "unknown",
                 )

@@ -44,8 +44,8 @@ def contributor_from_user(user: Any, *, source: str = "gitlab") -> ContributorDT
 
 
 def gitlab_client_for(project: Project) -> GitlabClient:
-    if not project.gitlab_project_id or not project.datasource:
-        raise RuntimeError(f"Project {project.pk} has no gitlab_project_id configured — cannot ingest.")
+    if not project.external_project_id or not project.datasource:
+        raise RuntimeError(f"Project {project.pk} has no external_project_id configured — cannot ingest.")
     token = (project.datasource.encrypted_token_ciphertext or "").strip()
     if not token:
         raise RuntimeError(f"DataSource {project.datasource_id} has no access token configured — cannot ingest.")

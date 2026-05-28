@@ -14,7 +14,7 @@ def test_sync_project_task_writes_increment_when_gitlab_returns_commit() -> None
     ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="glpat-x")
     p = ProjectFactory(
         datasource=ds,
-        gitlab_project_id=42,
+        external_project_id=42,
         sync_state=Project.SyncState.SYNCING,
     )
     commit = {
@@ -54,9 +54,9 @@ def test_sync_project_task_writes_increment_when_gitlab_returns_commit() -> None
 
 
 @pytest.mark.django_db
-def test_sync_project_task_errors_when_gitlab_project_id_missing() -> None:
+def test_sync_project_task_errors_when_external_project_id_missing() -> None:
     ds = DataSourceFactory(encrypted_token_ciphertext="glpat-x")
-    p = ProjectFactory(datasource=ds, gitlab_project_id=None)
+    p = ProjectFactory(datasource=ds, external_project_id=None)
 
     sync_project(p.pk)
 
@@ -64,13 +64,13 @@ def test_sync_project_task_errors_when_gitlab_project_id_missing() -> None:
     assert p.sync_state == Project.SyncState.ERROR
     run = IngestionRun.objects.get(project=p)
     assert run.status == IngestionRun.Status.ERROR
-    assert "gitlab_project_id" in run.error_message
+    assert "external_project_id" in run.error_message
 
 
 @pytest.mark.django_db
 def test_sync_project_task_errors_when_token_missing() -> None:
     ds = DataSourceFactory(encrypted_token_ciphertext="")
-    p = ProjectFactory(datasource=ds, gitlab_project_id=42)
+    p = ProjectFactory(datasource=ds, external_project_id=42)
 
     sync_project(p.pk)
 

@@ -374,7 +374,7 @@ Notes:
 
 ## Act 1: DataSource — CRUDLF
 
-**Context**: Before Huginn can do anything, Donland connects a data source. MVP supports GitLab; Jira will come later. He provides a base URL and a Personal Access Token. After saving, the DataSource is the prerequisite for Act 2 (Project Import).
+**Context**: Before Huginn can do anything, Donland connects a data source. MVP supports **GitLab and GitHub** (GitHub.com PAT only); Jira will come later. GitLab uses a base URL + Personal Access Token; GitHub uses a GitHub.com PAT (API base is fixed). After saving, the DataSource is the prerequisite for Act 2 (Project Import).
 
 #### Screen: DATASOURCES-LIST+FIND-1
 
@@ -383,7 +383,7 @@ Donland clicks **Data Sources** in the main nav.
 **Layout**:
 - **Header**: "Data Sources" with count badge (e.g., "Data Sources (1)")
 - **Top Actions**: [+ Add Data Source] button (primary)
-- **Filter**: Type (GitLab / Jira) | Status (Connected / Error / Token expiring)
+- **Filter**: Type (GitLab / GitHub / Jira) | Status (Connected / Error / Token expiring)
 - **Table** with columns:
   - Type | Name | Base URL | Token expires | Status | Last activity | Actions
 - **Status badges**:
@@ -398,7 +398,7 @@ Donland clicks **Data Sources** in the main nav.
   - [Import Projects] → `PROJECTS-IMPORT-1` (Act 2) — shortcut, only enabled when status = Connected
 - **Empty State**:
   - "No data sources connected"
-  - "Add a GitLab connection to start importing projects."
+  - "Add a GitLab or GitHub connection to start importing projects."
   - [+ Add Data Source]
 
 **Example Data**:

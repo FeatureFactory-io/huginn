@@ -143,6 +143,7 @@ LOGGING = {
         "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         "huginn": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "ingestion": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "ingestion.datasources": {"handlers": ["console"], "level": "WARNING", "propagate": False},
         "analytics": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "sitrep": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},

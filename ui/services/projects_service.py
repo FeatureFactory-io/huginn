@@ -51,10 +51,14 @@ class ProjectsService:
             "error": None,
         }
 
-        if ds.datasource_type != DataSource.Type.GITLAB:
-            snap["error"] = "Project import is only available for GitLab data sources."
-            return snap
+        if ds.datasource_type == DataSource.Type.GITLAB:
+            return self._load_gitlab_snapshot(ds, snap)
+        if ds.datasource_type == DataSource.Type.GITHUB:
+            return self._load_github_snapshot(ds, snap)
+        snap["error"] = "Project import is only available for GitLab or GitHub data sources."
+        return snap
 
+    def _load_gitlab_snapshot(self, ds: DataSource, snap: dict) -> dict:
         token = ds.encrypted_token_ciphertext or ""
         client = GitlabClient(ds.base_url, token)
         try:
@@ -66,8 +70,8 @@ class ProjectsService:
             return snap
 
         existing_ids = set(
-            Project.objects.filter(datasource=ds, gitlab_project_id__isnull=False).values_list(
-                "gitlab_project_id",
+            Project.objects.filter(datasource=ds, external_project_id__isnull=False).values_list(
+                "external_project_id",
                 flat=True,
             )
         )
@@ -103,6 +107,57 @@ class ProjectsService:
             snap["all_imported"] = True
         return snap
 
+    def _load_github_snapshot(self, ds: DataSource, snap: dict) -> dict:
+        from ingestion.integrations.github_client import GithubClient
+
+        token = ds.encrypted_token_ciphertext or ""
+        client = GithubClient(token)
+        try:
+            meta = client.verify_token()
+            snap["login"] = meta.get("login") or meta.get("username") or snap["login"]
+            raw_rows = client.list_visible_repos()
+        except (ConnectionError, OSError, ValueError) as exc:
+            snap["error"] = str(exc) or "Unable to load repositories from GitHub."
+            return snap
+
+        existing_ids = set(
+            Project.objects.filter(datasource=ds, external_project_id__isnull=False).values_list(
+                "external_project_id",
+                flat=True,
+            )
+        )
+
+        parsed = 0
+        for row in raw_rows:
+            rid = row["id"]
+            path = row["full_name"]
+            key = str(rid)
+            short_name = row["name"]
+            label = f"{path} / {short_name}"
+            snap["entries"].append(
+                {
+                    "key": key,
+                    "name": label,
+                    "short_name": short_name,
+                    "path": path,
+                    "description": row.get("description") or "",
+                    "web_url": row.get("html_url") or "",
+                    "last_activity_at": row.get("updated_at"),
+                    "already_imported": rid in existing_ids,
+                }
+            )
+            parsed += 1
+
+        if not raw_rows:
+            return snap
+        if parsed == 0:
+            snap["error"] = "GitHub returned data but no valid repository rows were found."
+            snap["entries"] = []
+            return snap
+        if snap["entries"] and all(e.get("already_imported") for e in snap["entries"]):
+            snap["all_imported"] = True
+        return snap
+
     def persist_imported_project_selection(
         self,
         *,
@@ -127,7 +182,7 @@ class ProjectsService:
             except ValueError:
                 continue
 
-            if Project.objects.filter(datasource=datasource, gitlab_project_id=gid).exists():
+            if Project.objects.filter(datasource=datasource, external_project_id=gid).exists():
                 continue
 
             path = str(entry.get("path") or "")
@@ -151,7 +206,7 @@ class ProjectsService:
                     source_path=path,
                     source_url=web_url,
                     description=description,
-                    gitlab_project_id=gid,
+                    external_project_id=gid,
                     sync_state=Project.SyncState.INITIAL_SYNC_QUEUED,
                     imported_by_id=imported_by_id,
                 )

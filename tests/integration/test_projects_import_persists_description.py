@@ -54,5 +54,5 @@ def test_projects_import_persists_description(mock_urlopen, commander_client, db
             "remote_keys": ["99"],
         },
     )
-    proj = Project.objects.get(datasource=ds, gitlab_project_id=99)
+    proj = Project.objects.get(datasource=ds, external_project_id=99)
     assert proj.description == "hello from gitlab"
