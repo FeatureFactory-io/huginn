@@ -53,10 +53,35 @@ The side cycling faster wins. The composite  multiplies your tempo giving you an
 | **O1 — Observe** | AI primary | Sensor fusion, pattern detection, recall without fatigue. Human doing first-O alone is slower and noisier. |
 | **O2 — Orient** | Composite | Destruction and reconstruction of mental models. AI brings pattern libraries and consistency; human brings contextual judgment, stakes awareness, skin-in-the-game heuristics. |
 | **D — Decide** | Human | Requires someone who bears the consequences. Fog is thickest here. Human judgment least replaceable. |
-| **A-prep** | AI | Planning, dependency mapping, scenario modeling. |
-| **A-exec** | Human | Execution is yours - create Jira issues for me in the managerial backlog. But AI observes in real time, feeds directly into next O1, including failure to act. |
+| **A-prep** | AI | Proposes **Outcome options** per Decision — calibrations (doctrine) and dispatches (external work) enabled for the Project. |
+| **A-exec** | Composite | Commander approves → composite executes exactly one **Outcome** synchronously (Semi-Auto) or autonomously; **dispatches** are verified via **Action Stations** (station records). AI observes in real time, feeds directly into next O1, including failure to act. |
 
+---
 
+## Vocabulary — Decision, Outcome, Dispatch
+
+Canonical terms for the Act phase (see also [`docs/architecture/SAO.md`](../architecture/SAO.md) §18 and [`docs/features/user_journey.md`](../features/user_journey.md) Act 9):
+
+| Term | Definition |
+|------|------------|
+| **Decision** | Judgment moment — Approve/Reject + Reasoning. |
+| **Outcome option** | Gjallarhorn-proposed choice attached to a Decision at SitRep time (includes “Type your own”). |
+| **Outcome** | Exactly one executed effect of an approved Decision (XOR). |
+| **Calibration** | Doctrine outcome (`kind=calibration`): FRAGO, SA entry. |
+| **Dispatch** | External outcome (`kind=dispatch`): Jira issue, future robot job. |
+| **Station record** | Read-only mirror row in Action Stations — not an Outcome. |
+| **Decisions Logic FRAGO** | Project-scoped explicit judgment memory (*what we decided and why*). |
+| **Commander profile** | User-scoped behavioral priors (*how this person tends to decide*) — distinct from Decisions Logic FRAGO. |
+
+**Example** — Complexity (CQ) fell to red: Gjallarhorn proposes a Decision with Outcome options:
+
+- **Monitor** — calibration: create FRAGO *“not a problem till this Fri (mid-sprint dip expected)”*
+- **Create issue** — dispatch: Jira task *“Refine module.py to at least B+ (Radon)”*, assign @Yauhen
+- **Type your own** — Commander free text routed to the nearest executor
+
+On **Approve**, the composite executes one **Outcome** via **OutcomeExecutor** (`CalibrationExecutor` for doctrine, **DispatchBoard** for external systems).
+
+> **Naming rule:** do not use **Action** as a domain noun; do not use **Branch A/B/C** for Decision flows.
 
 ---
 
@@ -71,16 +96,16 @@ The side cycling faster wins. The composite  multiplies your tempo giving you an
 - **09:00 — Projects Dashboard.** Donland lands on the Projects Dashboard. Each Project is a status card colored red / orange / yellow / green, derived from the latest SitRep's overall assessment vs. its assigned Playbook. He scans for trouble in seconds — anything red or orange gets opened first.
 - **Reading a SitRep.** For each problem Project he opens the latest SitRep: situation assessment narrative, Variables snapshot, proposed Decisions. When the assessment surprises him in a legitimate way — *"Active Bug Count = 0 — but Friday afternoons routinely run 1–2"* — he creates a **FRAGO** to override the Playbook expectation in flight: *"belay that on Fridays, ≤3 OK"*. FRAGOs are short markdown bodies with optional time/scope filters; Gjallarhorn reads them alongside the Playbook on the next SitRep.
 - **Querying Gjallarhorn.** When the SitRep doesn't answer the question he has, he opens the chat (sidebar or full-screen). **Chat threads are keyed per `(authenticated user, Project)`** — changing Project swaps conversation history while pinned context/metadata follow that scope (see SAO §17.11).
-- **Making Decisions.** Each **approved** Decision branches into exactly one of three mutually-exclusive outcomes: a new FRAGO, an extension of Situational Awareness, or a `HUGINN`-tagged Jira issue (**Branch C**) created via Jira REST, authenticated with the workspace **`DataSource` (type Jira)** credentials. **Semi-Automated MVP:** Commander **Approve** persists that outcome **synchronously inside the Decision review POST** (`ToolExecutor` / services); Branch **C** failures keep the Decision **`Proposed`** until a retry succeeds. **Reject** may still attach optional vigilance (FRAGO / SA) — see [`docs/features/user_journey.md`](../features/user_journey.md) Act 9. **Judgment memory** for *how reasoning evolved per Project* lives primarily in one **Decisions Logic** FRAGO body (canonical **markdown-bullet** contributions — [`docs/architecture/SAO.md`](../architecture/SAO.md) §17.8).
-- **Verifying.** He glances at Action Stations — a read-only sync of `HUGINN`-tagged Jira issues — to confirm what landed. Resolution happens in Jira itself; Huginn does not edit Jira beyond creating these issues.
+- **Making Decisions.** Each SitRep proposes **Decisions** with **Outcome options** (calibrations or dispatches). On **Approve**, Donland selects one option (or types his own) and provides Reasoning; Huginn executes exactly one **Outcome** via **OutcomeExecutor**. **Semi-Automated MVP:** execution runs **synchronously inside the Decision review POST** (`ToolExecutor` / services); **dispatch failures** (e.g. Jira timeout) keep the Decision **`Proposed`** until a retry succeeds. **Reject** may still attach optional vigilance calibrations (FRAGO / SA) — see [`docs/features/user_journey.md`](../features/user_journey.md) Act 9. **Judgment memory** for *how reasoning evolved per Project* lives in the **Decisions Logic** FRAGO (canonical **markdown-bullet** contributions — [`docs/architecture/SAO.md`](../architecture/SAO.md) §17.8). **Commander profile** captures behavioral priors separately (see Vocabulary above).
+- **Verifying.** He glances at **Action Stations** — station records mirroring successful **dispatches** (today: `HUGINN`-tagged Jira issues) — to confirm what landed upstream. Resolution happens in Jira itself; Huginn does not edit Jira beyond dispatch creation.
 
 **Implications for the product** (to carry into ESM):
 - Primary landing surface is the **Projects Dashboard** (color-coded health), not a generic dashboard or a single-Project SitRep.
 - **Playbook** is the user-authored guidance for what good looks like. Composed of metadata + a Workflow markdown body + a structured list of PlaybookVariables. Versioned. Shared: one Playbook can be assigned to many Projects. Each Project pins a (Playbook, version), auto-tracking the latest version by default.
 - **FRAGO** is a per-Project markdown override of Playbook expectations with optional scope (day-of-week, date range, Sprint/Milestone) and an optional `PlaybookVariable` tag. Includes the curator-managed **Decisions Logic** specialization for judgment memory (**markdown-bullet** lines + **`django-simple-history`** tracking). May retune a variable's `interpreting` for a window; cannot introduce new variables. Not a watcher with triggers — it modifies how SitReps are produced.
-- **Decision** has a three-branch approve flow (**FRAGO / SA / Branch C `HUGINN` Jira**), XOR per Decision — **persisted synchronously inside the Semi-Automated Decision review POST** (Branch C retries keep **`Proposed`** on failure).
-- **Action Stations** is a read-only mirror of `HUGINN`-tagged Jira issues. The only Huginn → Jira write is the issue creation from Decision Branch C. No annotation, no comment write-back.
-- **Jira / GitLab / etc.** are systems of record for raw work data. Huginn ingests via **DataSources**; the **only** write-back to upstream Jira issues is **`HUGINN`-tagged issues from approved Decision Branch C**, using **`DataSource(type=Jira)`** PAT/API credentials (writes may precede richer Jira ingestion coverage).
+- **Decision** uses an **Outcome chooser** (proposed options + custom) — exactly one **Outcome** per approved Decision (XOR) — **persisted synchronously inside the Semi-Automated Decision review POST** (**dispatch** failures keep **`Proposed`** on failure).
+- **Action Stations** shows **station records** — read-only mirrors of successful **dispatches**. The only Huginn → Jira write is issue creation from an approved **dispatch** Outcome. No annotation, no comment write-back.
+- **Jira / GitLab / etc.** are systems of record for raw work data. Huginn ingests via **DataSources**; the **only** write-back to upstream Jira issues is **`HUGINN`-tagged issues from approved dispatch Outcomes**, using **`DataSource(type=Jira)`** PAT/API credentials (writes may precede richer Jira ingestion coverage).
 
 ---
 
@@ -103,7 +128,7 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
-| **UnitOfWork** | Upstream tool (Jira etc.), mirrored | The atom of trackable work. UoWs created via Decision Branch C are tagged `HUGINN` in Jira; Action Stations is the read-only mirror of these. Otherwise UoWs are normal engineering work flowing to Milestones. |
+| **UnitOfWork** | Upstream tool (Jira etc.), mirrored | The atom of trackable work. UoWs created via **dispatch** Outcomes (Jira executor) are tagged `HUGINN` in Jira; Action Stations holds the **station records** mirroring these. Otherwise UoWs are normal engineering work flowing to Milestones. |
 | **Milestone** | Upstream tool, mirrored | The planning target — a forward-looking, scope-mutable container with a due date. UoWs commit to it; Sprints target it; burndown is computed against it. (GitLab/GitHub Milestone, Jira Version, Linear Project.) |
 | **Sprint** | Upstream tool, mirrored | Time-boxed cohort of UoWs targeting a Milestone. Sprint burndown is the short-cycle view; Milestone burndown is the long-cycle view. |
 | **Release** *(post-MVP)* | Upstream tool, mirrored | The shipped artifact — immutable, tag-anchored, references the Milestone(s) it realizes. Surfaces artifact-shaped signals (deployed scope, regression baseline). Not in MVP scope; placeholder so the rename is intentional rather than ambiguous. |
@@ -112,10 +137,14 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 
 | Entity | Source of truth | Notes |
 |--------|----------------|-------|
-| **SitRep** | Huginn | Generated per Project after a successful sync (subject to SitRep cadence, which may be coarser than sync cadence). **Generation contract**: Gjallarhorn expands the Workflow into an **`ExecutionPlan`** with **`PlanStep`** rows (one Claude tool loop per step by default — variable gather/assessment, datapoint persistence, compose narrative/proposed Decisions). Final outputs are a situation assessment narrative + proposed/auto-approved Decisions + `variables: [{name, abbrev, value, color, hover}, …]`. Values land in **`SitRep.variables_snapshot`** (canonical) **and** **denormalized `VariableDatapoint` rows**, each referencing the producing **`PlanStep`** when applicable. Read-only once finalized. |
-| **Decision** | Huginn | DA-loop primitive. **Semi-Automated**: `Proposed` by SitRep Plans; Commander **Approve** (**Reasoning required**) or **Reject** (reject note optional, vigilance FRAGO/SA allowed). Approving executes **exactly one** mutually-exclusive Branch **A/B/C** inline in HTTP (unless Autonomous pipelines delegate to Celery helpers). **`HUGINN` Jira issues are approve-only** (no Jira outcome on bare reject paths for MVP). **Autonomous**: `Auto-approved` with machine reasoning and immediate outcome execution inside the ingestion/SitRep task chain (`execute_decision_outcome` helpers). Canonical audit memory also flows into the Decisions Logic FRAGO (markdown bullets per SAO). |
+| **SitRep** | Huginn | Generated per Project after a successful sync (subject to SitRep cadence, which may be coarser than sync cadence). **Generation contract**: Gjallarhorn expands the Workflow into an **`ExecutionPlan`** with **`PlanStep`** rows (one Claude tool loop per step by default — variable gather/assessment, datapoint persistence, compose narrative/proposed Decisions). Final outputs are a situation assessment narrative + proposed/auto-approved **Decisions (each with Outcome options)** + `variables: [{name, abbrev, value, color, hover}, …]`. Values land in **`SitRep.variables_snapshot`** (canonical) **and** **denormalized `VariableDatapoint` rows**, each referencing the producing **`PlanStep`** when applicable. Read-only once finalized. |
+| **Decision** | Huginn | DA-loop primitive — judgment moment. **Semi-Automated**: `Proposed` by SitRep Plans with attached **Outcome options**; Commander **Approve** (**Reasoning required**) or **Reject** (reject note optional, vigilance calibrations allowed). Approving executes **exactly one Outcome** via **OutcomeExecutor** inline in HTTP (unless Autonomous pipelines delegate to Celery helpers). **Dispatches are approve-only** (no dispatch on bare reject paths for MVP). **Autonomous**: `Auto-approved` with machine reasoning and immediate Outcome execution inside the ingestion/SitRep task chain (`execute_decision_outcome` helpers). Canonical audit memory flows into the Decisions Logic FRAGO (markdown bullets per SAO §17.8); behavioral signals may update **Commander profile**. |
+| **OutcomeOption** | Huginn | Proposed choice embedded on a Decision at SitRep time: label, `kind` (`calibration` \| `dispatch`), `executor` (e.g. `frago`, `sitawareness`, `jira_issue`), pre-filled payload, `is_recommended`. |
+| **Outcome** | Huginn | One row per executed approved Decision. Fields: `kind`, `executor`, `status`, `ref` (FRAGO id, SA entry id, Jira key). XOR enforced: one Outcome per approved Decision. |
+| **StationRecord** | Huginn (synced) | Read-only mirror of an external **dispatch** (today: `HUGINN`-tagged Jira issue). Populated by sync — not by the approve POST directly. Shown in Action Stations. |
+| **CommanderProfile** | Huginn | Per-User behavioral priors (e.g. tolerance for red Variables). Updated on Decision resolve; read during Orient/Decide. Distinct from Decisions Logic FRAGO. MVP: persist signals; full inference UI deferred. |
 | **FRAGO** | Huginn | Per-Project, in-flight override of Playbook expectations. Free-form markdown body with optional scope (day-of-week, date range, Sprint/Milestone) and an optional `PlaybookVariable` tag. **May retune the `interpreting` of an existing PlaybookVariable for its effective window; cannot introduce new variables.** Has an `enabled` flag the Commander toggles from the list/detail view — disabled FRAGOs are excluded by Gjallarhorn at SitRep generation regardless of their effective window, useful for short-term suspension. Includes the special **`Decisions Logic`** row (`kind=decisions_logic`) — Commander-curatable memory for completed Decision reviews (**markdown bullets** appended by default when memory is warranted — see SAO §17.8). **Toggle/edit timelines** reuse **`django-simple-history`** snapshots rather than bespoke log tables for MVP. Soft-delete (revoke) preserves history; revoked FRAGOs cannot be re-enabled. Not a watcher — modifies how SitReps are produced. |
-| **SituationalAwareness** | Huginn | **Workspace-global** durable narrative memory (one versioned capsule per tenant/workspace, not keyed by Project). Extended via Decision Branch B; read by Gjallarhorn **for every** SitRep alongside that Project's Playbook and FRAGOs. |
+| **SituationalAwareness** | Huginn | **Workspace-global** durable narrative memory (one versioned capsule per tenant/workspace, not keyed by Project). Extended via **calibration** Outcome (SA executor); read by Gjallarhorn **for every** SitRep alongside that Project's Playbook and FRAGOs. |
 | **Playbook** | Huginn | What good looks like for a project. Composed of (a) **metadata** — name, description; (b) a **Workflow** — free-form markdown describing the OO/DA narrative for this Project, who is who, what to look for; (c) an ordered list of **PlaybookVariables** (structured). Workflow can be typed inline, uploaded as MD, or pulled from Mimir Server (post-MVP). Shared: one Playbook can be assigned to many Projects. Distinct from the OO/DA *procedures* run internally by Gjallarhorn. |
 | **PlaybookVersion** | Huginn | Immutable snapshot of a Playbook. Created on every Playbook edit. Has version number, change summary, author, `workflow_markdown`, and a snapshot of the PlaybookVariables defined at that version. A Project pins a (Playbook, version) — auto-tracks latest by default; can be pinned explicitly to keep an older version. |
 | **PlaybookVariable** | Huginn | Per-PlaybookVersion definition of one measurement. Fields: `name` (e.g. "Cycle Time"), `abbreviation` ("CT"), `calculating` (free text — may be a JQL query, a count/ratio expression, or a natural-language prompt; the Agent decides how to apply), `interpreting` (rules mapping value → color, e.g. "<5d & not climbing → green; climbing → orange; >5d → red"), `hover` (tooltip text shown on the project card and in the SitRep snapshot). FRAGOs may retune `interpreting` for a window. |
@@ -147,7 +176,7 @@ For synchronized surfaces (Action Stations), the upstream tool remains system of
 | **User** | Huginn | Huginn account. Roles: `Commander`, `Analyst` (TBD if distinct). |
 | **Contributor** | Huginn (reconciled) | Developer identity unified across git author / Jira assignee / Slack handle. Derived profile: Pathfinder / Mastermind / Firefighter / Observer. |
 | **Project** | Huginn (imported) | An imported project from a single DataSource (one upstream project = one Project; e.g., one GitLab project). Pins a `(Playbook, version)` evaluated against ingest signals. **`sync_schedule` MVP values:** **`hourly` · `every_6h` · `daily`** (Celery beat fan-out every 15 min checks staleness vs that cadence — see SAO §1). **SitRep cadence may be coarser than sync** to throttle LLM spend (Open Questions remain for ultra–high-frequency future ingest cadences). **Cannot be blank-created** — only via Import. Tracks **`gjallarhorn_mode`** (`semi_auto | auto`). |
-| **DataSource** | Huginn config | Connection primitives for GitLab/Jira/etc. (**base URL**, **PAT/API token**, **`expires_at`**, status). Imports Projects from GitLab today; **`DataSource(type=Jira)`** also anchors **Decision Branch C** outbound REST writes + Action Stations pulls even before full Jira ingestion breadth ships. |
+| **DataSource** | Huginn config | Connection primitives for GitLab/Jira/etc. (**base URL**, **PAT/API token**, **`expires_at`**, status). Imports Projects from GitLab today; **`DataSource(type=Jira)`** also anchors **dispatch** Outcomes via `JiraDispatchBoard` + Action Stations sync even before full Jira ingestion breadth ships. |
 | **Conversation / ExecutionPlan / PlanStep** | Huginn (`gjallarhorn/` app) | `Conversation`: **exactly one per `(User, Project)`** for sidebar/full-screen Chat SSE threads. **`ExecutionPlan`** + **`PlanStep`**: Gjallarhorn's scaffold for multi-step work (SitRep generation, chunky Decision fallout). Each `PlanStep` captures pre/post reasoning, tool payloads, statuses; **`VariableDatapoint`** rows link back when the step authored that assessment. Older docs referred to **`AgentInvocation`** — treat **`PlanStep` (+ optional LLM/router metadata)** as the audit primitive going forward unless/until we reintroduce a separate invocation ledger. |
 
 ---
@@ -211,14 +240,18 @@ erDiagram
     PlaybookVersion ||--o{ PlaybookVariable : defines
     FRAGO }o--o| PlaybookVariable : "may override interpreting"
     User ||--o{ Decision : makes
+    User ||--o| CommanderProfile : has
     User ||--o{ FRAGO : issues
     SitRep ||--o{ Decision : proposes
-    Decision }o--o| FRAGO : "may create"
-    Decision }o--o| SituationalAwareness : "may extend"
-    Decision }o--o| UnitOfWork : "may create HUGINN issue"
+    Decision ||--o{ OutcomeOption : proposes
+    Decision ||--o| Outcome : executes
+    Outcome }o--o| FRAGO : "calibration ref"
+    Outcome }o--o| SituationalAwareness : "calibration ref"
+    Outcome ||--o| StationRecord : "dispatch mirror"
+    Project }o--o{ DispatchBoard : enables
 ```
 
-**Decision outcome semantics**: an **Approved** Decision surfaces **exactly one** of FRAGO / SituationalAwareness extension / `HUGINN`-tagged UoW (`UnitOfWork`). **Semi-Automated:** those writes complete **before the HTTP response returns**; **Branch C Jira errors** keep the Decision **`Proposed`** (no orphan `Approved`). The mermaid optional cardinalities show branches individually; XOR is enforced in application services.
+**Decision outcome semantics**: an **Approved** Decision produces **exactly one Outcome** row (XOR). Calibrations reference FRAGO or SA; dispatches reference an external key and eventually a **station record** after sync. **Semi-Automated:** execution completes **before the HTTP response returns**; **dispatch failures** keep the Decision **`Proposed`** (no orphan `Approved`). XOR is enforced in application services (optional DB CHECK constraint later).
 
 #### SitRep execution trace (`ExecutionPlan` / `PlanStep`)
 
@@ -272,12 +305,13 @@ flowchart LR
 
 **Open questions** (to resolve before ESM Activity 04 formalizes this):
 1. **UoW ↔ Milestone**: can a UoW commit directly to a Milestone without going through a Sprint? (Assumed yes — matches Jira's `fixVersion` without an active sprint.)
-2. **Decision outcome XOR enforcement**: enforce mutual exclusion at DB level (CHECK constraint over three nullable FKs) or at application level only? Affects how loud failures are when invariants drift.
+2. **Decision outcome XOR enforcement**: single **`Outcome`** row per approved Decision — application-level CHECK in MVP; optional DB constraint later. Affects how loud failures are when invariants drift.
 3. **PlaybookVersion content immutability**: confirmed immutable in MVP. Future question: rebase / cherry-pick across versions?
 4. **Contributor reconciliation**: identity unification across git/Jira/Slack is a known-hard problem. MVP assumes manual mapping table.
 5. **Single-Project MVP?**: the model supports N Projects, but MVP UI may treat the Projects Dashboard as the single landing surface and not expose Project-switching elsewhere. Affects navigation and scope-picker placement.
 6. **SitRep cadence vs sync cadence**: **MVP `Project.sync_schedule`** is **`hourly | every_6h | daily`** (15-minute beat checks staleness). SitRep generation stays LLM-heavy — optional throttles independent of sync may be needed if future releases add faster ingest. See **Open product decisions** in `docs/features/user_journey.md`.
 7. **PlaybookVariable.calculating typing**: leave as free text and let the Agent route between deterministic evaluation (e.g. JQL, count expression) and LLM interpretation, or add an explicit `calc_kind: query | formula | prompt` hint? Current default: free text + Agent decides.
+8. **Commander profile MVP depth**: record behavioral signals on Decision resolve vs full inference UI. MVP recommendation: persist signals (`variable_abbrev`, `color`, `action_taken`, `delay_hours`); profile VIEW/EDIT screen deferred (see `user_journey.md` open product decisions).
 
 **Resolved** (no longer open):
 - ~~Playbook scope~~: shared across Projects, versioned, Project pins (Playbook, version) with auto-track-latest as default. Composed of metadata + Workflow markdown + ordered list of `PlaybookVariable` (structured).
@@ -321,7 +355,7 @@ COMPLEXITY: looking at the current project (lets assume 1 project is one repo; c
 CONTRIBUTION: in terms of profile "Y for new code and X axis for churn in existing" who are pathfinders (new code mostly), masterminds (both new and churn - all over the system), firefighters (mostly churn existing codebase), observers (their contribution is too small to classify them eiether way)
 [ To be extended later]
 
-SitRep: momentary snapshot of the current values + AI performing first pass of analysis: hypotheses on why there are undesired deviations + suggested Actions to test hypotheses + Decisions to make → execute.
+SitRep: momentary snapshot of the current values + AI performing first pass of analysis: hypotheses on why there are undesired deviations + **Outcome options** + Decisions to resolve → execute.
 
 ## OO Procedure (Gjallarhorn internal)
 
@@ -345,8 +379,8 @@ Output: a **SitRep** with situation assessment plus proposed/auto-finalized **De
 > *Note*: this is the system behavior of the Decision-Action loop, not the user-editable Playbook.
 
 1. Take a sitrep covering every PlaybookVariable in the active Playbook (think "Project Status Report").
-2. Read problematic areas and propose Decisions: *"I agree with your assessment; my decision is that we need a Daily Increment pushed by every developer. We shall have a list of those who is listed among authors but haven't pushed anything today."*
-3. Commander **approves** / **rejects** each Semi-Automated Decision. **Approve** drives **Branches A/B/C synchronously inside the Decision review POST** (FRAGO, SA capsule entry, **`HUGINN` Jira issue via `DataSource(Jira)`**). **Reject** optionally records notes / vigilance FRAGO / SA without approving the proposed action (**no Jira** on reject MVP). Contributing reviews append **markdown-bullet lines** into the curated **Decisions Logic** FRAGO when memory is warranted (`user_journey` Act 6/9).
+2. Read problematic areas and propose **Decisions with Outcome options** (calibrations and dispatches enabled for the Project).
+3. Commander **approves** / **rejects** each Semi-Automated Decision. **Approve** → **OutcomeExecutor** runs the selected calibration or dispatch **synchronously inside the Decision review POST**. **Reject** optionally records notes / vigilance calibrations (FRAGO / SA) without dispatch (**no Jira** on reject MVP). Contributing reviews append **markdown-bullet lines** into the curated **Decisions Logic** FRAGO when memory is warranted; optional **Commander profile** signals (`user_journey` Act 6/9).
 4. Collect content of the OODA cycle and perform write-back: update Situational Awareness / extend/add/drop FRAGOs / save SitRep. *(The Playbook entity itself is edited deliberately and separately — it is doctrine, not session output.)*
 
 Each materially distinct LLM-backed leg inside the OO/DA automation is represented by a **`PlanStep`** (situated under an `ExecutionPlan` bound to Chat / background jobs). Older drafts referenced **Agent invocation** loosely — implementation standardizes around **`PlanStep` audit rows + linked `VariableDatapoint`s** (`SAO §17`).
@@ -358,7 +392,7 @@ Each materially distinct LLM-backed leg inside the OO/DA automation is represent
 1. **Data**: PostgreSQL + Django ORM. State history as append-only tables (no graph DB). Redis for Celery broker + cache.
 2. **Application**: Docker Compose deployment — `web` (Django), `worker` (Celery), `beat` (Celery scheduler), `redis`, `db` (PostgreSQL).
     - Django apps: `ingestion/`, `analytics/`, `sitrep/`, **`gjallarhorn/`**, `accounts/`, **`ui/`** (historic drafts mentioned `agents/` — consolidated into **`gjallarhorn/`**: LLM wrappers, MCP tools, `Conversation`/`ExecutionPlan`, Celery processors).
-    - Extraction jobs (Celery Beat fan-out ~15 min) pull/sync GitLab increments today; **`Project.sync_schedule` ∈ {hourly, every_6h, daily}`** gates per-project ingest cadence independent of beat granularity. Jira read paths expand iteratively while **write path** reuse **`DataSource(type=Jira)`** PAT credentials for Branch C outbound issues (`jira` lib).
+    - Extraction jobs (Celery Beat fan-out ~15 min) pull/sync GitLab increments today; **`Project.sync_schedule` ∈ {hourly, every_6h, daily}`** gates per-project ingest cadence independent of beat granularity. Jira read paths expand iteratively while **write path** reuses **`DataSource(type=Jira)`** PAT credentials for **dispatch** Outcomes (`jira` lib).
     - Gjallarhorn AI assesses situation per OO → SitRep (FastMCP interface)
     - Django + HTMX + Apache ECharts for the PM dashboard and DA chat
     - Configuration externalized as env vars: **`DataSource`** secrets (GitLab/Jira PATs), Anthropic credentials, SSE/Redis knobs, model id/thinking budgets — doctrine (`Playbook` rows) intentionally omits prompts or provider strings.

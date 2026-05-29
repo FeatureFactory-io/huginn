@@ -12,73 +12,14 @@
 
 <section class="hg-page-header rounded-2 mb-3">
   <h1 class="hg-page-title" data-testid="page-title">Edit Data Source</h1>
-  <p class="text-muted small mb-0">Rotate tokens anytime — we re-verify on save.</p>
+  <p class="text-muted small mb-0">{{ datasource.get_datasource_type_display }} connection</p>
 </section>
 
 <div class="row justify-content-center">
   <div class="col-lg-8 col-xl-7">
     <div class="card border-0 shadow-sm rounded-3">
       <div class="card-body">
-        {% if form_error %}
-          <div class="alert alert-warning" data-testid="datasource-edit-error">{{ form_error }}</div>
-        {% endif %}
-        {% if test_success %}
-          <div class="alert alert-success" data-testid="datasource-edit-test-result">{{ test_success }}</div>
-        {% endif %}
-        <form id="ds-edit-form" method="post" class="vstack gap-3">
-          {% csrf_token %}
-          <input type="hidden" name="replace_token" value="{% if preserve_replace %}1{% else %}0{% endif %}">
-          <div>
-            <label class="form-label" for="ename">Name <span class="text-danger">*</span></label>
-            <input class="form-control" id="ename" name="name" required data-testid="datasource-name-input"
-                   value="{{ preserve_name|default:datasource.name }}">
-          </div>
-          {% if datasource.datasource_type == 'github' %}
-          <div>
-            <label class="form-label">API endpoint</label>
-            <p class="form-control-plaintext mb-0" data-testid="datasource-github-endpoint">GitHub.com</p>
-          </div>
-          {% else %}
-          <div>
-            <label class="form-label" for="eurl">Base URL <span class="text-danger">*</span></label>
-            <input class="form-control" id="eurl" name="base_url" type="url" required data-testid="datasource-base-url-input"
-                   value="{{ preserve_base_url|default:datasource.base_url }}">
-          </div>
-          {% endif %}
-          <div>
-            <label class="form-label" for="e-expiry">Token expires on</label>
-            <input type="date" class="form-control w-auto" id="e-expiry" name="token_expires_at"
-                   data-testid="datasource-token-expiry"
-                   value="{% if preserve_expires %}{{ preserve_expires }}{% elif datasource.token_expires_at %}{{ datasource.token_expires_at|date:'Y-m-d' }}{% endif %}">
-          </div>
-          <div class="rounded-3 p-3 border bg-light">
-            <label class="form-label">Token</label>
-            <div id="token-placeholder-section" class="{% if preserve_replace %}d-none{% endif %}">
-              <div class="input-group mb-2">
-                <span class="input-group-text font-monospace">•••• •••• ••••</span>
-                <button type="button" class="btn btn-outline-primary" id="replace-token-toggle"
-                        data-testid="datasource-replace-token-btn">
-                  Replace Token
-                </button>
-              </div>
-            </div>
-            <div id="new-token-section" class="{% if not preserve_replace %}d-none{% endif %}">
-              <label class="form-label" for="etoken-new">New token</label>
-              <input type="text" class="form-control font-monospace" id="etoken-new" name="new_token"
-                     spellcheck="false" autocomplete="off" data-testid="datasource-new-token-input"
-                     value="{{ preserve_new_token|default:'' }}" placeholder="glpat-… or ghp_…">
-            </div>
-          </div>
-          <button type="submit" name="action" value="test-connection" class="btn btn-outline-secondary w-fit"
-                  data-testid="datasource-test-connection" disabled>
-            <i class="fa-solid fa-vial-circle-check me-1"></i> Test Connection
-          </button>
-        </form>
-        <div class="d-flex gap-2 justify-content-end mt-4">
-          <a href="{% url 'datasource-detail' pk=datasource.pk %}" class="btn btn-outline-secondary" data-testid="datasource-cancel">Cancel</a>
-          <button type="submit" form="ds-edit-form" name="action" value="save" class="btn btn-primary" disabled
-                  data-testid="datasource-save">Save Changes</button>
-        </div>
+        {% include "ui/datasources/partials/connection_form.html" with form_mode="edit" ds_type=datasource.datasource_type form_id="ds-form" cancel_url=detail_url %}
       </div>
     </div>
   </div>

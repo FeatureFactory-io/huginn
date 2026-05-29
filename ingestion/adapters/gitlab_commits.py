@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from collections.abc import Iterator
 from datetime import datetime
@@ -15,6 +16,38 @@ from ingestion.adapters.base import DataSourceAdapter
 from ingestion.domain.increments import CommitIncrementDTO, ContributorDTO
 from ingestion.integrations.gitlab_client import GitlabClient
 from ingestion.models import DataSource, Project
+
+logger = logging.getLogger("ingestion.adapters.gitlab")
+
+
+def _branch_refs_for_commits(client: GitlabClient, gitlab_project_id: int, huginn_project_id: int) -> list[str]:
+    """Resolve branch refs for commit ingestion; fall back when branch listing is empty."""
+    branches = client.list_branch_names(gitlab_project_id)
+    if branches:
+        logger.info(
+            "GitLab commits gitlab_project_id=%s huginn_project_id=%s branch_count=%s",
+            gitlab_project_id,
+            huginn_project_id,
+            len(branches),
+        )
+        return branches
+
+    meta = client.get_project(gitlab_project_id)
+    fallback: list[str] = []
+    default_branch = str(meta.get("default_branch") or "").strip()
+    if default_branch:
+        fallback.append(default_branch)
+    for candidate in ("main", "master"):
+        if candidate not in fallback:
+            fallback.append(candidate)
+    logger.warning(
+        "GitLab commits gitlab_project_id=%s huginn_project_id=%s: list_branch_names empty; "
+        "using fallback refs=%s — verify token read_repository scope if commits stay empty",
+        gitlab_project_id,
+        huginn_project_id,
+        fallback,
+    )
+    return fallback
 
 
 def _committed_at(commit: dict[str, Any]) -> datetime:
@@ -82,11 +115,9 @@ class GitlabCommitAdapter(DataSourceAdapter):
         client = GitlabClient(project.datasource.base_url, token)
         gid = int(project.external_project_id)
         try:
-            branches = client.list_branch_names(gid)
+            branches = _branch_refs_for_commits(client, gid, project.pk)
         except (ConnectionError, OSError, ValueError):
             raise
-        if not branches:
-            return
 
         since_eff = since
         if since_eff is not None and timezone.is_naive(since_eff):

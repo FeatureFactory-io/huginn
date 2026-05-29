@@ -22,7 +22,10 @@ logger = logging.getLogger("ingestion.datasources")
 
 
 def _create_post_context(**kwargs) -> dict:
-    ctx = {"active_nav": "datasources"}
+    ctx = {
+        "active_nav": "datasources",
+        "datasources_list_url": reverse("datasources-list"),
+    }
     ctx.update(kwargs)
     ctx.setdefault("step", 1)
     return ctx
@@ -326,6 +329,7 @@ class DataSourcesEditView(View):
             {
                 "active_nav": "datasources",
                 "datasource": datasource,
+                "detail_url": reverse("datasource-detail", args=[datasource.pk]),
             },
         )
 
@@ -343,6 +347,7 @@ class DataSourcesEditView(View):
             base = {
                 "active_nav": "datasources",
                 "datasource": datasource,
+                "detail_url": reverse("datasource-detail", args=[datasource.pk]),
                 "preserve_name": name or datasource.name,
                 "preserve_base_url": base_url or datasource.base_url,
                 "preserve_expires": expires,
@@ -365,7 +370,7 @@ class DataSourcesEditView(View):
                 else:
                     meta = svc.test_gitlab_connection(base_url=base_url, token=token_for_test)
                     msg = _connection_test_message(meta, noun="projects")
-                return render(request, self.template_name, _ctx(test_success=msg))
+                return render(request, self.template_name, _ctx(form_success=msg))
             except (ConnectionError, ValueError, OSError) as exc:
                 label = "GitHub" if is_github else "GitLab"
                 return render(

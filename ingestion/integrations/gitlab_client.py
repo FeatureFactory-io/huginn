@@ -145,6 +145,7 @@ class GitlabClient:
             "description": norm_desc,
             "web_url": str(data.get("web_url") or ""),
             "path_with_namespace": str(data.get("path_with_namespace") or ""),
+            "default_branch": str(data.get("default_branch") or ""),
         }
 
     def list_branch_names(

@@ -1,0 +1,125 @@
+{% comment %}
+Shared connection form for create (step 2) and edit.
+Expects: form_mode ('create'|'edit'), ds_type ('gitlab'|'github'), form_id, cancel_url.
+Create: preserve_name, preserve_base_url, preserve_token, preserve_token_expires_at, selected_type.
+Edit: datasource, preserve_name, preserve_base_url, preserve_expires, preserve_replace, preserve_new_token.
+Optional: form_error, form_success.
+{% endcomment %}
+<form method="post" id="{{ form_id }}" class="vstack gap-3">
+  {% csrf_token %}
+  {% if form_mode == 'create' %}
+    <input type="hidden" name="step" value="2">
+    <input type="hidden" name="selected_type" value="{{ ds_type }}">
+  {% else %}
+    <input type="hidden" name="replace_token" value="{% if preserve_replace %}1{% else %}0{% endif %}">
+  {% endif %}
+
+  {% if form_error %}
+    <div class="alert alert-warning mb-0" data-testid="datasource-form-error">{{ form_error }}</div>
+  {% endif %}
+  {% if form_success %}
+    <div class="alert alert-success mb-0" data-testid="datasource-test-result">{{ form_success }}</div>
+  {% endif %}
+
+  <div class="d-flex align-items-center gap-2 mb-1" data-testid="datasource-provider-badge">
+    {% if ds_type == 'github' %}
+      <img src="https://cdn.simpleicons.org/github" width="24" height="24" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+      <span class="fw-semibold">GitHub</span>
+    {% else %}
+      <img src="https://cdn.simpleicons.org/gitlab/FC6D26" width="24" height="24" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+      <span class="fw-semibold">GitLab</span>
+    {% endif %}
+  </div>
+
+  <div class="mb-2">
+    <label class="form-label" for="{{ form_id }}-name">Name <span class="text-danger">*</span></label>
+    <input class="form-control" id="{{ form_id }}-name" name="name" required
+           placeholder="{% if ds_type == 'github' %}company-github{% else %}company-gitlab{% endif %}"
+           data-testid="datasource-name-input"
+           value="{% if preserve_name %}{{ preserve_name }}{% elif form_mode == 'edit' %}{{ datasource.name }}{% endif %}">
+    {% if form_mode == 'create' %}
+      <div class="form-text">Use letters and numbers; spaces become hyphens (e.g. FF GH → ff-gh).</div>
+    {% endif %}
+  </div>
+
+  {% if ds_type == 'github' %}
+    <div class="mb-2">
+      <label class="form-label">API endpoint</label>
+      <p class="form-control-plaintext mb-0" data-testid="datasource-github-endpoint">GitHub.com</p>
+      {% if form_mode == 'create' %}
+        <div class="form-text">MVP connects to api.github.com only.</div>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="mb-2">
+      <label class="form-label" for="{{ form_id }}-url">Base URL <span class="text-danger">*</span></label>
+      <input class="form-control" id="{{ form_id }}-url" name="base_url" required type="url"
+             placeholder="https://gitlab.example.com" data-testid="datasource-base-url-input"
+             value="{% if preserve_base_url %}{{ preserve_base_url }}{% elif form_mode == 'edit' %}{{ datasource.base_url }}{% endif %}">
+    </div>
+  {% endif %}
+
+  <div class="mb-2">
+    <label class="form-label" for="{{ form_id }}-expiry">Token expires on</label>
+    <input type="date" class="form-control w-auto" id="{{ form_id }}-expiry" name="token_expires_at"
+           data-testid="datasource-token-expiry"
+           value="{% if preserve_token_expires_at %}{{ preserve_token_expires_at }}{% elif preserve_expires %}{{ preserve_expires }}{% elif form_mode == 'edit' and datasource.token_expires_at %}{{ datasource.token_expires_at|date:'Y-m-d' }}{% endif %}">
+  </div>
+
+  {% if form_mode == 'edit' %}
+    <div class="mb-2">
+      <label class="form-label">Personal Access Token</label>
+      <div id="token-placeholder-section" class="{% if preserve_replace %}d-none{% endif %}">
+        <div class="input-group">
+          <span class="input-group-text font-monospace">•••• •••• ••••</span>
+          <button type="button" class="btn btn-outline-primary" id="replace-token-toggle"
+                  data-testid="datasource-replace-token-btn">
+            Replace Token
+          </button>
+        </div>
+        <div class="form-text">Stored token is never shown. Click Replace Token to enter a new one.</div>
+      </div>
+      <div id="new-token-section" class="{% if not preserve_replace %}d-none{% endif %}">
+        <label class="form-label" for="{{ form_id }}-token-new">New token <span class="text-danger">*</span></label>
+        <input type="text" class="form-control font-monospace" id="{{ form_id }}-token-new" name="new_token"
+               spellcheck="false" autocomplete="off" data-testid="datasource-new-token-input"
+               value="{{ preserve_new_token|default:'' }}"
+               placeholder="{% if ds_type == 'github' %}ghp_…{% else %}glpat-…{% endif %}">
+        {% if ds_type == 'github' %}
+          <div class="form-text">Classic PAT (ghp_…). Create at GitHub → Settings → Developer settings → Tokens (classic). Needs repo scope.</div>
+        {% else %}
+          <div class="form-text">GitLab personal access token (glpat-…). Needs read_api scope at minimum.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="mb-2">
+      <label class="form-label" for="{{ form_id }}-token">Personal Access Token <span class="text-danger">*</span></label>
+      <input type="text" class="form-control font-monospace" id="{{ form_id }}-token" name="token" required
+             spellcheck="false" autocomplete="off"
+             data-testid="datasource-token-input" value="{{ preserve_token|default:'' }}"
+             placeholder="{% if ds_type == 'github' %}ghp_…{% else %}glpat-…{% endif %}">
+      {% if ds_type == 'github' %}
+        <div class="form-text">Classic PAT (ghp_…, 40 characters). Create at GitHub → Settings → Developer settings → Tokens (classic). Needs repo scope.</div>
+      {% else %}
+        <div class="form-text">GitLab personal access token (glpat-…). Needs read_api scope at minimum.</div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-between flex-wrap gap-2 pt-2">
+    <a href="{{ cancel_url }}" class="btn btn-outline-secondary"
+       data-bs-toggle="tooltip" title="Discard"
+       data-testid="datasource-cancel">Cancel</a>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <button type="submit" name="action" value="test-connection"
+              class="btn btn-outline-primary" data-testid="datasource-test-connection">
+        <i class="fa-solid fa-vial-circle-check me-1"></i> Test Connection
+      </button>
+      <button type="submit" name="action" value="save"
+              class="btn btn-primary" data-testid="datasource-save">
+        <i class="fa-solid fa-floppy-disk me-1"></i> Save Data Source
+      </button>
+    </div>
+  </div>
+</form>

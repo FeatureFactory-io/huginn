@@ -12,10 +12,10 @@
   <div class="hg-landing-overlay" aria-hidden="true"></div>
   <div class="hg-landing-hero-inner">
     <h1 class="hg-landing-title mb-4" data-testid="landing-title">
-      AI co-pilot for engineering leadership.
+      Know the situation. Decide the course. Act with confidence.
     </h1>
     <p class="hg-landing-tagline mb-5" data-testid="landing-tagline">
-      Unprecedented operational tempo of data-driven decision making with Human-AI Command Composite
+      Huginn encodes what good looks like, ingests your engineering signals, and pairs you with Gjallarhorn — a Human-AI command composite that turns live data into SitReps and Outcomes.
     </p>
     <div class="d-flex gap-4 flex-wrap justify-content-center align-items-center">
       <a href="{% url 'auth-login' %}" class="btn btn-primary btn-lg px-5" data-testid="landing-cta-signin">
@@ -30,62 +30,62 @@
 <div class="hg-landing-features-wrap">
 <section class="card border-0 shadow-sm rounded-3 mb-4" id="landing-features" data-testid="landing-features">
   <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold d-flex align-items-center">
-    <i class="fa-solid fa-list-check me-2 text-primary" aria-hidden="true"></i>
-    <span>What's inside</span>
+    <i class="fa-solid fa-route me-2 text-primary" aria-hidden="true"></i>
+    <span>How it works</span>
   </div>
   <div class="card-body">
     <div class="row g-3">
       <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-tactical-plot">
-          <div class="hg-landing-feature-icon"><i class="fa-sharp fa-solid fa-wave-pulse" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Tactical Plot</h2>
-          <p class="mb-0 small text-muted">
-            One color-coded view of every active project, FRAGOs in effect, and the workspace situational picture.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-sitawareness">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-map-location-dot" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Situational Awareness</h2>
-          <p class="mb-0 small text-muted">
-            Workspace-global standing context and active situations — one capsule, versioned, that everyone sees.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-fragos">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-puzzle" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">FRAGOs</h2>
-          <p class="mb-0 small text-muted">
-            Tactical RoE overrides with effective windows, scoped to a project, revocable when the situation changes.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-roe">
+        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-roe-variables">
           <div class="hg-landing-feature-icon"><i class="fa-solid fa-ballot-check" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Rules of Engagement</h2>
+          <h2 class="h6 mb-1">Encode your situation assessment heuristics</h2>
           <p class="mb-0 small text-muted">
-            Markdown-first, versioned Rules of Engagement. Edit an RoE and projects on auto-track inherit the new expectations.
+            Author Rules of Engagement — a versioned Playbook with Workflow and Variables that define what good looks like for each project. Gjallarhorn evaluates every sync against those expectations.
           </p>
         </div>
       </div>
       <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-projects">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Projects &amp; Data Sources</h2>
+        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-priorities">
+          <div class="hg-landing-feature-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
+          <h2 class="h6 mb-1">See priorities immediately</h2>
           <p class="mb-0 small text-muted">
-            Import projects from GitLab and Jira, watch sync state in real time, and follow the increment timeline as commits land.
+            Color-coded Variables on the Tactical Plot surface red, orange, yellow, and green instantly. Track progression over time via VariableDatapoints — each point traces to the SitRep that produced it.
+          </p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4 d-flex">
+        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-datasources">
+          <div class="hg-landing-feature-icon"><i class="fa-solid fa-plug" aria-hidden="true"></i></div>
+          <h2 class="h6 mb-1">Feed deep, broad data streams</h2>
+          <p class="mb-0 small text-muted">
+            Connect GitLab, Jira, and more. Mimir playbooks extend ingestion with unprecedented breadth and depth — commits, issues, milestones, and the signals your Variables need to assess reality.
           </p>
         </div>
       </div>
       <div class="col-12 col-md-6 col-xl-4 d-flex">
         <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-sitrep">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-microchip" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Daily SitRep</h2>
+          <div class="hg-landing-feature-icon"><i class="fa-solid fa-display-chart-up-circle-currency" aria-hidden="true"></i></div>
+          <h2 class="h6 mb-1">SitReps that drive decisions</h2>
           <p class="mb-0 small text-muted">
-            Gjallarhorn (the AI side of Huginn) evaluates Master Variables against RoE expectations after each sync and writes a daily report.
+            Gjallarhorn sits on top of your data streams — situational assessment, Variables snapshot, and Decisions with Outcome options. You choose the course: calibrate doctrine, dispatch work, or type your own.
+          </p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4 d-flex">
+        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-learning">
+          <div class="hg-landing-feature-icon"><i class="fa-solid fa-brain" aria-hidden="true"></i></div>
+          <h2 class="h6 mb-1">Learns from your judgment</h2>
+          <p class="mb-0 small text-muted">
+            Every Decision review enriches Decisions Logic — project memory of how reasoning evolved — and your Commander profile. Gjallarhorn adapts proposed Outcomes to your management style over time.
+          </p>
+        </div>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4 d-flex">
+        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-autonomous">
+          <div class="hg-landing-feature-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></div>
+          <h2 class="h6 mb-1">Unleash autonomous mode</h2>
+          <p class="mb-0 small text-muted">
+            When RoE and management style are sufficiently aligned, flip Semi-Auto to Auto per project. Gjallarhorn executes Outcomes on its own — you observe via audit log and Action Stations.
           </p>
         </div>
       </div>

@@ -186,3 +186,31 @@ def test_edit_10_invalid_replace_token_surfaces_error(commander_client) -> None:
         )
     assert r.status_code == 200
     assert "validate new token" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_edit_11_save_enabled_without_javascript(commander_client) -> None:
+    ds = DataSourceFactory()
+    body = commander_client.get(reverse("datasource-edit", args=[ds.pk])).content.decode()
+    idx = body.index('data-testid="datasource-save"')
+    snippet = body[max(0, idx - 80) : idx + 80]
+    assert "disabled" not in snippet
+
+
+@pytest.mark.django_db
+def test_edit_12_test_connection_enabled_without_javascript(commander_client) -> None:
+    ds = DataSourceFactory()
+    body = commander_client.get(reverse("datasource-edit", args=[ds.pk])).content.decode()
+    idx = body.index('data-testid="datasource-test-connection"')
+    snippet = body[max(0, idx - 80) : idx + 80]
+    assert "disabled" not in snippet
+
+
+@pytest.mark.django_db
+def test_edit_13_unified_form_matches_create_layout(commander_client) -> None:
+    ds = DataSourceFactory()
+    body = commander_client.get(reverse("datasource-edit", args=[ds.pk])).content.decode()
+    assert 'data-testid="datasource-provider-badge"' in body
+    assert 'data-testid="datasource-form-error"' not in body or "alert-warning" in body
+    assert "Save Data Source" in body
+    assert "simpleicons.org/gitlab" in body

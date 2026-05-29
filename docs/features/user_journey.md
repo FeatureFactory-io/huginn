@@ -9,20 +9,22 @@
 **Screen ID convention**: every screen is identified by `{ENTITY}-{OPERATION}-{VERSION}` (e.g., `PROJECTS-LIST+FIND-1`). Used in this document, in screen-flow diagrams, in feature files, and as HTML comments / hidden divs in templates for grep-able traceability.
 
 **Gjallarhorn** — the AI component. Three surfaces:
-1. **Background**: event-driven — fires on `Sync Complete` (generates SitRep, evaluating Variables against the active RoE + FRAGOs + Situational Awareness). In **Autonomous** mode, approved outcomes for auto-generated Decisions execute via the SitRep / `execute_decision_outcome` Celery chain. **Semi-Auto** Commander approvals **do not enqueue that path** — FRAGO / SA / Jira branches run **synchronously inside the Decision review HTTP request** (SAO §17.8 / Flow C). Plan creation and final narrative synthesis use the **planning model** (Opus); per-Variable execution steps use the **execution model** (Sonnet); plan success/failure notifications use the **notification model** (Haiku) — see SAO §17.3 Model Assignment Policy.
+1. **Background**: event-driven — fires on `Sync Complete` (generates SitRep, evaluating Variables against the active RoE + FRAGOs + Situational Awareness). In **Autonomous** mode, approved **Outcomes** for auto-generated Decisions execute via the SitRep / `execute_decision_outcome` Celery chain. **Semi-Auto** Commander approvals **do not enqueue that path** — **calibration** and **dispatch** Outcomes run **synchronously inside the Decision review HTTP request** (SAO §17.8 / §18 / Flow C). Plan creation and final narrative synthesis use the **planning model** (Opus); per-Variable execution steps use the **execution model** (Sonnet); plan success/failure notifications use the **notification model** (Haiku) — see SAO §17.3 Model Assignment Policy.
 2. **Chat — full-screen** (`CHAT-FULLSCREEN-1`, Act 8): two-pane interactive surface that exposes platform CRUDL via `services.py` / `tool_executor.py`. `find_*` tools provide full-text search; list operations support pagination, page size, filters.
 3. **Chat — sidebar** (`CHAT-SIDEBAR-1`): collapsible right rail mounted in the global layout, visible on every screen. **One Conversation per authenticated user + Project** — navigation switches threads when the anchored Project changes; the context chip auto-updates from the current screen within that scope. `[Expand to full screen]` opens `CHAT-FULLSCREEN-1` preserving the active Project conversation and pinned context (`docs/architecture/SAO.md` §17.11).
 
 **Operating mode** (per-Project, persisted as `Project.gjallarhorn_mode`):
-- **Semi-Autonomous** (default): Gjallarhorn generates SitReps and proposes Decisions. The Commander reviews each Decision: **Approve** persists outcomes **synchronously in the Decision review POST** (FRAGO / SA / Branch C Jira). **Reject** declines the proposed action but **may still** capture a vigilance FRAGO / Sit-Awareness snippet (or reject note)—or dismiss entirely with no artefacts (see Act 9).
-- **Autonomous**: Gjallarhorn auto-approves its own Decisions (with machine-generated Reasoning attributed to `"Gjallarhorn"`) and executes outcomes. The Commander observes via audit log.
+- **Semi-Autonomous** (default): Gjallarhorn generates SitReps and proposes **Decisions with Outcome options** (calibrations or dispatches). The Commander reviews each Decision: **Approve** executes one **Outcome** **synchronously in the Decision review POST**. **Reject** declines the proposed option but **may still** capture vigilance calibrations (FRAGO / Sit-Awareness) or a reject note—or dismiss entirely with no artefacts (see Act 9).
+- **Autonomous**: Gjallarhorn auto-approves its own Decisions (with machine-generated Reasoning attributed to `"Gjallarhorn"`) and executes Outcomes. The Commander observes via audit log.
 - Toggle is a pill `[Semi-Auto | Auto]` on the `PROJECTS-VIEW_PROJECT-1` top action bar.
 
 **Decisions Logic FRAGO** (per-Project, system-managed): **one dedicated FRAGO** per Project (`kind = decisions_logic`) — Donland maintains **judgment memory in that single body**: the system **contributes structured lines by default from most Completed reviews** (**Approved**, **Auto-approved**, and materially recorded **Rejected** — see Act 9); exceptions include e.g. a **bare dismiss** with nothing to remember. Commander **extends**, **modifies**, or **removes** bullets via **`FRAGOS-EDIT_FRAGO-1`**. Automatic contributions use the **canonical markdown-bullet template** in SAO §17.8 (` · `-separated inline fields — one bullet per qualifying review). Auto-created when the **first** such line lands. Not revocable, not toggleable, always Active. The Rules of Engagement stays the canonical definition of **what good looks like**; this FRAGO captures **how reasoning has evolved** for that Project. Gjallarhorn reads its current body when proposing new Decisions.
 
+**Commander profile** (per-User, system-managed): behavioral priors — *how this Commander tends to decide* (e.g. tolerance for red Variables, typical delay before acting). **Distinct from Decisions Logic FRAGO** (project explicit judgment). Updated on Decision resolve via persisted signals; Gjallarhorn reads profile during Orient/Decide. MVP: signal persistence only (`variable_abbrev`, `color`, `action_taken`, `delay_hours`); profile VIEW/EDIT UI deferred (see Open product decisions). See SAO §18.5 and [`docs/ideation/vision.md`](../ideation/vision.md) — Vocabulary.
+
 **Plans**: Gjallarhorn's internal async execution engine. When any multi-step task is needed — primarily SitRep generation (translating the RoE Workflow into concrete tool calls: get commits, assess Variable, assign color, save Datapoint…) or occasionally a complex Decision implementation — Gjallarhorn creates an `ExecutionPlan` and runs it step-by-step via Celery. Plans are **visible in the Chat** as a collapsible `PlanProgressCard` (goal + progress bar + live step list). Each step records pre-execution reasoning (`why needed`, `expected outcome`) and post-execution reflection (`actual result`, `outcome assessment`), and stores the `model_used` field from `LLMResponse.model` so the model used for each step is auditable. Plans always start automatically — there is no Commander approval gate on a Plan. The Commander only gates the *Decisions* that a SitRep Plan produces (in Semi-Auto mode). On permanent step failure, Gjallarhorn posts a recovery analysis message in Chat with partial results and next-step options (see PlanProgressCard spec in Act 8). On transient failure (Claude 429), the step pauses for exponential-backoff retry (30 s → 60 s → 120 s) before resuming — completed steps are never re-executed.
 
-**Jira / GitLab / etc.** — systems of record for raw work data. Huginn ingests via DataSources. **Huginn writes one thing back to Jira: issues created from accepted Decisions, tagged `HUGINN`.** No comment write-back, no annotation write-back.
+**Jira / GitLab / etc.** — systems of record for raw work data. Huginn ingests via DataSources. **Huginn writes one thing back to Jira: issues created from approved dispatch Outcomes, tagged `HUGINN`.** No comment write-back, no annotation write-back.
 
 **Project lifecycle**: Projects are **import-only**. They are never created from a blank form — only by selecting from the list of projects a connected DataSource's token can see.
 
@@ -56,7 +58,7 @@ State transitions are one-directional except for `pending_email_verification →
 - `IMPORT` — Project: select-from-source instead of CREATE form
 - `VIEW` only — SitRep, Variables, Contributors (generated/computed)
 - `VIEW + EDIT` only — Situational Awareness (**workspace-global**: one capsule for the Commander / installation, not scoped per Project)
-- `LIST+FIND + VIEW` only — Action Stations (Jira-owned lifecycle, read-only display)
+- `LIST+FIND + VIEW` only — Action Stations (**station records** — dispatch mirror; Jira-owned lifecycle, read-only display)
 - `REGISTER` / `VERIFY_EMAIL` / `AWAIT_VERIFICATION` / `AWAIT_APPROVAL` — Act 0 self-signup workflow screens (anonymous-accessible; not a CRUDLF pattern)
 - `CHAT-FULLSCREEN` — Gjallarhorn full-screen conversational surface (Act 8)
 - `CHAT-SIDEBAR` — Gjallarhorn collapsible global rail (persistent across all screens)
@@ -72,9 +74,9 @@ State transitions are one-directional except for `pending_email_verification →
 **Typical day**:
 - 09:00 — opens Huginn, scans the **Tactical Plot** for red/orange health indicators
 - For any red Project — reads the SitRep, calibrates expectations via FRAGOs, drills into Variables, queries Gjallarhorn
-- Makes Decisions. Each Decision branches into one of three concrete outcomes: a new FRAGO, an extension of SituationalAwareness, or a `HUGINN`-tagged Jira issue
+- Makes Decisions. Each approved Decision executes exactly one **Outcome** — a **calibration** (FRAGO or SA) or a **dispatch** (`HUGINN`-tagged Jira issue)
 - Reviews Contributors' day-by-day activity
-- Checks Action Stations to confirm the `HUGINN`-tagged tasks landed in Jira correctly
+- Checks Action Stations (**station records**) to confirm **dispatches** landed in Jira correctly
 
 ### Admin (workspace operator)
 
@@ -115,9 +117,9 @@ The journey divides into three phases. Inception is one-time per install (or per
 
 | Act | Surface | Pattern | Primary Screen |
 |-----|---------|---------|----------------|
-| 9 | Decisions | LIST+FIND + VIEW (3-branch accept) | `DECISIONS-LIST+FIND-1` |
+| 9 | Decisions | LIST+FIND + VIEW (Outcome chooser) | `DECISIONS-LIST+FIND-1` |
 | 10 | Contributors | LIST+FIND + VIEW (day-by-day) | `CONTRIBUTORS-LIST+FIND-1` |
-| 11 | Action Stations | LIST+FIND only (read-only Jira sync) | `ACTIONSTATIONS-LIST+FIND-1` |
+| 11 | Action Stations | LIST+FIND — station records (dispatch mirror) | `ACTIONSTATIONS-LIST+FIND-1` |
 | 12 | Situational Awareness | VIEW + EDIT (workspace-global) | `SITAWARENESS-VIEW-1` |
 
 ---
@@ -409,7 +411,7 @@ Donland clicks **Data Sources** in the main nav.
 Donland clicks [+ Add Data Source].
 
 **Layout**:
-- **Step 1 — Type**: Two cards (GitLab / Jira). **GitLab** covers project import + commit sync. **Jira** is selectable when the workspace needs **Decision Branch C** outbound issues + Action Stations read-sync — the same `DataSource(type=Jira)` stores PAT/API token + base URL (`docs/architecture/SAO.md` §2). Deep ingest of arbitrary Jira scopes beyond `HUGINN`-labelled mirrors may still roll out iteratively; connecting Jira here is still required before Branch C succeeds.
+- **Step 1 — Type**: Two cards (GitLab / Jira). **GitLab** covers project import + commit sync. **Jira** is selectable when the workspace needs **Jira dispatch board** (dispatch Outcomes) + Action Stations read-sync — the same `DataSource(type=Jira)` stores PAT/API token + base URL (`docs/architecture/SAO.md` §2). Deep ingest of arbitrary Jira scopes beyond `HUGINN`-labelled mirrors may still roll out iteratively; connecting Jira here is still required before dispatch Outcomes succeed.
 - **Step 2 — Connection form**:
   - Name (required) — Donland's label, e.g., "company-gitlab"
   - Base URL (required) — e.g., `https://gitlab.example.com`
@@ -767,8 +769,8 @@ Donland opens a SitRep from the list (headline link or row **View**), or follows
 
 - **Section 3 — Decisions**:
   - List of Decisions Gjallarhorn generated based on the assessment. In Semi-Auto these are `Proposed`; in Autonomous mode they may already be `Auto-approved` and executed by the time the SitRep is viewed.
-  - Each Decision shown as a card: title + status badge (`Proposed` / `Auto-approved`) + Owner attribution + rationale (2–4 sentences) + [Review →] button
-  - [Review] → `DECISIONS-VIEW_DECISION-1` (Act 9) where the approval flow lives
+  - Each Decision shown as a card: title + status badge (`Proposed` / `Auto-approved`) + Owner attribution + rationale (2–4 sentences) + **Outcome options** as a radio list (2–N proposed calibrations/dispatches + **Type your own**) + [Review →] button
+  - [Review] → `DECISIONS-VIEW_DECISION-1` (Act 9) where the Outcome chooser and approval flow live
 
 - **Section 4 — FRAGOs applied**:
   - Which FRAGOs Gjallarhorn applied to this evaluation (i.e., enabled and in effective window at generation time; e.g., "Active Bug Count expected to be 0 — belay on Fridays, ≤3 OK")
@@ -800,7 +802,7 @@ A FRAGO is **a short markdown body** scoped to one Project, with an optional tim
 **"Decisions Logic" FRAGO (special, system-managed)**: **Exactly one** per Project (`kind = decisions_logic`). Created automatically when the **first** qualifying Decision review produces a structured line (**Approved**, **Auto-approved**, **Rejected** with material to record — Act 9; **bare** reject skips). Not user-creatable as a duplicate, not revocable, not toggleable — always Active. The **markdown body** holds judgment memory **read verbatim** by Gjallarhorn on the next invocation.
 
 - **Title** is fixed: *"Decisions Logic — {project name}"*.
-- **Body** — primarily **structured lines**, one markdown bullet **in most cases** (canonical template documented in SAO §17.8 — fields inline with ` · ` separators). Example: `- **2026-05-11 14:03** · Decision: *Coverage gate* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Outcome: Jira **HUGINN-302**`. Exceptions: omit line when nothing should be preserved (Act 9). Commander **maintains one document**: add free-form preamble, consolidate several bullets into one summary, rewrite wording, drop obsolete noise — **`FRAGOS-EDIT_FRAGO-1`**; edits surface in **`django-simple-history`** like any other FRAGO.
+- **Body** — primarily **structured lines**, one markdown bullet **in most cases** (canonical template documented in SAO §17.8 — fields inline with ` · ` separators). Example: `- **2026-05-11 14:03** · Decision: *Coverage gate* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Dispatch: Jira **HUGINN-302**`. Exceptions: omit line when nothing should be preserved (Act 9). Commander **maintains one document**: add free-form preamble, consolidate several bullets into one summary, rewrite wording, drop obsolete noise — **`FRAGOS-EDIT_FRAGO-1`**; edits surface in **`django-simple-history`** like any other FRAGO.
 - **Prompt caching**: the Decisions Logic FRAGO body is part of the cached context Gjallarhorn keeps for the Project, meaning changes land on the very next SitRep without any extra cost.
 - Visually pinned at the top of `FRAGOS-LIST+FIND-1` with a distinct icon (e.g., a brain or logic node); toggle column and `[Revoke]` row action are absent for this row.
 
@@ -984,21 +986,21 @@ Confirmation modal:
 
 # ACTION
 
-Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. On **Approve**, each Decision branches into one of three concrete outcomes: a new **project-scoped** FRAGO, an extension of **workspace** Situational Awareness, or a `HUGINN`-tagged Jira issue. On **Reject**, he is *not* endorsing Gjallarhorn's proposed action — but he may still record **vigilance**: optional **reject note** and/or the same **FRAGO** or **Sit-Awareness** affordances as on approve (e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"* as a watch FRAGO, or a workspace SA entry). No Jira issue is created from the Reject path in MVP. Gjallarhorn executes outcomes — sometimes via a multi-step Plan visible in Chat. He then verifies what landed (Contributors and Action Stations) and maintains global doctrine memory (Situational Awareness).
+Donland has read the situation, calibrated expectations, and asked his questions. Now he decides. Each SitRep proposes **Decisions with Outcome options** (**calibrations** or **dispatches**). On **Approve**, he selects one option (or types his own) and Huginn executes exactly one **Outcome**. On **Reject**, he is *not* endorsing Gjallarhorn's proposed option — but he may still record **vigilance calibrations**: optional **reject note** and/or watch FRAGO or Sit-Awareness entry (e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"*). No **dispatch** is created from the Reject path in MVP. Gjallarhorn executes Outcomes — sometimes via a multi-step Plan visible in Chat. He then verifies **dispatches** (Contributors and Action Stations **station records**) and maintains global doctrine memory (Situational Awareness).
 
 ---
 
-## Act 9: Decisions — LIST+FIND + VIEW (approve: 3 branches; reject: optional vigilance)
+## Act 9: Decisions — LIST+FIND + VIEW (Outcome chooser; reject: optional vigilance)
 
-**Context**: Each SitRep generates Decisions. In Semi-Auto mode they are `Proposed` and the Commander **approves** (Reasoning required) or **rejects** (**reject note optional** — skip for a frictionless dismiss). A reject **may still leave Gjallarhorn better informed**: optional **reject note** only, **or** a **vigilance FRAGO**, **or** a **Sit-Awareness** entry (e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"*), **or note + vigilance**. **Most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected**) **contribute a structured line by default** to the Project's **single** Decisions Logic FRAGO; **exceptions** — e.g. **bare dismiss** — record **no line**. Commander **maintains that one FRAGO** (extend/modify/remove — Act 6). See Act 9.
+**Context**: Each SitRep generates Decisions **with Outcome options**. In Semi-Auto mode they are `Proposed` and the Commander **approves** (Reasoning required) or **rejects** (**reject note optional** — skip for a frictionless dismiss). A reject **may still leave Gjallarhorn better informed**: optional **reject note** only, **or** a **vigilance calibration** (watch FRAGO or Sit-Awareness entry, e.g. *"Keep an eye on code quality; if Radon drops below B−, let me know"*), **or note + vigilance**. **Most** Resolved Decisions (**Approved**, **Auto-approved**, **Rejected**) **contribute a structured line by default** to the Project's **single** Decisions Logic FRAGO; **exceptions** — e.g. **bare dismiss** — record **no line**. Optional **Commander profile** signal may be appended on resolve. Commander **maintains that one FRAGO** (extend/modify/remove — Act 6).
 
-**Pattern**: LIST+FIND + VIEW. Decisions are AI-generated (no user CREATE form). Semi-Auto centres on **review** (Approve with required Reasoning, or Reject with optional note and/or vigilance artefacts). In Autonomous mode the list is primarily an audit log.
+**Pattern**: LIST+FIND + VIEW. Decisions are AI-generated (no user CREATE form). Semi-Auto centres on **review** — Outcome chooser with Approve (required Reasoning) or Reject (optional note and/or vigilance calibrations). In Autonomous mode the list is primarily an audit log.
 
 **Decision status set**:
 - `Proposed` (blue) — awaiting the Commander's review (Semi-Auto only)
-- `Approved` (green) — human-approved; Commander provided Reasoning (required) and chose an outcome
-- `Auto-approved` (teal) — Gjallarhorn approved itself in Autonomous mode; machine Reasoning attached; outcome already executed
-- `Rejected` (grey) — human-rejected in Semi-Auto; Commander **may** leave a reject note (optional); **may** attach a follow-up **FRAGO** and/or **SA** entry (`HUGINN` Jira issues are approve-only)
+- `Approved` (green) — human-approved; Commander provided Reasoning (required) and selected an Outcome option
+- `Auto-approved` (teal) — Gjallarhorn approved itself in Autonomous mode; machine Reasoning attached; Outcome already executed
+- `Rejected` (grey) — human-rejected in Semi-Auto; Commander **may** leave a reject note (optional); **may** attach vigilance calibrations (**dispatches are approve-only**)
 
 #### Screen: DECISIONS-LIST+FIND-1
 
@@ -1006,21 +1008,21 @@ Donland clicks **Decisions** in the main nav (or [Open Decisions] from a SitRep)
 
 **Layout**:
 - **Header**: "Decisions — atlas-backend" + count badge
-- **Filter**: Status (Proposed / Approved / Auto-approved / Rejected) | Owner (me / Gjallarhorn / all) | Mode (Semi-Auto / Auto) | Outcome type (FRAGO / Sit-Awareness / Jira issue / None / —) — for `Rejected`, **Outcome** reflects an optional vigilance artefact (`FRAGO` or `Sit-Awareness`) when created on reject | Date range | Source SitRep
+- **Filter**: Status (Proposed / Approved / Auto-approved / Rejected) | Owner (me / Gjallarhorn / all) | Mode (Semi-Auto / Auto) | Outcome type (**Calibration** / **Dispatch** / None / —) — for `Rejected`, **Outcome** reflects an optional vigilance calibration when created on reject | Date range | Source SitRep
 - **Table**:
   - Date | Title | Status | Owner | Mode | Outcome | Source SitRep | Actions
 - **Row Actions**: [Review] (when `Proposed`) / [View] → `DECISIONS-VIEW_DECISION-1`
 - **Empty State**: "No Decisions yet. Decisions are generated by Gjallarhorn in each SitRep."
 
 **Example Data**:
-- 20 Apr 09:15 | "Belay Active Bug Count = 0 on Fridays" | Approved | Donland | Semi-Auto | FRAGO | sitrep #142
-- 20 Apr 09:15 | "Investigate Friday bug-carry pattern" | Auto-approved | Gjallarhorn | Auto | Jira (HUGINN-302) | sitrep #142
+- 20 Apr 09:15 | "Belay Active Bug Count = 0 on Fridays" | Approved | Donland | Semi-Auto | Calibration (FRAGO) | sitrep #142
+- 20 Apr 09:15 | "Investigate Friday bug-carry pattern" | Auto-approved | Gjallarhorn | Auto | Dispatch (Jira HUGINN-302) | sitrep #142
 - 19 Apr 09:00 | "Refactor auth module immediately" | Rejected | Donland | Semi-Auto | — | sitrep #141 — plain dismiss
-- 19 Apr 09:30 | "Tighten coverage to 95% now" | Rejected | Donland | Semi-Auto | FRAGO (watch Radon ≥ B−) | sitrep #141 — rejected the proposed remediation, opened a vigilance FRAGO instead
+- 19 Apr 09:30 | "Tighten coverage to 95% now" | Rejected | Donland | Semi-Auto | Calibration (FRAGO watch Radon ≥ B−) | sitrep #141 — rejected the proposed remediation, opened a vigilance FRAGO instead
 
 #### Screen: DECISIONS-VIEW_DECISION-1
 
-The single most action-dense screen of the daily loop. Donland reviews each proposed Decision here. For `Auto-approved` Decisions the page is read-only on arrival — the outcome has already been executed.
+The single most action-dense screen of the daily loop. Donland reviews each proposed Decision here. For `Auto-approved` Decisions the page is read-only on arrival — the Outcome has already been executed.
 
 **Layout** (single-column, top-to-bottom flow):
 
@@ -1028,36 +1030,37 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
 
 - **Section 1 — Gjallarhorn's case**:
   - Rationale (full text, 1–4 paragraphs)
+  - **Proposed Outcome options** (radio cards from SitRep — e.g. Monitor via FRAGO | Create Jira issue | Type your own)
   - Supporting evidence: Variables that triggered, FRAGOs in effect (including Decisions Logic FRAGO), related UoWs/Contributors (clickable chips)
   - Confidence indication
 
 - **Section 2 — Decision** (when status = `Proposed`; hidden for terminal statuses):
   - **Two top-level actions**: [Approve] (primary, green) | [Reject] (secondary)
-  - **Approve** — **Reasoning** textarea (required): why you accepted Gjallarhorn's recommendation; opens **Section 3 — Outcome chooser**. On successful outcome completion, Decision → `Approved` (**Branch C failures keep `Proposed`** — §17.8 in `docs/architecture/SAO.md`); the system **normally** appends **one markdown bullet line** per Act 6 / SAO template, including Reasoning, Owner, and outcome ref — Donland edits the **same** Decisions Logic FRAGO anytime (**extend**, **modify**, **remove** bullets).
+  - **Approve** — select an Outcome option (or custom) + **Reasoning** textarea (required): why you accepted Gjallarhorn's recommendation; opens **Section 3 — Outcome detail**. On successful Outcome execution, Decision → `Approved` (**dispatch failures keep `Proposed`** — SAO §17.8 / §18); the system **normally** appends **one markdown bullet line** per Act 6 / SAO template, including Reasoning, Owner, and outcome ref — Donland edits the **same** Decisions Logic FRAGO anytime (**extend**, **modify**, **remove** bullets).
   - **Reject** — **Reject note** textarea (optional): free text if you want Decisions Logic to capture *why not* — skip entirely for a bare dismiss below.
   - **Reject note without vigilance artefacts** → **normally** one structured line toward Decisions Logic; Donland later **modify/remove** rows in **`FRAGOS-EDIT_FRAGO-1`**.
-  - After **[Reject]** (before confirm): optional **follow-up vigilance** (same forms as Branch A FRAGO / Branch B SA below — pre-filled blanks, Commander writes the watch condition in natural language, e.g. *"Keep an eye on code quality; if Radon drops below B−, flag it."*):
+  - After **[Reject]** (before confirm): optional **follow-up vigilance** (calibration forms only — pre-filled blanks, Commander writes the watch condition in natural language, e.g. *"Keep an eye on code quality; if Radon drops below B−, flag it."*):
     - **None** — bare reject: leave **reject note** empty **and** do not create vigilance artefacts → Decision → `Rejected`; **no line** contributed to Decisions Logic.
-    - **Create FRAGO (watch/teach)** — same field set as approving Branch A, but Decision stays **`Rejected`**; outcome ref = created FRAGO. Primary action e.g. **[Reject and create watch FRAGO]**. System **normally** adds `{status: Rejected, …}` line to Decisions Logic.
-    - **Extend Situational Awareness** — same as approving Branch B, but Decision stays **`Rejected`**; outcome ref = SA entry. Primary action e.g. **[Reject and extend awareness]**. System **normally** adds the analogous line.
+    - **Calibration — watch FRAGO** — same field set as approving a FRAGO calibration, but Decision stays **`Rejected`**; outcome ref = created FRAGO. Primary action e.g. **[Reject and create watch FRAGO]**. System **normally** adds `{status: Rejected, …}` line to Decisions Logic.
+    - **Calibration — extend Situational Awareness** — same as approving an SA calibration, but Decision stays **`Rejected`**; outcome ref = SA entry. Primary action e.g. **[Reject and extend awareness]**. System **normally** adds the analogous line.
   - **[Confirm Rejection]** submits the chosen path (`Rejected` + optional artefacts).
-  - Approval flow remainder: Reasoning filled → **Section 3**.
+  - Approval flow remainder: option selected + Reasoning filled → **Section 3**.
 
-- **Section 3 — Outcome (when approving)**: Three outcome branches (+ implicit execution). Choosing one is mutually exclusive:
+- **Section 3 — Outcome detail (when approving)**: Dynamic form for the **selected Outcome option** (+ execution). Exactly one Outcome executes:
 
-  **Branch A — Create FRAGO**
+  **Calibration — FRAGO**
   - Use when the Decision is "modify expectations going forward"
   - Pre-filled FRAGO form embedded inline (same fields as `FRAGOS-CREATE_FRAGO-1`):
     - **Project** (fixed from the SitRep's Project scope), title, body (pre-filled from Decision rationale), Affects, scope filter
-  - [Approve and Create FRAGO] → creates FRAGO, marks Decision `Approved` with outcome reference
+  - [Approve and execute] → creates FRAGO, persists Outcome (`kind=calibration`), marks Decision `Approved`
 
-  **Branch B — Extend Situational Awareness**
+  **Calibration — Extend Situational Awareness**
   - Use when the Decision is "remember this context for future evaluations"
   - Inline rich-text input with title + body
   - Preview shows: "This will be appended to **workspace** Situational Awareness (shared across all SitReps), dated today, attributed to you."
-  - [Approve and Extend Awareness] → appends entry, marks Decision `Approved` with outcome reference
+  - [Approve and execute] → appends SA entry, persists Outcome (`kind=calibration`), marks Decision `Approved`
 
-  **Branch C — Create Jira Issue (`HUGINN`-tagged)**
+  **Dispatch — Create Jira Issue (`HUGINN`-tagged)**
   - Uses the workspace's **`DataSource` row with type Jira** (connected PAT/API token — same ingestion primitive GitLab uses) for REST authentication + default project/issue metadata routing
   - Use when the Decision is "execute work in the team's tracker"
   - Inline form:
@@ -1067,7 +1070,9 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
     - Assignee (Jira accounts list, optional)
     - Priority
     - The `HUGINN` label is **automatically applied and not editable** — this is the marker Action Stations syncs on
-  - [Approve and Create Jira Issue] → calls Jira API **synchronously inside the approve request** (`ToolExecutor`/service); on success, Decision marked `Approved` with the Jira key as outcome reference; on failure, Decision **stays `Proposed`**, nothing is written to Decisions Logic for that attempt, and an inline/HTMX error explains the fault (timeouts must be surfaced clearly because the Commander blocks on this POST)
+  - [Approve and Create Jira Issue] → calls Jira API **synchronously inside the approve request** (`OutcomeExecutor` / `ToolExecutor`); on success, Outcome persisted (`kind=dispatch`), Decision marked `Approved` with Jira key as ref; on failure, Decision **stays `Proposed`**, nothing is written to Decisions Logic for that attempt, and an inline/HTMX error explains the fault (timeouts must be surfaced clearly because the Commander blocks on this POST)
+
+  **Type your own** — free-text option; Commander may pick executor explicitly when text does not match a proposed option (see Open product decisions).
 
   > When the Decision scope requires multi-step implementation, Gjallarhorn may execute it via a Plan internally. The Plan appears in the Chat thread as a `PlanProgressCard`. No Commander action required — the Plan runs automatically and reports results back through the conversation.
 
@@ -1075,12 +1080,13 @@ The single most action-dense screen of the daily loop. Donland reviews each prop
   - Decision is now read-only
   - **Reasoning** (approve / auto) or **Reject note** (reject, if any) displayed when present; machine Reasoning for `Auto-approved`
   - **Owner** and Mode at decision time
-  - Shows the outcome record with link to the created FRAGO / Sit-Awareness entry / Jira issue **when one exists** (including `Rejected` + vigilance FRAGO or SA)
-  - For `Rejected` with **no** vigilance outcome (FRAGO / SA): omit FRAGO/Jira/SA outcome links — may still show rejected **reject note** text if Commander wrote one without Artefacts **or** omit entire outcome block for a bare dismiss
+  - Shows the **Outcome** record with link to FRAGO / Sit-Awareness entry / Jira key **when one exists** (including `Rejected` + vigilance calibration)
+  - For **dispatch** Outcomes: **[View in Action Stations →]** when station record is synced
+  - For `Rejected` with **no** vigilance Outcome: omit outcome links — may still show reject note text **or** omit entire outcome block for a bare dismiss
   - For `Auto-approved`: informational banner — "This Decision was auto-approved by Gjallarhorn in Autonomous mode. [View Decisions Logic FRAGO →]"
   - **Decisions Logic FRAGO** — when **this Decision review contributed a structured line**, show *"[View Decisions Logic FRAGO →]."* **Bare rejects** omit. Banner does **not** imply the body is append-only — Donland edits one shared FRAGO.
 
-> Plans surface exclusively as a `PlanProgressCard` in the Chat message thread (see Act 8 Chat). After a Plan completes, the SitRep it generated (or the Decision outcome it implemented) gains a "View execution plan →" link that deep-links to that message in the conversation history.
+> Plans surface exclusively as a `PlanProgressCard` in the Chat message thread (see Act 8 Chat). After a Plan completes, the SitRep it generated (or the Outcome it implemented) gains a "View execution plan →" link that deep-links to that message in the conversation history.
 
 ---
 
@@ -1124,11 +1130,11 @@ Donland clicks **Contributors** in the main nav.
 
 ---
 
-## Act 11: Action Stations — LIST+FIND only (read-only Jira sync)
+## Act 11: Action Stations — LIST+FIND (station records — dispatch mirror)
 
-**Context**: Donland just accepted three Decisions that created `HUGINN`-tagged Jira issues. He wants to confirm they landed. Action Stations is the read-only mirror of all `HUGINN`-tagged issues across his connected Jira projects, kept in sync via [Sync] button or scheduled pull. **He does not edit, complete, or annotate here** — to act on an issue, he opens it in Jira.
+**Context**: Donland just approved Decisions whose **dispatch** Outcomes created `HUGINN`-tagged Jira issues. He wants to confirm they landed upstream. **Action Stations** lists **station records** — read-only mirrors of successful dispatches across connected Jira projects, kept in sync via [Sync] button or scheduled pull. **He does not edit, complete, or annotate here** — to act on an issue, he opens it in Jira. Station records are populated by sync (linked from `Outcome.ref`), not by the approve POST directly.
 
-**Pattern**: LIST+FIND only. No CREATE (created by Act 9 approval), no EDIT (Jira is the system of record), no DELETE (Jira-side action).
+**Pattern**: LIST+FIND only. No CREATE (created by Act 9 dispatch Outcomes + sync), no EDIT (Jira is the system of record), no DELETE (Jira-side action).
 
 #### Screen: ACTIONSTATIONS-LIST+FIND-1
 
@@ -1143,7 +1149,7 @@ Donland clicks **Action Stations** in the main nav.
   - Jira Key links open Jira in a new tab
   - Status badge synced from Jira (current as of last Sync)
 - **No row actions** — view in Jira to act on it
-- **Empty State**: "No `HUGINN`-tagged issues yet. Issues created via accepted Decisions appear here."
+- **Empty State**: "No station records yet. **Dispatches** from approved Decisions appear here after sync."
 
 **Sync semantics**:
 - Clicking [Sync] runs a fresh pull from each connected Jira DataSource for issues with the `HUGINN` label
@@ -1154,20 +1160,20 @@ Donland clicks **Action Stations** in the main nav.
 
 ## Act 12: Situational Awareness — VIEW + EDIT (workspace-global)
 
-**Context**: Some Decisions extend Situational Awareness (Branch B in Act 9) — adding context that future evaluations should consider. This is **workspace-global narrative memory** for the Commander (single capsule per Huginn workspace / tenant): known constraints, ongoing situations ("GitLab outage all week — expect sync errors"), cross-cutting context — **not** keyed by Project. FRAGOs remain **per-Project** calibration (Act 6); SA is the shared story Gjallarhorn reads for **every** SitRep regardless of which Project it is for.
+**Context**: Some Decisions produce **SA calibration** Outcomes — adding context that future evaluations should consider. This is **workspace-global narrative memory** for the Commander (single capsule per Huginn workspace / tenant): known constraints, ongoing situations ("GitLab outage all week — expect sync errors"), cross-cutting context — **not** keyed by Project. FRAGOs remain **per-Project** calibration (Act 6); SA is the shared story Gjallarhorn reads for **every** SitRep regardless of which Project it is for.
 
 **Pattern**: VIEW + EDIT. One Situational Awareness capsule per workspace. No `?project=` routing — URLs are `/sitawareness/` (or equivalent). No separate CREATE screen (capsule exists implicitly); no DELETE in MVP.
 
 #### Screen: SITAWARENESS-VIEW-1
 
-Donland clicks **Situational Awareness** in the main nav (or arrives from a Decision Branch B outcome link).
+Donland clicks **Situational Awareness** in the main nav (or arrives from a Decision **SA calibration** Outcome link).
 
 **Layout** (two-pane):
 - **Left — Document** (read-only in VIEW mode):
   - Sections (rendered):
     - **Standing context** — durable items: team composition, known constraints
     - **Active situations** — time-bounded items: outages, holidays, special conditions
-    - **Recent entries** — chronological log of entries appended via Decision Branch B
+    - **Recent entries** — chronological log of entries appended via **SA calibration** Outcomes
   - Each entry: title, body, date, author, source Decision (if applicable, linked)
 - **Right — Versions panel**:
   - List of past versions: vN | date | author | change summary
@@ -1197,6 +1203,9 @@ The following are deliberately deferred — captured here so they aren't silentl
 6. **Chat sidebar keyboard shortcut.** Global keyboard shortcut to expand/collapse `CHAT-SIDEBAR-1` (e.g., `⌘+Shift+G`). Deferred — needs keybinding UX design and conflict resolution with browser shortcuts.
 7. **Auto-approved Decision reversal.** In Autonomous mode, `Auto-approved` Decisions are audit-only in MVP — no UI to reverse the outcome after the fact. Post-MVP: define a "Revert Decision" flow that creates compensating artefacts (e.g., deactivate the auto-created FRAGO, reverse the Jira issue) and records a Reversal Reasoning. Deferred.
 8. **Decisions Logic FRAGO pruning UX.** The Decisions Logic FRAGO body grows over time. Commander can edit it directly (`FRAGOS-EDIT_FRAGO-1`), but there is no structured pruning, archiving, or summarisation UI in MVP. Options: (a) manual curation in the edit form; (b) Gjallarhorn-assisted "summarise and compress" action; (c) versioned checkpoint with rollback. Deferred.
-9. **Admin notification on pending signups (Act 0).** MVP relies on the **Pending users (N)** nav badge to surface the queue; admins must visit Huginn to notice it. Out-of-band notifications (email digest, Slack/webhook, push) are deferred. Risk: a one-admin workspace where the admin is on vacation could leave a signup waiting indefinitely. Mitigation when wired: an env-configurable list of admin emails that receive a daily digest of `pending_admin_approval` rows.
-10. **Account lifecycle actions beyond approve / reject and password reset (Act 0).** Admin-initiated deactivation of `active` users, re-considering a `rejected` row from the admin UI (today it's terminal), and role / permission management are all out of MVP. Forgot-password is **specified** in this document (`AUTH-FORGOT_PASSWORD-1` / `AUTH-RESET_PASSWORD-1` + Email 5 / Email 6) and uses the same SES + single-use-hashed-token machinery as email verification; its **implementation** is sequenced as a follow-up sprint after the registration / approval flow ships — the **Forgot password?** link on `AUTH-LOGIN-1` may temporarily fall back to the legacy "Contact your admin" tooltip in the interim.
-11. ~~**Self-signup gating per install (Act 0).**~~ **Resolved**: self-signup is gated by `settings.DEBUG`. `AUTH-REGISTER-1` and companion routes are available only when `DEBUG = True` (dev / sandbox); production (`DEBUG = False`) redirects them to `AUTH-LOGIN-1` with a banner and omits the **Create an account** link. Production accounts are provisioned by an operator via Django admin or a management command. See the **Self-signup gating** architecture note.
+9. **Custom outcome routing.** Free-text "Type your own" — Gjallarhorn classifies to nearest executor vs Commander picks executor explicitly. MVP recommendation: explicit executor picker when custom text does not match a proposed Outcome option.
+10. **Commander profile UX.** Signal persistence in MVP; profile VIEW/EDIT screen deferred. Minimum signals: `{variable_abbrev, color, action_taken, delay_hours}`. See SAO §18.5.
+11. **DispatchBoard plugin contract.** Fields required for third-party boards (robot, Slack). Deferred implementation; interface documented in SAO §18 only.
+12. **Admin notification on pending signups (Act 0).** MVP relies on the **Pending users (N)** nav badge to surface the queue; admins must visit Huginn to notice it. Out-of-band notifications (email digest, Slack/webhook, push) are deferred. Risk: a one-admin workspace where the admin is on vacation could leave a signup waiting indefinitely. Mitigation when wired: an env-configurable list of admin emails that receive a daily digest of `pending_admin_approval` rows.
+13. **Account lifecycle actions beyond approve / reject and password reset (Act 0).** Admin-initiated deactivation of `active` users, re-considering a `rejected` row from the admin UI (today it's terminal), and role / permission management are all out of MVP. Forgot-password is **specified** in this document (`AUTH-FORGOT_PASSWORD-1` / `AUTH-RESET_PASSWORD-1` + Email 5 / Email 6) and uses the same SES + single-use-hashed-token machinery as email verification; its **implementation** is sequenced as a follow-up sprint after the registration / approval flow ships — the **Forgot password?** link on `AUTH-LOGIN-1` may temporarily fall back to the legacy "Contact your admin" tooltip in the interim.
+14. ~~**Self-signup gating per install (Act 0).**~~ **Resolved**: self-signup is gated by `settings.DEBUG`. `AUTH-REGISTER-1` and companion routes are available only when `DEBUG = True` (dev / sandbox); production (`DEBUG = False`) redirects them to `AUTH-LOGIN-1` with a banner and omits the **Create an account** link. Production accounts are provisioned by an operator via Django admin or a management command. See the **Self-signup gating** architecture note.

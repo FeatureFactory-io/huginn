@@ -52,14 +52,15 @@ class SyncEngine:
         self._milestone_classes_for = milestone_classes_for or milestone_adapter_classes_for
 
     def run_for_project(self, project_id: int) -> IngestionRun | None:
+        logger.info("sync start project_id=%s", project_id)
         try:
             project = Project.objects.select_related("datasource").get(pk=project_id)
         except Project.DoesNotExist:
-            logger.warning("sync skipped — project %s missing", project_id)
+            logger.warning("sync skipped project_id=%s reason=missing", project_id)
             return None
 
         if project.status == Project.Status.ARCHIVED:
-            logger.info("sync skipped — project %s archived", project_id)
+            logger.info("sync skipped project_id=%s reason=archived", project_id)
             return None
 
         if IngestionRun.objects.filter(
@@ -67,7 +68,7 @@ class SyncEngine:
             status=IngestionRun.Status.RUNNING,
             finished_at__isnull=True,
         ).exists():
-            logger.info("sync skipped — project %s already has a running ingestion", project_id)
+            logger.info("sync skipped project_id=%s reason=run_in_progress", project_id)
             return None
 
         run = IngestionRun.objects.create(
@@ -75,11 +76,24 @@ class SyncEngine:
             datasource=project.datasource,
             status=IngestionRun.Status.RUNNING,
         )
+        logger.info(
+            "sync run opened run_id=%s project_id=%s datasource_id=%s datasource_type=%s external_project_id=%s",
+            run.pk,
+            project_id,
+            project.datasource_id,
+            project.datasource.datasource_type if project.datasource else None,
+            project.external_project_id,
+        )
 
         try:
             self._execute_run(project, run)
         except Exception as exc:  # noqa: BLE001
-            logger.exception("sync failed for project %s", project_id)
+            logger.exception(
+                "sync failed project_id=%s run_id=%s error=%s",
+                project_id,
+                run.pk,
+                exc,
+            )
             run.status = IngestionRun.Status.ERROR
             run.finished_at = timezone.now()
             run.error_message = str(exc)[:2000]
@@ -108,6 +122,17 @@ class SyncEngine:
             sync_state=Project.SyncState.ACTIVE,
             last_sync_at=sync_completed_at,
         )
+        logger.info(
+            "sync success project_id=%s run_id=%s increments=%s work_items=%s milestones=%s "
+            "contributors=%s cursor_to=%s",
+            project_id,
+            run.pk,
+            run.increments_ingested,
+            run.work_items_ingested,
+            run.milestones_ingested,
+            run.contributors_touched,
+            run.cursor_to,
+        )
         sync_project_completed.send(
             sender=self.__class__,
             project=project,
@@ -123,6 +148,14 @@ class SyncEngine:
 
         since = self._compute_since(project)
         ds_type = project.datasource.datasource_type
+        logger.info(
+            "sync execute run_id=%s project_id=%s datasource_type=%s since=%s lookback_days=%s",
+            run.pk,
+            project.pk,
+            ds_type,
+            since,
+            SYNC_LOOKBACK_DAYS,
+        )
         max_occurred = None
         increments_count = 0
         work_items_count = 0
@@ -131,39 +164,75 @@ class SyncEngine:
 
         for adapter_cls in self._milestone_classes_for(ds_type):
             adapter = adapter_cls(project.datasource)
+            adapter_count = 0
             for dto in adapter.fetch_milestones(project, since=since):
                 if not isinstance(dto, MilestoneDTO):
                     continue
                 self._persist_milestone_dto(project, dto)
                 milestones_count += 1
+                adapter_count += 1
                 max_occurred = dto.updated_at if max_occurred is None else max(max_occurred, dto.updated_at)
+            logger.info(
+                "sync adapter done run_id=%s adapter=%s phase=milestones fetched=%s total_milestones=%s",
+                run.pk,
+                adapter_cls.__name__,
+                adapter_count,
+                milestones_count,
+            )
 
         for adapter_cls in self._classes_for(ds_type):
             adapter = self._instantiate_adapter(adapter_cls, project.datasource)
+            adapter_count = 0
             for dto in adapter.fetch_increments(project, since=since):
                 if not isinstance(dto, IncrementDTO):
                     continue
                 self._persist_dto(project, dto)
                 increments_count += 1
+                adapter_count += 1
                 max_occurred = dto.occurred_at if max_occurred is None else max(max_occurred, dto.occurred_at)
                 contributors_seen.add((project.datasource_id, dto.contributor.email))
+            logger.info(
+                "sync adapter done run_id=%s adapter=%s phase=increments fetched=%s total_increments=%s",
+                run.pk,
+                adapter_cls.__name__,
+                adapter_count,
+                increments_count,
+            )
 
         for adapter_cls in self._work_classes_for(ds_type):
             adapter = adapter_cls(project.datasource)
+            adapter_count = 0
             for dto in adapter.fetch_work_items(project, since=since):
                 if not isinstance(dto, UnitOfWorkDTO):
                     continue
                 self._persist_work_dto(project, dto)
                 work_items_count += 1
+                adapter_count += 1
                 max_occurred = dto.updated_at if max_occurred is None else max(max_occurred, dto.updated_at)
                 if dto.contributor and dto.contributor.email:
                     contributors_seen.add((project.datasource_id, dto.contributor.email))
+            logger.info(
+                "sync adapter done run_id=%s adapter=%s phase=work_items fetched=%s total_work_items=%s",
+                run.pk,
+                adapter_cls.__name__,
+                adapter_count,
+                work_items_count,
+            )
 
         run.increments_ingested = increments_count
         run.work_items_ingested = work_items_count
         run.milestones_ingested = milestones_count
         run.contributors_touched = len(contributors_seen)
         run.cursor_to = max_occurred or timezone.now()
+        if increments_count == 0 and work_items_count == 0 and milestones_count == 0:
+            logger.warning(
+                "sync empty run_id=%s project_id=%s external_project_id=%s since=%s — "
+                "no milestones, increments, or work items ingested",
+                run.pk,
+                project.pk,
+                project.external_project_id,
+                since,
+            )
 
     def _compute_since(self, project: Project):
         last_ok = (

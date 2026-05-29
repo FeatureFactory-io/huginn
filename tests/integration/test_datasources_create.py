@@ -38,6 +38,9 @@ def test_create_01_get_shows_step_one(commander_client) -> None:
     body = r.content.decode()
     assert "Step 1 of 2" in body
     assert "Add Data Source" in body
+    assert "simpleicons.org/gitlab" in body
+    assert "simpleicons.org/github" in body
+    assert "simpleicons.org/jira" in body
 
 
 @pytest.mark.django_db

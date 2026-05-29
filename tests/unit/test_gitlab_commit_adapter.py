@@ -75,3 +75,37 @@ def test_gitlab_commit_adapter_uses_author_email_from_commit_root() -> None:
     assert len(rows) == 1
     assert rows[0].contributor.email == "you@example.com"
     assert rows[0].contributor.name == "Denis Petelin"
+
+
+@pytest.mark.django_db
+def test_gitlab_commit_adapter_falls_back_when_branch_list_empty() -> None:
+    ds = DataSourceFactory(base_url="https://gitlab.example.com", encrypted_token_ciphertext="tok")
+    p = ProjectFactory(datasource=ds, external_project_id=42)
+    commit = {
+        "id": "feedface",
+        "title": "fallback branch",
+        "committed_date": "2026-05-08T17:00:00+00:00",
+        "author_name": "Ada",
+        "author_email": "ada@example.com",
+        "web_url": "https://gitlab.example.com/commit/feedface",
+    }
+
+    with (
+        patch(
+            "ingestion.adapters.gitlab_commits.GitlabClient.list_branch_names",
+            return_value=[],
+        ),
+        patch(
+            "ingestion.adapters.gitlab_commits.GitlabClient.get_project",
+            return_value={"default_branch": "main"},
+        ),
+        patch(
+            "ingestion.adapters.gitlab_commits.GitlabClient.list_commits",
+            return_value=[commit],
+        ),
+    ):
+        adapter = GitlabCommitAdapter(ds)
+        rows = list(adapter.fetch_increments(p, since=None))
+
+    assert len(rows) == 1
+    assert rows[0].external_id == "feedface"

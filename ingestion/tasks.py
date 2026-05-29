@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 
 from celery import shared_task
@@ -10,11 +11,26 @@ from django.utils import timezone
 from ingestion.models import Project
 from ingestion.services.sync_engine import SyncEngine
 
+logger = logging.getLogger("ingestion.tasks")
+
 
 @shared_task(name="ingestion.sync_project")
 def sync_project(project_id: int) -> None:
     """Run :class:`~ingestion.services.sync_engine.SyncEngine` for one project."""
-    SyncEngine().run_for_project(project_id)
+    logger.info("sync_project task start project_id=%s", project_id)
+    run = SyncEngine().run_for_project(project_id)
+    if run is None:
+        logger.info("sync_project task finished project_id=%s result=skipped", project_id)
+        return
+    logger.info(
+        "sync_project task finished project_id=%s run_id=%s status=%s increments=%s work_items=%s milestones=%s",
+        project_id,
+        run.pk,
+        run.status,
+        run.increments_ingested,
+        run.work_items_ingested,
+        run.milestones_ingested,
+    )
 
 
 @shared_task(name="ingestion.sync_project_placeholder")

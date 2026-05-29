@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 5 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and — via **Gjallarhorn AI** — automatically generates a SitRep after each sync. The PM conducts Observe-Orient (OO) with Gjallarhorn in Chat, then approves or rejects its proposed Decisions (Semi-Autonomous mode) or watches Gjallarhorn execute autonomously (Autonomous mode). Gjallarhorn runs on `claude-sonnet-4-6` with extended thinking, caches stable context (Playbook, FRAGOs, Situational Awareness), and executes multi-step tasks via an `ExecutionPlan` / `PlanStep` engine backed by Celery.
+Huginn is a Human-AI OODA composite for engineering PMs. It ingests development signals from external sources on a Celery-driven schedule (fan-out every 5 minutes; each **Active** `Project` syncs when due per its `sync_schedule`), computes Master Variables (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION), and — via **Gjallarhorn AI** — automatically generates a SitRep after each sync. The PM conducts Observe-Orient (OO) with Gjallarhorn in Chat, then approves or rejects proposed **Decisions** — each offering **Outcome options** (calibrations or dispatches) — in Semi-Autonomous mode, or watches Gjallarhorn execute **Outcomes** autonomously (Autonomous mode). Terminology: see [`docs/ideation/vision.md`](../ideation/vision.md) — Vocabulary. Gjallarhorn runs on `claude-sonnet-4-6` with extended thinking, caches stable context (Playbook, FRAGOs, Situational Awareness, Commander profile), and executes multi-step tasks via an `ExecutionPlan` / `PlanStep` engine backed by Celery.
 
 **Key architectural decisions:**
 - Django MTV + Celery hybrid: web UI and async ingestion in one monorepo
@@ -30,7 +30,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 | `accounts/` | Custom user model (`AUTH_USER_MODEL`), authentication hooks. |
 | `ingestion/` | Extraction jobs per source (GitLab, Jira, …). Celery tasks, connector clients, raw data models. |
 | `analytics/` | Master Variable computation (TRANSPARENCY, THROUGHPUT, CYCLE TIME, REWORK, QUALITY, COMPLEXITY, CONTRIBUTION). Reads from ingested data, writes computed metrics. |
-| `sitrep/` | SitRep records, Decision records, VariableDatapoint records, FRAGO store, Situational Awareness snapshots. (Generation is `gjallarhorn/`'s responsibility.) |
+| `sitrep/` | SitRep records, Decision records, **Outcome** / **OutcomeOption** / **StationRecord** (specified — not yet implemented), VariableDatapoint records, FRAGO store, Situational Awareness snapshots. (Generation is `gjallarhorn/`'s responsibility.) |
 | `ui/` | Django views, HTMX responses, ECharts JSON endpoints, templates. |
 | `gjallarhorn/` | FastMCP wrapper exposing Huginn data to AI. Gjallarhorn AI interface. |
 
@@ -47,7 +47,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 - `analytics/` → reads from `ingestion/` models
 - `sitrep/` → reads from `analytics/` + `ingestion/`
 - `ui/` → reads from all apps, no business logic
-- `gjallarhorn/` → reads from `sitrep/`, `analytics/`, and `ingestion/`; writes SitRep + Decision records + VariableDatapoints to `sitrep/` in all modes; in Autonomous mode additionally writes FRAGOs + SitAwareness entries and calls `ingestion/` Jira connector to execute Decision outcomes
+- `gjallarhorn/` → reads from `sitrep/`, `analytics/`, and `ingestion/`; writes SitRep + Decision records + VariableDatapoints to `sitrep/` in all modes; in Autonomous mode additionally executes **Outcomes** via **OutcomeExecutor** (calibrations + dispatches) and calls `ingestion/` Jira connector for dispatch boards
 - `ingestion/` → no internal dependencies
 
 **Ingestion sync engine (foundation):**
@@ -76,7 +76,7 @@ Huginn is a Human-AI OODA composite for engineering PMs. It ingests development 
 | GitLab | `python-gitlab` | 8.x | Full REST API coverage: commits, MRs, branches, members |
 | Jira | `jira` (pycontribs) | latest | Better Jira-specific coverage than `atlassian-python-api` |
 
-**MVP — Decision → Jira write path:** Issues created by **Branch C** (approved Decision outcomes) authenticate against a **`DataSource` row with type Jira**: same `ingestion/` `DataSource` model GitLab uses, but **wired for outbound REST writes** (`create_jira_issue`) before read-side Jira ingestion ships. Exactly which Jira `DataSource`(s) apply to a workspace (and how the Action Stations mirror picks its source) remains a wiring detail documented with the `Decision`/`ActionStation` implementations.
+**MVP — Decision → Jira write path:** Issues created by **dispatch** Outcomes (`JiraDispatchBoard`) authenticate against a **`DataSource` row with type Jira**: same `ingestion/` `DataSource` model GitLab uses, but **wired for outbound REST writes** (`create_jira_issue`) before read-side Jira ingestion ships. Exactly which Jira `DataSource`(s) apply to a workspace (and how Action Stations picks its source) remains a wiring detail documented with the `Decision` / `Outcome` / `StationRecord` implementations.
 
 **External source connectors — TBD (resolve before respective sprint):**
 
@@ -114,7 +114,7 @@ huginn/
 │   └── tests/
 ├── sitrep/
 │   ├── models/
-│   ├── services/        # SitRep, Decision, FRAGO, VariableDatapoint, SitAwareness CRUD
+│   ├── services/        # SitRep, Decision, Outcome, FRAGO, VariableDatapoint, SitAwareness CRUD
 │   └── tests/
 ├── ui/
 │   ├── views/
@@ -123,6 +123,7 @@ huginn/
 ├── gjallarhorn/
 │   ├── llm/             # LLM ABC, ClaudeLLM, retry_on_rate_limit
 │   ├── agent/           # GjallarhornAgent, ToolExecutor, prompts
+│   ├── outcomes/        # OutcomeExecutor ABC, CalibrationExecutor, DispatchBoard registry (specified)
 │   ├── mcp_tools/       # FastMCP tool definitions (data, sitrep, decision, plan)
 │   ├── models/          # Conversation, Message, ExecutionPlan, PlanStep
 │   ├── services/        # sitrep_service, factory
@@ -682,7 +683,7 @@ Write an ADR for every significant technology or architecture choice. This SAO.m
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Dependency rule** (authoritative — §1 matches): `gjallarhorn/` reads from `sitrep/`, `analytics/`, and `ingestion/`; always writes SitRep records + Decision records + VariableDatapoints to `sitrep/`; in Autonomous mode additionally writes FRAGOs + SitAwareness entries and calls the Jira connector via `ingestion/` to execute Decision outcomes.
+**Dependency rule** (authoritative — §1 matches): `gjallarhorn/` reads from `sitrep/`, `analytics/`, and `ingestion/`; always writes SitRep records + Decision records + VariableDatapoints to `sitrep/`; in Autonomous mode additionally executes **Outcomes** via **OutcomeExecutor** (calibrations + dispatches) — see §18.
 
 ---
 
@@ -698,11 +699,12 @@ gjallarhorn/
 │   ├── agent.py           # GjallarhornAgent(llm, tool_executor); main loop
 │   ├── tool_executor.py   # Permission checks + delegates to *services.py
 │   └── prompts.py         # Base system prompt (cacheable block)
+├── outcomes/              # OutcomeExecutor ABC, CalibrationExecutor, DispatchBoard registry (§18)
 ├── mcp_tools/             # FastMCP tool definitions
 │   ├── data_tools.py      # list_commits, list_issues, get_contributor, …
 │   ├── sitrep_tools.py    # get_sitrep, list_sitreps, list_decisions, …
 │   ├── playbook_tools.py  # get_playbook, list_variables, …
-│   ├── decision_tools.py  # approve_decision, create_frago, extend_sitawareness, …
+│   ├── decision_tools.py  # approve_decision, execute_outcome, execute_calibration_*, execute_dispatch_*, …
 │   └── plan_tools.py      # create_plan
 ├── models/
 │   ├── conversation.py    # Conversation, Message
@@ -781,8 +783,12 @@ class LLMResponse:
 **`ToolExecutor`** (`gjallarhorn/agent/tool_executor.py`):
 - Carries `user` and `project` scope; validates permissions before every service call.
 - **Read tools** — auto-execute, no confirmation: `list_*`, `get_*`, `find_*`.
-- **Write tools** — require an in-Chat confirmation card (`[Confirm] / [Cancel]`) in Semi-Auto; auto-execute in Autonomous (Owner = `"Gjallarhorn"`):
-  - `create_frago`, `extend_sitawareness`, `create_jira_issue`, `approve_decision`
+- **Write tools** — require an in-Chat confirmation card (`[Confirm] / [Cancel]`) in Semi-Auto; auto-execute in Autonomous (Owner = `"Gjallarhorn"`). Target surface: `execute_outcome` delegating to **OutcomeExecutor**; MVP aliases wrap existing tools:
+  - `execute_calibration_frago` (alias: `create_frago`)
+  - `execute_calibration_sitawareness` (alias: `extend_sitawareness`)
+  - `execute_dispatch_jira_issue` (alias: `create_jira_issue`)
+  - `approve_decision`
+- Write tools registered dynamically from **Project-enabled dispatch boards** (see §18.3).
 - Destructive calls that are never auto-executed regardless of mode: none in MVP (Huginn only creates, never deletes).
 - **Standardized response envelope** — every tool call returns:
   ```python
@@ -1016,21 +1022,22 @@ Sync Complete
 
 ```
 Proposed  →  [Commander reviews — Semi-Auto only]
-    ├── Approved:  Commander provides Reasoning + chooses outcome branch (A/B/C)
-    │       └─▶  Semi-Auto: outcome executes **inline in the Decision approve POST** —
-    │            `ToolExecutor` runs synchronously inside the Django view/request.
-    │       └─▶  On outcome success → Decision.status='Approved'; Owner=Commander;
-    │             Reasoning + outcome_ref stored; Decisions Logic FRAGO gets the usual markdown line
-    │       └─▶  Branch C (Jira) failure (timeout/API error) → **Decision stays Proposed**; error returned in HTMX
-    │       └─▶  Branches → A: create FRAGO · B: extend SA · C: POST Jira (`HUGINN` label) ·
+    ├── Approved:  Commander provides Reasoning + selects Outcome option (or custom)
+    │       └─▶  Semi-Auto: Outcome executes **inline in the Decision approve POST** —
+    │            `OutcomeExecutor` / `ToolExecutor` runs synchronously inside the Django view/request.
+    │       └─▶  On success → Outcome row persisted; Decision.status='Approved'; Owner=Commander;
+    │             Reasoning + outcome_ref stored; Decisions Logic FRAGO gets the usual markdown line;
+    │             optional Commander profile signal appended
+    │       └─▶  Dispatch failure (Jira timeout/API error) → **Decision stays Proposed**; error returned in HTMX
+    │       └─▶  Executors → calibration: FRAGO · SA · dispatch: POST Jira (`HUGINN` label) ·
     │              each may optionally spawn ExecutionPlan afterward for complex fallout
-    ├── Rejected:  reject note optional; no Jira from reject path (MVP)
+    ├── Rejected:  reject note optional; no dispatch from reject path (MVP)
     │       └─▶  Reject note only → Decision.status='Rejected'; usually contributes DL row
-    │       └─▶  Vigilance → same creatives as Branch A (FRAGO) or B (SA); Decision stays Rejected
+    │       └─▶  Vigilance → calibration only (watch FRAGO or SA); Decision stays Rejected
     │       └─▶  Bare reject (no note, no artefacts) → no DL contribution
     └── [Autonomous] Auto-approved:  Gjallarhorn provides machine Reasoning
             └─▶  Decision.status='Auto-approved'; Owner='Gjallarhorn'
-            └─▶  Same outcome semantics as Approved; typically runs **inside the SitRep Celery pipeline**
+            └─▶  Same Outcome semantics as Approved; typically runs **inside the SitRep Celery pipeline**
                       (still may call `gjallarhorn.tasks.execute_decision_outcome` or shared service code —
                       not the Semi-Auto HTTP path)
 ```
@@ -1038,7 +1045,7 @@ Proposed  →  [Commander reviews — Semi-Auto only]
 **Decisions Logic FRAGO** (`kind='decisions_logic'` — exactly **one** per Project):
 - Single markdown body Commander **extends / modifies / removes** (`FRAGOS-EDIT_FRAGO-1`). Most resolved Decisions (**Approved**, **Auto-approved**, **Rejected**) **usually** spawn a structured line on completion; omit for **bare dismiss** and other omission cases (`user_journey.md` Act 9).
 - **Structured line canonical format:** one **markdown bullet** per contribution, embedding the fields inline (readable by Commander and LLM alike). Recommended template (` · ` separators):
-  `- **2026-05-11 14:03** · Decision: *Increase coverage gates* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Outcome: [FRAGO #42](…) / Jira `HUGINN-302` / SA entry / vigilance refs as applicable`
+  `- **2026-05-11 14:03** · Decision: *Increase coverage gates* · Owner: **Donland** · **Approved** · Reasoning: *Ship quality bar before refactor* · Calibration: [FRAGO #42](…) · Dispatch: Jira `HUGINN-302` · SA entry / vigilance refs as applicable`
 - Auto-created when **first qualifying line lands**; always Active; not revocable.
 - Included as Gjallarhorn cached context (FRAGO block) — **current body** is authoritative, not immutable history.
 - **Audit:** general FRAGO rows use **`django-simple-history`** (`HistoricalRecords` on `FRAGO`/equivalent ORM model) so `FRAGOS-VIEW_FRAGO-1`'s toggle/edit timeline is backed by real diffs rather than bespoke log tables — including the Decisions Logic FRAGO whenever it is edited.
@@ -1051,7 +1058,7 @@ Proposed  →  [Commander reviews — Semi-Auto only]
 |---|---|---|
 | SitRep generation | Automatic on Sync Complete | Automatic on Sync Complete |
 | Decision status after SitRep | `Proposed` | `Auto-approved` |
-| Outcome execution (Semi-Auto) | **`DECISIONS-VIEW`** approve POST awaits `ToolExecutor` **synchronously**; Branch **C Jira failures** leave `Decision` **`Proposed`** | Runs inside SitRep/async pipeline immediately after SitRep persists `Auto-approved` rows |
+| Outcome execution (Semi-Auto) | **`DECISIONS-VIEW`** approve POST awaits **`execute_outcome`** / `ToolExecutor` **synchronously**; **dispatch failures** leave `Decision` **`Proposed`** | Runs inside SitRep/async pipeline immediately after SitRep persists `Auto-approved` rows |
 | Write tool confirmation | Required (in-Chat card) | Auto-executes |
 | Owner on Decisions | Commander (human) | `'Gjallarhorn'` |
 | Toggle surface | Pill `[Semi-Auto \| Auto]` on `PROJECTS-VIEW_PROJECT-1` top bar | ← same |
@@ -1066,8 +1073,8 @@ Autonomous mode is intended after a training period: the Commander has reviewed 
 | Event | Source | Celery task | Action |
 |---|---|---|---|
 | `Sync Complete` | `ingestion.sync_project` success | `gjallarhorn.tasks.generate_sitrep_for_project` | Build ExecutionPlan from Playbook Workflow; run steps; write SitRep + Decisions |
-| `Decision Approved` | Commander submits Approve (+ Reasoning + branch) — Semi-Auto | *(none — synchronous)* | `ui` Decision view calls `ToolExecutor` / `*services.py` **in the HTTP request**; Branch C Jira errors leave `Decision` **`Proposed`** |
-| `Decision Made` (auto) | Autonomous SitRep path — Gjallarhorn auto-approve | `gjallarhorn.tasks.execute_decision_outcome` (or inline in `generate_sitrep` chain) | Execute outcome branch (FRAGO / SitAwareness / Jira); may spawn ExecutionPlan for multi-step |
+| `Decision Approved` | Commander submits Approve (+ Reasoning + selected Outcome option) — Semi-Auto | *(none — synchronous)* | `ui` Decision view calls `OutcomeExecutor` / `ToolExecutor` / `*services.py` **in the HTTP request**; dispatch failures leave `Decision` **`Proposed`** |
+| `Decision Made` (auto) | Autonomous SitRep path — Gjallarhorn auto-approve | `gjallarhorn.tasks.execute_decision_outcome` (or inline in `generate_sitrep` chain) | Execute Outcome via calibration or dispatch executor; may spawn ExecutionPlan for multi-step |
 | Chat message | HTMX POST `/chat/message/` → 202; Celery task; SSE push | `gjallarhorn.tasks.process_chat_message` | Store message, enqueue task, push `ai_message` + any Plan events via SSE stream |
 
 MVP events: `Sync Complete`, Commander-side synchronous **Decision Approved** handling (HTTP), and **`Decision Made` / auto-outcomes** inside the autonomous pipeline (`execute_decision_outcome` shared code). Chat-initiated Plans are also in MVP.
@@ -1282,34 +1289,38 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Redis as Redis (pub/sub)
 
-    Browser->>Views: POST /decisions/id/approve/ (branch, Reasoning)
+    Browser->>Views: POST /decisions/id/approve/ (selected Outcome option, Reasoning)
 
-    alt Branch A — create FRAGO
-        Views->>ToolExec: create_frago(project, title, body)
-        ToolExec->>DB: FRAGO persisted
-    else Branch B — extend SitAwareness
-        Views->>ToolExec: extend_sitawareness(entry)
-        ToolExec->>DB: SA entry persisted
-    else Branch C — create Jira issue (credentials via DataSource Jira)
-        Views->>ToolExec: create_jira_issue(summary, description)
+    Note over Browser,Views: Gjallarhorn may have pre-proposed options on the Decision row
+
+    alt Calibration — FRAGO
+        Views->>ToolExec: execute_calibration_frago / create_frago(project, title, body)
+        ToolExec->>DB: FRAGO persisted; Outcome row (kind=calibration)
+    else Calibration — SitAwareness
+        Views->>ToolExec: execute_calibration_sitawareness / extend_sitawareness(entry)
+        ToolExec->>DB: SA entry persisted; Outcome row (kind=calibration)
+    else Dispatch — Jira (credentials via DataSource Jira)
+        Views->>ToolExec: execute_dispatch_jira_issue / create_jira_issue(summary, description)
         ToolExec->>JiraAPI: POST /rest/api/3/issue
         alt Success
             JiraAPI-->>ToolExec: issue key (HUGINN-NNN)
+            ToolExec->>DB: Outcome row (kind=dispatch, ref=HUGINN-NNN)
         else Failure
             ToolExec-->>Views: error
             Views->>DB: Decision remains Proposed
             Views-->>Browser: HTMX error toast / partial with message
-            Note over Views,Browser: No Approved status; no DL line on Branch C failure
+            Note over Views,Browser: No Approved status; no DL line on dispatch failure
         end
     end
 
-    opt outcome success paths for A/B or successful C only
+    opt outcome success paths for calibration or successful dispatch only
         Views->>DB: Decision.status Approved; Reasoning outcome_ref finalized
         Views->>DB: append markdown bullet row to Decisions Logic FRAGO
+        Views->>DB: optional Commander profile signal
         Views-->>Browser: HTMX partial Decision Approved
     end
 
-    opt Branch follow-up Plan (optional)
+    opt Outcome follow-up Plan (optional)
         Views->>Agent: create_plan(goal, steps)
         Agent->>DB: ExecutionPlan + PlanSteps + Celery enqueue
         Note over Agent,Redis: same async Plan SSE path as Flow A
@@ -1318,6 +1329,75 @@ sequenceDiagram
 ```
 
 **Contract:** Semi-Automatic MVP uses **single HTTP request semantics** above so the Commander never observes an `Approved` Decision whose Jira issue never landed. Autonomous executions keep using the Celery/async flavor described in §17.8 (`execute_decision_outcome` helper code **shared** with the view-layer service whenever practical).
+
+---
+
+## 18. Outcome Execution Architecture
+
+> Vocabulary: [`docs/ideation/vision.md`](../ideation/vision.md) — Vocabulary. *Implementation tracked in Decisions/Outcomes milestone; docs lead code.*
+
+### 18.1 Layering
+
+```
+Decision → Outcome (XOR) → OutcomeExecutor
+                              ├── CalibrationExecutor (frago, sitawareness)
+                              └── DispatchBoard (jira_issue, …)
+                                      └── mirror() → StationRecord
+```
+
+- **Decision** — judgment moment (Approve/Reject + Reasoning).
+- **Outcome option** — Gjallarhorn-proposed choice attached at SitRep time.
+- **Outcome** — exactly one executed effect per approved Decision.
+- **Calibration** — doctrine write (`kind=calibration`): FRAGO, SA entry.
+- **Dispatch** — external write (`kind=dispatch`): Jira issue, future robot job.
+- **Station record** — read-only mirror in Action Stations; not an Outcome.
+
+### 18.2 OutcomeExecutor ABC
+
+Parallel to [`ingestion/adapters/base.py`](../../ingestion/adapters/base.py):
+
+```python
+class OutcomeExecutor(ABC):
+    def propose_options(self, context) -> list[OutcomeOptionDTO]: ...
+    def execute(self, payload) -> OutcomeResult: ...
+
+class DispatchBoard(OutcomeExecutor):
+    def mirror(self) -> Iterable[StationRecordDTO]: ...  # feeds Action Stations
+```
+
+MVP implementations:
+
+| Executor | Kind | Notes |
+|---|---|---|
+| `FragoCalibrationExecutor` | calibration | Creates FRAGO |
+| `SitAwarenessCalibrationExecutor` | calibration | Appends SA entry |
+| `JiraDispatchBoard` | dispatch | `create_jira_issue`; mirrors `HUGINN`-tagged issues |
+
+### 18.3 Project enablement
+
+- **Calibrations** (FRAGO, SA) — always available for every Project.
+- **Dispatches** — gated by `Project.enabled_dispatch_boards` (JSON/list). MVP: `jira_issue` when a workspace `DataSource(type=Jira)` is connected.
+- `build_executor()` in `gjallarhorn/services/factory.py` registers write tools from the Project's enabled boards.
+
+### 18.4 ToolExecutor integration
+
+- Semi-Auto: `execute_outcome` runs **synchronously** in the Decision approve POST.
+- **Dispatch failure → Decision stays `Proposed`** (unchanged UX contract).
+- Read tools never cached; write tools (`execute_calibration_*`, `execute_dispatch_*`) never cached (see §17.6).
+
+### 18.5 Commander profile
+
+- **Distinct from Decisions Logic FRAGO** — project explicit judgment vs user behavioral priors.
+- Model sketch: `CommanderProfile` 1:1 with `User`; JSON `signals[]` appended on Decision resolve.
+- Minimum signal fields (MVP): `{variable_abbrev, color, action_taken, delay_hours}`.
+- Gjallarhorn prompt cache: profile block per User (separate cache block from DL FRAGO).
+- MVP: persist signals; profile VIEW/EDIT UI deferred (`user_journey.md` open product decisions).
+
+### 18.6 Station records
+
+- **Not** created by the approve POST directly.
+- Created/updated by Jira sync reading `HUGINN`-labelled issues linked from `Outcome.ref`.
+- Action Stations UI lists **station records** — verification surface for dispatches only.
 
 ---
 
@@ -1384,12 +1464,16 @@ The following sources are planned but connector libs not yet selected. Resolve b
 | Observability | AWS CloudWatch | Co-located with EB; no additional tooling needed |
 | Chat streaming | SSE (`htmx-sse` + `StreamingHttpResponse` + Redis pub/sub) over HTMX polling | LLM responses and Plan progress need real-time push; polling adds 1–5 s lag and wastes requests; SSE is a unidirectional long-lived HTTP stream compatible with Django sync views when using `gthread` workers; Celery workers publish to Redis pub/sub, the `chat_stream` view subscribes and streams to browser |
 | FRAGO auditing | **`django-simple-history`** on FRAGO rows | Gives `FRAGOS-VIEW_FRAGO-1`'s chronological toggle/edit timeline without bespoke `FRAGOEvent` tables |
-| Semi-Auto Decision approvals | Branch outcomes run **inside the Django view/request** (`ToolExecutor`). Branch **C**: Jira **failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
+| Semi-Auto Decision approvals | **`execute_outcome`** runs **inside the Django view/request** (`OutcomeExecutor` / `ToolExecutor`). **Dispatch failure → stay `Proposed`** | Avoids orphaned `Approved` rows when Jira is down/timeouts exceed patience; aligns with synchronous UX |
+| Decision → Outcome model | Single **Outcome** row per approved Decision; **OutcomeOption** rows proposed at SitRep time | Avoids three nullable FKs; extensible to robot/Slack dispatch boards |
+| Outcome execution | **CalibrationExecutor** + **DispatchBoard** registry; mirrors ingestion adapter pattern | Project-scoped dispatch enablement |
+| Action Stations | **StationRecord** mirror of dispatches; upstream system of record | Unchanged read-only principle |
+| Commander profile | Signals on Decision resolve; separate from DL FRAGO | Behavioral vs explicit judgment memory |
 | AI model tiering | Opus (`claude-opus-4-5`) for plan creation + narrative synthesis; Sonnet (`claude-sonnet-4-6`) for Chat; Haiku (`claude-haiku-3-5`) for plan success/failure notifications | Reasoning depth proportional to task complexity; data-collection steps are deterministic tool calls — no model needed |
 | SitRep pipeline execution | Three step types: (1) data-collection steps (`is_planning=False`, `is_variable_assessment=False` — direct `ToolExecutor` call, no LLM); (2) per-Variable assessment steps (`is_variable_assessment=True` — one execution-model/Sonnet LLM call per `RulesOfEngagementVariable`, returns `{value, color}`); (3) narrative-composition step (`is_planning=True` — single planning-model/Opus LLM call, returns `{headline, situation_assessment, notable_activity, datapoints[…]}`). `_persist_sitrep_from_plan` writes the `SitRep` row, `variables_snapshot` JSON, and one `VariableDatapoint` row per Variable. | Minimises planning-model (Opus) token cost to one call per SitRep; execution-model (Sonnet) used for repeatable per-Variable assessments; data-collection steps are fully deterministic; tool-result cache prevents duplicate API calls within a plan run. |
 | Execution-layer caching | Intra-plan tool-result cache (Redis, scoped to `plan_id`, cleared on termination); explicit prompt-cache-block invalidation via Django signals | Prevents duplicate `list_commits` calls across Variable steps in the same plan; makes prompt-cache block freshness code-anchored rather than informal |
 | Conversation scope | Exactly **one** `gjallarhorn.Conversation` (`UNIQUE(user, project)`), plus optional `conversation_type` | Sidebar + fullscreen share SSE + history per Project boundary |
-| Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |
+| Decision → Jira credentials | Stored on reusable **`DataSource(type=jira)`** rows powering **`JiraDispatchBoard`** / `create_jira_issue` | Mirrors GitLab cred pattern; ingestion read-side adapters can reuse the row later |
 | Decisions Logic lines | Canonical **single markdown bullet** template per contribution (human + LLM readable) | Matches product decision; deterministic rendering for tooling |
 | TLS | CloudFront + ACM | ACM in us-east-1 (`featurefactory.io` + `*.featurefactory.io`); CloudFront in front of EB `huginn-prod` origin; Django `SECURE_SSL_REDIRECT=True` + `SECURE_PROXY_SSL_HEADER` |
 | IaC | AWS CDK (Python) | `infra/` — `HuginnCdn` stack deployed; Network/Data/App stacks + `cdk import` for legacy resources tracked as later phases |

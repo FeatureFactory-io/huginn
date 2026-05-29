@@ -1,0 +1,59 @@
+<div class="row justify-content-center">
+  <div class="col-md-10 col-lg-8">
+    <form method="post" class="row g-3">
+      {% csrf_token %}
+      <div class="col-md-4">
+        <button type="submit" name="type" value="gitlab"
+                class="card h-100 border-primary shadow-sm w-100 text-start p-3 btn btn-link text-decoration-none"
+                data-bs-toggle="tooltip" title="Connect GitLab with a PAT"
+                data-testid="datasource-type-gitlab">
+          <div class="d-flex align-items-center gap-3 text-body">
+            <img src="https://cdn.simpleicons.org/gitlab/FC6D26"
+                 width="48" height="48" alt="" class="flex-shrink-0"
+                 loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                 data-testid="datasource-type-gitlab-icon">
+            <div class="text-start">
+              <div class="fw-semibold fs-5">GitLab</div>
+              <div class="small text-muted">Self-hosted or GitLab.com</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="col-md-4">
+        <button type="submit" name="type" value="github"
+                class="card h-100 border-primary shadow-sm w-100 text-start p-3 btn btn-link text-decoration-none"
+                data-bs-toggle="tooltip" title="Connect GitHub.com with a PAT"
+                data-testid="datasource-type-github">
+          <div class="d-flex align-items-center gap-3 text-body">
+            <img src="https://cdn.simpleicons.org/github"
+                 width="48" height="48" alt="" class="flex-shrink-0"
+                 loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                 data-testid="datasource-type-github-icon">
+            <div class="text-start">
+              <div class="fw-semibold fs-5">GitHub</div>
+              <div class="small text-muted">GitHub.com repositories</div>
+            </div>
+          </div>
+        </button>
+      </div>
+      <div class="col-md-4">
+        <button type="button"
+                class="card h-100 border-secondary-subtle opacity-75 w-100 text-start p-3 btn btn-link text-decoration-none"
+                disabled
+                data-bs-toggle="tooltip" title="Coming soon"
+                data-testid="datasource-type-jira">
+          <div class="d-flex align-items-center gap-3 text-body">
+            <img src="https://cdn.simpleicons.org/jira/0052CC"
+                 width="48" height="48" alt="" class="flex-shrink-0 opacity-50"
+                 loading="lazy" decoding="async" referrerpolicy="no-referrer"
+                 data-testid="datasource-type-jira-icon">
+            <div class="text-start">
+              <div class="fw-semibold fs-5">Jira</div>
+              <div class="small text-muted">Coming soon</div>
+            </div>
+          </div>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
