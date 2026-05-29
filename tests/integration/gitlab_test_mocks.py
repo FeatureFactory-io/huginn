@@ -41,12 +41,15 @@ def gitlab_catalog_urlopen_side_effect(
             enter.read.return_value = user_bytes
             return cm
         m_single = re.fullmatch(r"/api/v4/projects/(\d+)", path_only.rstrip("/") or path_only)
-        if single_project_by_id is not None and m_single is not None and "/repository/" not in path_only:
+        if m_single is not None and "/repository/" not in path_only:
             gid = int(m_single.group(1))
-            payload = single_project_by_id.get(gid)
-            if payload is not None:
-                enter.read.return_value = json.dumps(payload).encode()
-                return cm
+            if single_project_by_id is not None:
+                payload = single_project_by_id.get(gid)
+                if payload is not None:
+                    enter.read.return_value = json.dumps(payload).encode()
+                    return cm
+            enter.read.return_value = json.dumps({"id": gid, "default_branch": "main"}).encode()
+            return cm
 
         if "/api/v4/projects" in url and "membership=true" in url:
             enter.read.return_value = json.dumps(project_rows).encode()
