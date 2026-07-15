@@ -60,6 +60,9 @@ Thumbs.db
 deploy.zip
 docker-compose.deploy.yml
 
+# Local Compose overrides (e.g. pointing POSTGRES_HOST at an external DB)
+docker-compose.override.yml
+
 # Celery
 celerybeat-schedule
 celerybeat.pid
