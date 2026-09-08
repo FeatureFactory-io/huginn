@@ -13,6 +13,7 @@ from ingestion.adapters.github_common import (
     parse_github_datetime,
     since_aware,
 )
+from ingestion.adapters.since import is_at_or_before_cursor
 from ingestion.adapters.work_base import WorkItemAdapter
 from ingestion.domain.work import UnitOfWorkDTO
 from ingestion.models import DataSource, Project, UnitOfWork
@@ -54,7 +55,7 @@ class GithubPullRequestAdapter(WorkItemAdapter):
             if not item.get("id"):
                 continue
             dto = _pr_to_dto(item)
-            if since_eff is not None and dto.updated_at < since_eff:
+            if is_at_or_before_cursor(dto.updated_at, since_eff):
                 continue
             yield dto
 

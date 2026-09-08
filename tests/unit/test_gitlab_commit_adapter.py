@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 import pytest
-from django.utils import timezone
 
 from ingestion.adapters.gitlab_commits import GitlabCommitAdapter
 from ingestion.domain.increments import IncrementKind
@@ -37,7 +36,7 @@ def test_gitlab_commit_adapter_yields_one_per_sha_dedupes_branches() -> None:
         ),
     ):
         adapter = GitlabCommitAdapter(ds)
-        rows = list(adapter.fetch_increments(p, since=timezone.now()))
+        rows = list(adapter.fetch_increments(p, since=None))
 
     assert len(rows) == 1
     dto = rows[0]

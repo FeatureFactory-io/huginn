@@ -1,10 +1,13 @@
-"""sync_project task must not emit sitrep signal on failed/skipped runs."""
+"""sync_project task must not emit sitrep signal on failed/skipped/empty runs."""
 
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.utils import timezone
 
-from ingestion.models import Project
+from ingestion.models import IngestionRun, Project
+from ingestion.services.sync_engine import SyncEngine
 from ingestion.tasks import sync_project
 from tests.factories import DataSourceFactory, ProjectFactory
 
@@ -41,7 +44,7 @@ def test_sync_project_enqueues_sitrep_only_on_successful_engine_run(
     commit = {
         "id": "abc123def456",
         "title": "hello",
-        "committed_date": "2026-05-06T10:00:00+00:00",
+        "committed_date": (timezone.now() - timedelta(hours=2)).isoformat(),
         "author": {"name": "Bob", "email": "bob@example.com"},
         "web_url": "https://gitlab.example.com/c/abc123def456",
     }
@@ -70,3 +73,30 @@ def test_sync_project_enqueues_sitrep_only_on_successful_engine_run(
         sync_project(p.pk)
 
     mock_generate_delay.assert_called_once()
+
+
+@pytest.mark.django_db
+@patch("ingestion.services.sync_engine.sync_project_completed.send")
+@patch("gjallarhorn.tasks.sitrep_tasks.generate_sitrep_for_project.delay")
+def test_empty_successful_sync_does_not_enqueue_sitrep(
+    mock_generate_delay: MagicMock,
+    mock_signal_send: MagicMock,
+) -> None:
+    """SITREP-GEN-28: a successful dump with no new rows must not start SitRep."""
+    ds = DataSourceFactory()
+    p = ProjectFactory(datasource=ds, external_project_id=1)
+    engine = SyncEngine(
+        classes_for=lambda _t: [],
+        work_classes_for=lambda _t: [],
+        milestone_classes_for=lambda _t: [],
+    )
+
+    run = engine.run_for_project(p.pk)
+
+    assert run is not None
+    assert run.status == IngestionRun.Status.SUCCESS
+    assert run.increments_ingested == 0
+    assert run.work_items_ingested == 0
+    assert run.milestones_ingested == 0
+    mock_signal_send.assert_not_called()
+    mock_generate_delay.assert_not_called()

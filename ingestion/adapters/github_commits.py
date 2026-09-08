@@ -15,6 +15,7 @@ from ingestion.adapters.github_common import (
     parse_github_datetime,
     since_aware,
 )
+from ingestion.adapters.since import is_at_or_before_cursor
 from ingestion.domain.increments import CommitIncrementDTO, ContributorDTO
 from ingestion.models import DataSource, Project
 
@@ -69,7 +70,10 @@ class GithubCommitAdapter(DataSourceAdapter):
             if not sha or sha in seen:
                 continue
             seen.add(sha)
-            yield _commit_to_dto(raw)
+            dto = _commit_to_dto(raw)
+            if is_at_or_before_cursor(dto.occurred_at, since_eff):
+                continue
+            yield dto
 
 
 register_adapter(DataSource.Type.GITHUB, GithubCommitAdapter)

@@ -29,6 +29,19 @@ Feature: SITREP-GENERATE-1 Gjallarhorn SitRep generation pipeline (narrative pha
     Then the enqueued "generate_sitrep_for_project" task carries from_dt "2026-05-11 09:00"
     And the enqueued task carries to_dt "2026-05-11 13:15"
 
+  Scenario: SITREP-GEN-28 Empty dump does not enqueue automatic SitRep
+    Given scheduled sync for "atlas-backend" completes successfully
+    And that run ingested 0 increments, 0 work items, and 0 milestones
+    When sync_project_completed would fire
+    Then generate_sitrep_for_project is not enqueued
+    And the skip is logged at INFO with project id and "empty dump"
+
+  Scenario: SITREP-GEN-29 Manual dump schedule does not enqueue automatic SitRep
+    Given Project "atlas-backend" has sync_schedule "manual"
+    When sync_project_completed fires for "atlas-backend"
+    Then generate_sitrep_for_project is not enqueued
+    And the skip is logged at INFO with "dumps disabled"
+
   # ---------------------------------------------------------------------------
   # Manual trigger — period picker
   # ---------------------------------------------------------------------------

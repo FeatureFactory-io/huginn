@@ -14,6 +14,7 @@ from ingestion.models import Increment, Project
 from ingestion.signals import sync_project_completed
 from roe.models import RulesOfEngagement, RulesOfEngagementVersion
 from sitrep.models import SitRep
+from tests.factories import ProjectFactory
 
 User = get_user_model()
 
@@ -62,6 +63,16 @@ class TestSitRepSignal:
             side_effect=RuntimeError("boom"),
         ):
             on_sync_project_completed(sender=None, project=project, to_dt=now)
+
+    def test_manual_dump_schedule_does_not_enqueue_sitrep(self, db):
+        """SITREP-GEN-29: automatic SitRep must not run when dumps are manual."""
+        project = ProjectFactory(sync_schedule=Project.SyncSchedule.MANUAL)
+        now = timezone.now()
+        with patch(
+            "gjallarhorn.tasks.sitrep_tasks.generate_sitrep_for_project.delay",
+        ) as mock_delay:
+            on_sync_project_completed(sender=None, project=project, to_dt=now)
+        mock_delay.assert_not_called()
 
     def test_flow_a_full_pipeline(self, scripted_llm_factory, project_with_commit):
         project, user, now = project_with_commit

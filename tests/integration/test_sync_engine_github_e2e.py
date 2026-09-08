@@ -1,8 +1,10 @@
 """GitHub sync engine end-to-end with HTTP mocked at client layer."""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.utils import timezone
 
 from ingestion.models import Increment, Milestone, Project, UnitOfWork
 from ingestion.tasks import sync_project
@@ -24,6 +26,7 @@ def test_github_sync_ingests_commits_issues_prs_milestones(mock_urlopen) -> None
         source_path="acme/widget",
         sync_state=Project.SyncState.SYNCING,
     )
+    recent = (timezone.now() - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
     mock_urlopen.side_effect = github_catalog_urlopen_side_effect(
         [],
         commits=[
@@ -32,7 +35,7 @@ def test_github_sync_ingests_commits_issues_prs_milestones(mock_urlopen) -> None
                 "html_url": "https://github.com/acme/widget/commit/deadbeef",
                 "commit": {
                     "message": "fix: bug",
-                    "author": {"name": "Dev", "email": "dev@example.com", "date": "2026-05-06T10:00:00Z"},
+                    "author": {"name": "Dev", "email": "dev@example.com", "date": recent},
                 },
             }
         ],
@@ -42,8 +45,8 @@ def test_github_sync_ingests_commits_issues_prs_milestones(mock_urlopen) -> None
                 "number": 7,
                 "title": "Bug",
                 "state": "open",
-                "created_at": "2026-05-06T09:00:00Z",
-                "updated_at": "2026-05-06T10:00:00Z",
+                "created_at": recent,
+                "updated_at": recent,
                 "user": {"login": "dev"},
             }
         ],
@@ -53,8 +56,8 @@ def test_github_sync_ingests_commits_issues_prs_milestones(mock_urlopen) -> None
                 "number": 3,
                 "title": "Feature PR",
                 "state": "open",
-                "created_at": "2026-05-06T09:00:00Z",
-                "updated_at": "2026-05-06T10:00:00Z",
+                "created_at": recent,
+                "updated_at": recent,
                 "user": {"login": "dev"},
                 "head": {"ref": "feature"},
                 "base": {"ref": "main"},
@@ -65,7 +68,7 @@ def test_github_sync_ingests_commits_issues_prs_milestones(mock_urlopen) -> None
                 "id": 303,
                 "title": "v1.0",
                 "state": "open",
-                "updated_at": "2026-05-06T10:00:00Z",
+                "updated_at": recent,
             }
         ],
     )

@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_datetime
 
 from ingestion.adapters import register_adapter
 from ingestion.adapters.base import DataSourceAdapter
+from ingestion.adapters.since import is_at_or_before_cursor
 from ingestion.domain.increments import CommitIncrementDTO, ContributorDTO
 from ingestion.integrations.gitlab_client import GitlabClient
 from ingestion.models import DataSource, Project
@@ -136,7 +137,10 @@ class GitlabCommitAdapter(DataSourceAdapter):
                 branch_by_sha[sha].add(ref)
 
         for _sha, raw in sorted(by_sha.items(), key=lambda kv: _committed_at(kv[1]), reverse=True):
-            yield _commit_to_dto(raw, sorted(branch_by_sha[_sha]))
+            dto = _commit_to_dto(raw, sorted(branch_by_sha[_sha]))
+            if is_at_or_before_cursor(dto.occurred_at, since_eff):
+                continue
+            yield dto
 
 
 register_adapter(DataSource.Type.GITLAB, GitlabCommitAdapter)

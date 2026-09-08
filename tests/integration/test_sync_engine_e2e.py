@@ -1,8 +1,10 @@
 """End-to-end sync task with GitLab HTTP mocked at the client layer."""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.utils import timezone
 
 from ingestion.models import Increment, IngestionRun, Project
 from ingestion.tasks import sync_project
@@ -20,7 +22,7 @@ def test_sync_project_task_writes_increment_when_gitlab_returns_commit() -> None
     commit = {
         "id": "abc123def456",
         "title": "hello",
-        "committed_date": "2026-05-06T10:00:00+00:00",
+        "committed_date": (timezone.now() - timedelta(hours=2)).isoformat(),
         "author": {"name": "Bob", "email": "bob@example.com"},
         "web_url": "https://gitlab.example.com/c/abc123def456",
     }
