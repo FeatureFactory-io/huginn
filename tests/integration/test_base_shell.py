@@ -1,6 +1,6 @@
 """Regression tests for promoted canonical base layout (design system shell)."""
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from django.test import Client
@@ -103,12 +103,16 @@ def test_tactical_plot_rails_use_workspace_sa_and_fragos(commander_client):
         change_summary="seed",
     )
     p = ProjectFactory(display_name="Acme API", name="acme-api", slug="acme-api")
+    # Rail query is date.today() inclusive; hardcoded May 2026 windows expire and flake CI.
+    today = date.today()
+    effective_from = today - timedelta(days=7)
+    effective_to = today + timedelta(days=7)
     fr = FragoFactory(
         project=p,
         title="No deploys on Fridays",
         body_md="**Holiday** freeze — no merges.",
-        effective_from=date(2026, 5, 1),
-        effective_to=date(2026, 5, 31),
+        effective_from=effective_from,
+        effective_to=effective_to,
         enabled=True,
     )
     r = commander_client.get(reverse("tactical-plot"))
@@ -121,7 +125,7 @@ def test_tactical_plot_rails_use_workspace_sa_and_fragos(commander_client):
     assert "ongoing until next sprint." in body
     assert f'data-testid="dashboard-rail-frago-body-{fr.pk}"' in body
     assert "Holiday" in body
-    assert "May 01, 2026" in body or "May 1, 2026" in body
+    assert effective_from.strftime("%b %d, %Y") in body
     assert "No deploys on Fridays" in body
     assert "project: Acme API" in body
 
