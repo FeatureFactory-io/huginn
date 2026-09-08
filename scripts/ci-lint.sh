@@ -6,6 +6,6 @@ cd "$ROOT"
 rm -rf .ci-venv-lint
 python3 -m venv .ci-venv-lint
 .ci-venv-lint/bin/pip install --upgrade pip -q
-.ci-venv-lint/bin/pip install ruff -q
+.ci-venv-lint/bin/pip install "ruff==0.15.12" -q
 .ci-venv-lint/bin/ruff check .
 .ci-venv-lint/bin/ruff format --check .
