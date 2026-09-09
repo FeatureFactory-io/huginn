@@ -182,8 +182,8 @@ if [ "$ACTION" = "stop" ]; then
   fi
   leftover="$(_instance_ids "$IDLE_ENV" || true)"
   if [ -n "$leftover" ] && [ "$leftover" != "None" ]; then
-    echo "Terminating leftover instances: ${leftover}"
-    aws ec2 terminate-instances --instance-ids $leftover --output text >/dev/null
+    echo "WARNING: leftover instances still registered on ${IDLE_ENV}: ${leftover}"
+    echo "ASG terminate should have handled this; skipping ec2:TerminateInstances (not in huginn-ci IAM)."
   fi
   echo "IDLE STOP OK — ${IDLE_ENV} scaled to 0. Live ${LIVE_ENV} unchanged."
   exit 0
