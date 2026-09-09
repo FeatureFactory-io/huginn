@@ -85,7 +85,10 @@ promote_production:
   stage: promote
   <<: *python-with-make
   when: manual
-  needs: [create_release]
+  needs:
+    - job: deploy_staging
+    - job: create_release
+      optional: true
   script:
     - make ci-promote
   environment:
