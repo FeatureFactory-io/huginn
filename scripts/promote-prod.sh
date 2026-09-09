@@ -107,3 +107,8 @@ fi
 
 echo ""
 echo "PROMOTE SUCCESS: ${PROD_URL}/health/ -> 200, revision=${PROD_REVISION}."
+
+echo "Stopping the env that is now idle (former prod) to save compute..."
+EB_APP="$EB_APP_NAME" EB_ENV_A="$EB_BLUE_ENV" EB_ENV_B="$EB_GREEN_ENV" \
+  PROD_CNAME_SUBSTRING="huginn-prod" \
+  bash "$(dirname "$0")/eb_idle_power.sh" stop

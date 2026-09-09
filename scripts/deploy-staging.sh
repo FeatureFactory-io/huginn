@@ -40,6 +40,11 @@ echo "Inactive env: $INACTIVE_ENV  ← deploying here (staging for review)"
 echo "Image:        $ECR_IMAGE"
 echo "Revision:     $GIT_REVISION  (EB VersionLabel: $CI_COMMIT_SHORT_SHA)"
 
+echo "Ensuring inactive env is running (scale-to-zero may have stopped it)..."
+EB_APP="$EB_APP_NAME" EB_ENV_A="$EB_BLUE_ENV" EB_ENV_B="$EB_GREEN_ENV" \
+  PROD_CNAME_SUBSTRING="huginn-prod" \
+  bash "$(dirname "$0")/eb_idle_power.sh" start
+
 INACTIVE_CNAME=$(aws elasticbeanstalk describe-environments \
   --application-name "$EB_APP_NAME" \
   --environment-names "$INACTIVE_ENV" \

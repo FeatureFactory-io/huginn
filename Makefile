@@ -136,6 +136,11 @@ infra: ## Deploy all CDK stacks (use with caution on existing infra)
 
 # Same scripts as GitLab CI. Requires AWS CLI, EB_* and ECR_REGISTRY (see GitLab project variables / SAO).
 # The ECR image huginn:$(CI_COMMIT_SHORT_SHA) must already exist before staging succeeds.
+EB_APP_NAME ?= huginn
+EB_BLUE_ENV ?= huginn-blue
+EB_GREEN_ENV ?= huginn-green
+AWS_DEFAULT_REGION ?= us-east-1
+export EB_APP_NAME EB_BLUE_ENV EB_GREEN_ENV AWS_DEFAULT_REGION
 #
 # Staging only — which *revision* to deploy to the inactive EB:
 #   (1) CI_COMMIT_SHORT_SHA if set (CI), else (2) BRANCH=… (any git ref), else (3) HEAD.
@@ -158,6 +163,16 @@ staging: ## Deploy chosen revision to inactive EB (staging smoke). Optional BRAN
 .PHONY: swap
 swap: ## Promote **current staging** (inactive EB) to prod — not HEAD/BRANCH. SHA guard on VersionLabel; prod smoke vs staging /health/ revision.
 	bash scripts/promote-prod.sh
+
+.PHONY: staging-start
+staging-start: ## Start the inactive EB env if scaled to 0 (used by deploy-staging.sh)
+	@EB_APP=$(EB_APP_NAME) EB_ENV_A=$(EB_BLUE_ENV) EB_ENV_B=$(EB_GREEN_ENV) \
+	  PROD_CNAME_SUBSTRING=huginn-prod bash scripts/eb_idle_power.sh start
+
+.PHONY: staging-stop
+staging-stop: ## Scale the inactive (staging) EB env to 0 instances — never touches prod
+	@EB_APP=$(EB_APP_NAME) EB_ENV_A=$(EB_BLUE_ENV) EB_ENV_B=$(EB_GREEN_ENV) \
+	  PROD_CNAME_SUBSTRING=huginn-prod bash scripts/eb_idle_power.sh stop
 
 ##@ CI glue (GitLab)
 
