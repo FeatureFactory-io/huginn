@@ -64,15 +64,19 @@ class TestSitRepSignal:
         ):
             on_sync_project_completed(sender=None, project=project, to_dt=now)
 
-    def test_manual_dump_schedule_does_not_enqueue_sitrep(self, db):
-        """SITREP-GEN-29: automatic SitRep must not run when dumps are manual."""
+    def test_manual_project_sync_now_still_enqueues_sitrep(self, db):
+        """Manual schedule stops Beat only; a completed sync still SitReps."""
         project = ProjectFactory(sync_schedule=Project.SyncSchedule.MANUAL)
         now = timezone.now()
         with patch(
             "gjallarhorn.tasks.sitrep_tasks.generate_sitrep_for_project.delay",
         ) as mock_delay:
             on_sync_project_completed(sender=None, project=project, to_dt=now)
-        mock_delay.assert_not_called()
+        mock_delay.assert_called_once()
+        call_kwargs = mock_delay.call_args.kwargs
+        assert call_kwargs["project_id"] == project.pk
+        assert call_kwargs["trigger"] == "automatic"
+        assert call_kwargs["to_dt"] == now.isoformat()
 
     def test_flow_a_full_pipeline(self, scripted_llm_factory, project_with_commit):
         project, user, now = project_with_commit

@@ -77,12 +77,10 @@ def test_sync_project_enqueues_sitrep_only_on_successful_engine_run(
 
 @pytest.mark.django_db
 @patch("ingestion.services.sync_engine.sync_project_completed.send")
-@patch("gjallarhorn.tasks.sitrep_tasks.generate_sitrep_for_project.delay")
-def test_empty_successful_sync_does_not_enqueue_sitrep(
-    mock_generate_delay: MagicMock,
+def test_empty_successful_sync_still_emits_sitrep_signal(
     mock_signal_send: MagicMock,
 ) -> None:
-    """SITREP-GEN-28: a successful dump with no new rows must not start SitRep."""
+    """SITREP-GEN-01: successful sync always fires sync_project_completed, even with zero rows."""
     ds = DataSourceFactory()
     p = ProjectFactory(datasource=ds, external_project_id=1)
     engine = SyncEngine(
@@ -98,5 +96,7 @@ def test_empty_successful_sync_does_not_enqueue_sitrep(
     assert run.increments_ingested == 0
     assert run.work_items_ingested == 0
     assert run.milestones_ingested == 0
-    mock_signal_send.assert_not_called()
-    mock_generate_delay.assert_not_called()
+    mock_signal_send.assert_called_once()
+    call_kwargs = mock_signal_send.call_args.kwargs
+    assert call_kwargs["project"].pk == p.pk
+    assert call_kwargs["to_dt"] is not None

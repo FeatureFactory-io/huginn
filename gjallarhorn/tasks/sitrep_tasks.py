@@ -13,20 +13,11 @@ def on_sync_project_completed(sender, project, to_dt, **kwargs):
     """Signal receiver: enqueue generate_sitrep_for_project after a successful sync.
 
     Wrapped in try/except so any handler failure cannot break the sync task.
-    Skips when the project's dump schedule is manual — scheduled SitRep must
-    not run while data dumps are disabled.
+    Manual sync_schedule only stops Beat from dumping; Sync Now still SitReps.
     """
     try:
-        from ingestion.models import Increment, Project  # noqa: PLC0415
+        from ingestion.models import Increment  # noqa: PLC0415
         from sitrep.models import SitRep  # noqa: PLC0415
-
-        if project.sync_schedule == Project.SyncSchedule.MANUAL:
-            logger.info(
-                "on_sync_project_completed: skip sitrep project=%s reason=dumps disabled sync_schedule=%s",
-                project.pk,
-                project.sync_schedule,
-            )
-            return
 
         last = SitRep.objects.filter(project=project).order_by("-to_dt").first()
         if last:

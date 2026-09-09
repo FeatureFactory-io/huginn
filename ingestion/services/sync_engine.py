@@ -133,33 +133,18 @@ class SyncEngine:
             run.contributors_touched,
             run.cursor_to,
         )
-        self._emit_sitrep_signal_if_dump_had_data(project, run, sync_completed_at)
-        return run
-
-    def _emit_sitrep_signal_if_dump_had_data(self, project: Project, run: IngestionRun, to_dt) -> None:
-        ingested = run.increments_ingested + run.work_items_ingested + run.milestones_ingested
-        if ingested == 0:
-            logger.info(
-                "sync skip sitrep project_id=%s run_id=%s reason=empty dump increments=%s work_items=%s milestones=%s",
-                project.pk,
-                run.pk,
-                run.increments_ingested,
-                run.work_items_ingested,
-                run.milestones_ingested,
-            )
-            return
         logger.info(
-            "sync emit sitrep signal project_id=%s run_id=%s ingested=%s to_dt=%s",
+            "sync emit sitrep signal project_id=%s run_id=%s to_dt=%s",
             project.pk,
             run.pk,
-            ingested,
-            to_dt,
+            sync_completed_at,
         )
         sync_project_completed.send(
             sender=self.__class__,
             project=project,
-            to_dt=to_dt,
+            to_dt=sync_completed_at,
         )
+        return run
 
     def _execute_run(self, project: Project, run: IngestionRun) -> None:
         if not project.datasource:
