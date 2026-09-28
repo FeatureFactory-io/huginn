@@ -16,6 +16,11 @@ def test_power_script_never_stops_prod_cname() -> None:
     assert "SingleInstance" in POWER
 
 
+def test_power_script_starts_single_instance_asg_with_desired_capacity_one() -> None:
+    assert "_force_asg_one" in POWER
+    assert "--min-size 1 --max-size 1 --desired-capacity 1" in POWER
+
+
 def test_deploy_staging_starts_idle_before_update() -> None:
     start_pos = DEPLOY.find('eb_idle_power.sh" start')
     update_pos = DEPLOY.find("aws elasticbeanstalk update-environment")

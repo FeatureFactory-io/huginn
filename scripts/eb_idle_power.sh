@@ -111,6 +111,21 @@ _force_asg_zero() {
   fi
 }
 
+_force_asg_one() {
+  local env_name="$1"
+  local asg
+  asg="$(_asg_name "$env_name")"
+  if [ -z "$asg" ] || [ "$asg" = "None" ]; then
+    echo "ERROR: No Auto Scaling group on ${env_name}" >&2
+    exit 1
+  fi
+  echo "Starting SingleInstance ASG ${asg} with desired capacity 1"
+  aws autoscaling update-auto-scaling-group \
+    --auto-scaling-group-name "$asg" \
+    --min-size 1 --max-size 1 --desired-capacity 1 \
+    --output text >/dev/null
+}
+
 _resume_asg() {
   local env_name="$1"
   local asg
@@ -190,7 +205,13 @@ if [ "$ACTION" = "stop" ]; then
 fi
 
 _resume_asg "$IDLE_ENV"
-_scale_asg "$IDLE_ENV" 1 1
+ENV_TYPE="$(_env_type "$IDLE_ENV")"
+echo "Idle EnvironmentType=${ENV_TYPE}"
+if [ "$ENV_TYPE" = "LoadBalanced" ]; then
+  _scale_asg "$IDLE_ENV" 1 1
+else
+  _force_asg_one "$IDLE_ENV"
+fi
 _wait_running_instance "$IDLE_ENV"
 RUNNING_IDS=$(_instance_ids "$IDLE_ENV")
 if [ "${EB_IDLE_WAIT_SSM:-0}" = "1" ]; then
