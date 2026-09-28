@@ -55,3 +55,5 @@ def test_login_page_loads_screen_anchor_for_auth_login_1(db):
     body = r.content.decode()
     assert 'data-testid="auth-login-loaded"' in body
     assert "AUTH-LOGIN-1" in body
+    assert 'data-testid="realm-navbar"' not in body
+    assert 'data-testid="app-sidebar"' not in body

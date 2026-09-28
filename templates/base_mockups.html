@@ -14,95 +14,57 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <script src="https://kit.fontawesome.com/5763ae6dfb.js" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="{% static 'css/huginn.css' %}">
+  <script>
+    (function () {
+      try {
+        if (window.matchMedia("(min-width: 992px)").matches
+            && localStorage.getItem("hg-sidebar-collapsed") === "1") {
+          document.documentElement.classList.add("hg-sidebar-collapsed");
+        }
+      } catch (err) {
+        console.log("[shell] sidebar state unavailable", err);
+      }
+    })();
+  </script>
 
   {% block extra_css %}{% endblock %}
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
 
 {% block navbar %}
-<nav class="navbar navbar-expand-lg navbar-dark hg-navbar" data-testid="main-navbar">
+<nav class="navbar navbar-expand-lg navbar-dark hg-navbar hg-realm-navbar sticky-top"
+     data-testid="realm-navbar"
+     aria-label="FeatureFactory realm navigation">
   <div class="container-fluid px-3">
-    <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'welcome' %}" data-testid="nav-brand">
-      <img src="{% static 'img/Huginn.jpeg' %}" alt="" width="28" height="28" class="rounded-1 bg-white p-1">
-      <span>Huginn</span>
-    </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#hgNav"
-            aria-controls="hgNav" aria-expanded="false" aria-label="Toggle navigation"
-            data-testid="nav-toggler">
+    <button class="btn btn-link text-white d-lg-none me-2 p-1"
+            type="button"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#hgAppSidebar"
+            aria-controls="hgAppSidebar"
+            aria-label="Open in-app navigation"
+            data-testid="sidebar-toggler"
+            title="Open Huginn navigation">
+      <i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i>
+    </button>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#realmNavCollapse"
+            aria-controls="realmNavCollapse" aria-expanded="false" aria-label="Toggle realm navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="hgNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+    <div class="collapse navbar-collapse" id="realmNavCollapse">
+      <ul class="navbar-nav me-auto" data-testid="realm-nav-list">
+        {% for item in realm_items %}
         <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'tactical_plot' %}active{% endif %}" aria-current="{% if active_nav == 'tactical_plot' %}page{% else %}false{% endif %}"
-             href="{% url 'mockup-dashboard' %}" data-testid="nav-plot">
-            <i class="fa-sharp fa-solid fa-wave-pulse me-1" aria-hidden="true"></i> Plot
+          <a class="nav-link {% if item.slug == active_realm %}active{% endif %}"
+             href="{{ item.url }}"
+             data-testid="realm-nav-{{ item.slug }}"
+             {% if item.slug == active_realm %}aria-current="page"{% endif %}
+             title="{{ item.tooltip }}">
+            {% if item.mark %}<img src="{% static item.mark %}" alt="" class="hg-realm-mark" width="16" height="16">{% endif %}{{ item.label }}
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'sitawareness' %}active{% endif %}"
-             href="{% url 'mockup-sitawareness-view' %}" data-testid="nav-sitawareness">
-            <i class="fa-solid fa-map-location-dot me-1" aria-hidden="true"></i> SA
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'fragos' %}active{% endif %}"
-             href="{% url 'mockup-fragos-list' %}" data-testid="nav-fragos">
-            <i class="fa-solid fa-puzzle me-1" aria-hidden="true"></i> FRAGOs
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'roe' %}active{% endif %}"
-             href="{% url 'mockup-roe-list' %}" data-testid="nav-roe">
-            <i class="fa-solid fa-ballot-check me-1"></i> RoE
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'projects' %}active{% endif %}"
-             href="{% url 'mockup-projects-list' %}" data-testid="nav-projects">
-            <i class="fa-solid fa-folder-open me-1"></i> Projects
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'sitrep' %}active{% endif %}" aria-current="{% if active_nav == 'sitrep' %}page{% else %}false{% endif %}"
-             href="{% url 'mockup-sitrep-list' %}" data-testid="nav-sitreps">
-            <i class="fa-solid fa-display-chart-up-circle-currency me-1" aria-hidden="true"></i> SitReps
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'datasources' %}active{% endif %}"
-             href="{% url 'mockup-datasources-list' %}" data-testid="nav-datasources">
-            <i class="fa-solid fa-plug me-1"></i> Data Sources
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'decisions' %}active{% endif %}"
-             href="{% url 'mockup-decisions-list' %}" data-testid="nav-decisions">
-            <i class="fa-solid fa-gavel me-1"></i> Decisions
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'contributors' %}active{% endif %}"
-             href="{% url 'mockup-contributors-list' %}" data-testid="nav-contributors">
-            <i class="fa-solid fa-users me-1"></i> Contributors
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'action-stations' %}active{% endif %}"
-             href="{% url 'mockup-action-stations-list' %}" data-testid="nav-action-stations">
-            <i class="fa-solid fa-list-check me-1"></i> Action Stations
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_nav == 'gjallarhorn' %}active{% endif %}"
-             href="{% url 'mockup-chat' %}" data-testid="nav-gjallarhorn">
-            <i class="fa-solid fa-brain-circuit me-1"></i> Gjallarhorn
-          </a>
-        </li>
+        {% endfor %}
       </ul>
-      <div class="d-flex align-items-center gap-2 text-white">
-
-        {# ── Auth screens dropdown ──────────────────────────────────────── #}
+      <div class="d-flex align-items-center gap-2 text-white ms-lg-auto">
         <div class="dropdown">
           <button type="button"
                   class="btn btn-sm btn-outline-light dropdown-toggle"
@@ -139,32 +101,133 @@
             </a></li>
           </ul>
         </div>
-
         <span class="navbar-text d-flex align-items-center" data-testid="nav-user">
           <i class="fa-solid fa-circle-user me-1 fs-6" aria-hidden="true"></i>
           <span class="d-none d-md-inline">Commander Donland</span>
         </span>
-      {% if user.is_authenticated %}
+        {% if user.is_authenticated %}
           <a class="nav-link text-white" href="{% url 'admin:logout' %}" data-testid="nav-logout">Logout</a>
-      {% endif %}
+        {% endif %}
       </div>
     </div>
   </div>
 </nav>
 {% endblock navbar %}
 
-<main class="hg-main container-fluid">
-  {% if messages %}
-    {% for message in messages %}
-      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="hg-app-shell">
+{% block sidebar %}
+<button type="button"
+        class="hg-sidebar-panel-toggle"
+        data-testid="sidebar-collapse-toggle"
+        aria-label="Toggle in-app navigation"
+        title="Toggle sidebar">‹</button>
+<aside class="hg-app-sidebar offcanvas-lg offcanvas-start"
+       tabindex="-1"
+       id="hgAppSidebar"
+       data-testid="app-sidebar"
+       aria-label="Huginn in-app navigation">
+  <div class="offcanvas-header d-lg-none border-bottom">
+    <h2 class="offcanvas-title h6 mb-0">Huginn navigation</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+            data-bs-target="#hgAppSidebar" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body p-0 d-flex flex-column">
+    <div class="hg-app-sidebar-brand d-flex align-items-center gap-2">
+      <img src="{% static 'images/realm/huginn-logo.jpeg' %}" alt="" width="28" height="28"
+           class="rounded-1 bg-white border p-1 flex-shrink-0">
+      <div>
+        <div class="brand-title">Huginn</div>
+        <div class="brand-sub">Mockups</div>
       </div>
-    {% endfor %}
-  {% endif %}
+    </div>
+    <nav class="hg-sidebar-nav flex-grow-1 py-2" aria-label="Primary in-app navigation">
+      <div class="hg-sidebar-section-label" id="sidebar-sec-workspace">Workspace</div>
+      <ul class="nav flex-column mb-1" aria-labelledby="sidebar-sec-workspace">
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'plot' %}active{% endif %}" href="{% url 'mockup-dashboard' %}" data-testid="nav-plot" {% if nav_section == 'plot' %}aria-current="page"{% endif %}>
+            <i class="fa-sharp fa-solid fa-wave-pulse" aria-hidden="true"></i><span>Plot</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'sitawareness' %}active{% endif %}" href="{% url 'mockup-sitawareness-view' %}" data-testid="nav-sitawareness" {% if nav_section == 'sitawareness' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-map-location-dot" aria-hidden="true"></i><span>SA</span>
+          </a>
+        </li>
+      </ul>
+      <div class="hg-sidebar-section-label" id="sidebar-sec-command">Command</div>
+      <ul class="nav flex-column mb-1" aria-labelledby="sidebar-sec-command">
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'fragos' %}active{% endif %}" href="{% url 'mockup-fragos-list' %}" data-testid="nav-fragos" {% if nav_section == 'fragos' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-puzzle" aria-hidden="true"></i><span>FRAGOs</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'sitreps' %}active{% endif %}" href="{% url 'mockup-sitrep-list' %}" data-testid="nav-sitreps" {% if nav_section == 'sitreps' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-display-chart-up-circle-currency" aria-hidden="true"></i><span>SitReps</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'roe' %}active{% endif %}" href="{% url 'mockup-roe-list' %}" data-testid="nav-roe" {% if nav_section == 'roe' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-ballot-check" aria-hidden="true"></i><span>RoE</span>
+          </a>
+        </li>
+      </ul>
+      <div class="hg-sidebar-section-label" id="sidebar-sec-setup">Setup</div>
+      <ul class="nav flex-column mb-1" aria-labelledby="sidebar-sec-setup">
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'projects' %}active{% endif %}" href="{% url 'mockup-projects-list' %}" data-testid="nav-projects" {% if nav_section == 'projects' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-folder-open" aria-hidden="true"></i><span>Projects</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'datasources' %}active{% endif %}" href="{% url 'mockup-datasources-list' %}" data-testid="nav-datasources" {% if nav_section == 'datasources' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-plug" aria-hidden="true"></i><span>Data Sources</span>
+          </a>
+        </li>
+      </ul>
+      <div class="hg-sidebar-section-label" id="sidebar-sec-preview">Preview</div>
+      <ul class="nav flex-column mb-1" aria-labelledby="sidebar-sec-preview">
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'decisions' %}active{% endif %}" href="{% url 'mockup-decisions-list' %}" data-testid="nav-decisions" {% if nav_section == 'decisions' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-gavel" aria-hidden="true"></i><span>Decisions</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'contributors' %}active{% endif %}" href="{% url 'mockup-contributors-list' %}" data-testid="nav-contributors" {% if nav_section == 'contributors' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-users" aria-hidden="true"></i><span>Contributors</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'action-stations' %}active{% endif %}" href="{% url 'mockup-action-stations-list' %}" data-testid="nav-action-stations" {% if nav_section == 'action-stations' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Action Stations</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if nav_section == 'gjallarhorn' %}active{% endif %}" href="{% url 'mockup-chat' %}" data-testid="nav-gjallarhorn" {% if nav_section == 'gjallarhorn' %}aria-current="page"{% endif %}>
+            <i class="fa-solid fa-brain-circuit" aria-hidden="true"></i><span>Gjallarhorn</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</aside>
+{% endblock sidebar %}
 
-  {% block content %}{% endblock %}
-</main>
+  <div class="hg-app-main">
+    <main class="hg-main container-fluid">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/list-find-filters.js' %}"></script>
@@ -178,6 +241,25 @@
   document.addEventListener("DOMContentLoaded", () => {
     const tt = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tt.map((el) => new bootstrap.Tooltip(el));
+    var toggle = document.querySelector('[data-testid="sidebar-collapse-toggle"]');
+    function setCollapsed(next) {
+      document.documentElement.classList.toggle("hg-sidebar-collapsed", next);
+      if (toggle) {
+        toggle.textContent = next ? "\u203A" : "\u2039";
+      }
+      try {
+        localStorage.setItem("hg-sidebar-collapsed", next ? "1" : "0");
+      } catch (err) {
+        console.log("[shell] could not store sidebar state", err);
+      }
+    }
+    if (toggle) {
+      var collapsedNow = document.documentElement.classList.contains("hg-sidebar-collapsed");
+      toggle.textContent = collapsedNow ? "\u203A" : "\u2039";
+      toggle.addEventListener("click", function () {
+        setCollapsed(!document.documentElement.classList.contains("hg-sidebar-collapsed"));
+      });
+    }
   });
 </script>
 

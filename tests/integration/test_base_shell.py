@@ -20,11 +20,14 @@ def test_authenticated_projects_list_includes_navbar_and_brand(commander_client)
     response = commander_client.get("/projects/")
     assert response.status_code == 200
     body = response.content.decode()
-    assert 'data-testid="main-navbar"' in body
-    assert 'data-testid="nav-brand"' in body
-    assert "Huginn.jpeg" in body
+    assert 'data-testid="realm-navbar"' in body
+    assert 'data-testid="app-sidebar"' in body
+    assert 'data-testid="realm-nav-huginn"' in body
+    assert 'aria-current="page"' in body
     assert 'data-testid="nav-fragos"' in body
     assert 'data-testid="nav-sitawareness"' in body
+    assert 'data-testid="nav-plot"' in body
+    assert 'data-testid="nav-status"' in body
 
 
 @pytest.mark.django_db
@@ -36,7 +39,9 @@ def test_anonymous_root_shows_marketing_landing():
     assert 'data-testid="landing-loaded"' in body
     assert 'data-testid="landing-hero"' in body
     assert 'data-testid="landing-features"' in body
+    assert 'data-testid="realm-navbar"' in body
     assert 'data-testid="navbar-login"' in body
+    assert 'data-testid="app-sidebar"' not in body
 
 
 @pytest.mark.django_db
@@ -45,7 +50,6 @@ def test_anonymous_root_hides_app_nav_items():
     client = Client()
     r = client.get("/")
     body = r.content.decode()
-    assert 'data-testid="nav-brand"' in body
     for testid in ("nav-plot", "nav-sitawareness", "nav-fragos", "nav-projects", "nav-datasources"):
         assert f'data-testid="{testid}"' not in body, f"app nav {testid!r} leaked to anonymous landing"
 

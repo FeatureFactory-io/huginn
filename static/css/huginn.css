@@ -944,3 +944,187 @@ body.hg-landing main.hg-main {
   margin-bottom: 0.6rem;
   width: 2.25rem;
 }
+
+/* Realm bar + app sidebar (docs/ux/IA_guidelines.md §3.1, §4) */
+
+:root {
+  --hg-sidebar-width: 16.5rem;
+}
+
+.hg-realm-navbar .nav-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.hg-realm-navbar .nav-link.active {
+  font-weight: 600;
+}
+
+.hg-realm-mark {
+  width: 1.15rem;
+  height: 1.15rem;
+  box-sizing: border-box;
+  object-fit: contain;
+  vertical-align: -0.28em;
+  margin-right: 0.35rem;
+  padding: 1px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.hg-app-shell {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: calc(100vh - 3.5rem);
+  width: 100%;
+  position: relative;
+}
+
+.hg-app-sidebar {
+  width: var(--hg-sidebar-width);
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid var(--hg-border, #e5e9f0);
+  display: flex;
+  flex-direction: column;
+}
+
+.hg-app-sidebar-brand {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--hg-border, #e5e9f0);
+}
+
+.hg-app-sidebar-brand .brand-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  color: var(--hg-primary, #1f3a5f);
+}
+
+.hg-app-sidebar-brand .brand-sub {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.hg-sidebar-section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #98a2b3;
+  padding: 0.85rem 1.25rem 0.35rem;
+}
+
+.hg-sidebar-nav .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 1.25rem;
+  color: #344054;
+  font-size: 0.875rem;
+  border-radius: 0;
+  border-left: 3px solid transparent;
+}
+
+.hg-sidebar-nav .nav-link i {
+  width: 1.1rem;
+  text-align: center;
+  color: #667085;
+}
+
+.hg-sidebar-nav .nav-link:hover {
+  background: rgba(31, 58, 95, 0.05);
+  color: var(--hg-primary, #1f3a5f);
+}
+
+.hg-sidebar-nav .nav-link.active {
+  background: rgba(31, 58, 95, 0.08);
+  color: var(--hg-primary, #1f3a5f);
+  font-weight: 600;
+  border-left-color: var(--hg-accent, #c9a227);
+}
+
+.hg-app-main {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hg-app-main > main {
+  flex: 1;
+}
+
+.hg-sidebar-panel-toggle {
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .hg-app-shell > .hg-app-sidebar.offcanvas-lg {
+    position: static;
+    transform: none !important;
+    visibility: visible !important;
+    flex: 0 0 var(--hg-sidebar-width) !important;
+    width: var(--hg-sidebar-width) !important;
+    max-width: var(--hg-sidebar-width) !important;
+    min-width: var(--hg-sidebar-width) !important;
+    height: auto;
+    align-self: stretch;
+    border-right: 1px solid var(--hg-border, #e5e9f0);
+    background: #fff;
+    transition: flex-basis 0.2s ease, width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease;
+  }
+
+  .hg-app-sidebar .offcanvas-body {
+    overflow: visible;
+  }
+
+  html.hg-sidebar-collapsed .hg-app-shell > .hg-app-sidebar.offcanvas-lg {
+    flex: 0 0 0px !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    min-width: 0 !important;
+    border-right: none;
+    overflow: hidden;
+  }
+
+  .hg-sidebar-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: calc(3.5rem + (100vh - 3.5rem) / 2);
+    left: var(--hg-sidebar-width);
+    z-index: 1020;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    font-size: 10px;
+    line-height: 1;
+    color: #344054;
+    background: #fff;
+    border: 1px solid var(--hg-border, #e5e9f0);
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(31, 58, 95, 0.12);
+    transform: translate(-50%, -50%);
+    transition: left 0.2s ease;
+  }
+
+  html.hg-sidebar-collapsed .hg-sidebar-panel-toggle {
+    left: 10px;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .hg-app-sidebar.offcanvas-lg {
+    width: var(--hg-sidebar-width);
+  }
+}
+
+body.hg-landing .hg-app-shell {
+  min-height: 0;
+}

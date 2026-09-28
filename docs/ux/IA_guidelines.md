@@ -1,7 +1,7 @@
 # Huginn Information Architecture Guidelines
 
 > ESM Activity 03 artifact. Companion to `docs/features/user_journey.md` and `docs/ideation/vision.md`.
-> Last updated: May 2026 — List page headers with entity icon (3.5); LIST+FIND data table shell (RoE-style card); LIST+FIND filters; row pattern (name + kebab); detail header toolbar (3.4).
+> Last updated: September 2026 — Realm top bar + journey-phase app sidebar (aligned with Mimir's realm chrome). Huginn screen IDs stay `{ENTITY}-{OPERATION}-{VERSION}` (no `FOB-` prefix).
 
 ---
 
@@ -25,7 +25,7 @@ Every component must be:
 4. [Navigation](#4-navigation)
 5. [Component Kit](#5-component-kit)
 6. [Behavior & Interactions](#6-behavior--interactions)
-7. [Icon System — Font Awesome Free](#7-icon-system--font-awesome-free)
+7. [Icon System — Font Awesome Pro](#7-icon-system--font-awesome-pro)
 8. [Charts — Apache ECharts](#8-charts--apache-echarts)
 9. [Accessibility](#9-accessibility)
 10. [Screen ID Convention](#10-screen-id-convention)
@@ -37,14 +37,14 @@ Every component must be:
 | Concern | Library | Version | Load |
 |---|---|---|---|
 | CSS framework | Bootstrap | 5.3.8 | CDN — `cdn.jsdelivr.net/npm/bootstrap@5.3.8` |
-| Icons | Font Awesome Free | 6.7.x | CDN — `cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2` |
+| Icons | Font Awesome Pro | 6.x | Kit — `kit.fontawesome.com` (`templates/base.html`) |
 | Charts | Apache ECharts | 5.5.x | CDN — `cdn.jsdelivr.net/npm/echarts@5.5.1` |
 | Interactivity | HTMX | 2.0.x | CDN — `unpkg.com/htmx.org@2.0.4` |
 | Typography | Montserrat | — | Google Fonts — `fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap` |
 
 **CDN policy**: no `integrity` SRI attributes — keep CDN links clean; revisit for production hardening via subresource integrity once versions stabilise.
 
-**FA Free constraint**: only `fa-solid`, `fa-regular` (limited free set), and `fa-brands` classes are available. `fa-light`, `fa-thin`, `fa-sharp`, `fa-duotone` are Pro-only and must not be used.
+**FA note (Huginn):** Production loads Font Awesome Pro via Kit. Prefer `fa-solid` / `fa-regular` / `fa-brands`. `fa-sharp` is allowed where the Kit icon set uses it (Tactical Plot). Keep sidebar icons aligned with `ui/context_processors.py` and `templates/base.html`.
 
 **Bootstrap upgrade policy**: track 5.3.x patch releases; evaluate minor bumps (5.4+, 6.x) as an explicit ADR.
 
@@ -169,16 +169,27 @@ Size scale and Huginn-specific classes:
 
 ### 2.5 Brand Assets
 
-**Wordmark / logotype**: "Huginn" set in Montserrat 700, colour `--hg-primary` (`#1f3a5f`). Used in the navbar and on the login page.
+**Wordmark / logotype**: "Huginn" set in Montserrat 700, colour `--hg-primary` (`#1f3a5f`). Used in the app sidebar header and on the login page.
 
 **Logo mark** (the raven):
 
-![Huginn raven logo mark](../../static/img/Huginn.jpeg)
+![Huginn raven logo mark](../../static/images/realm/huginn-logo.jpeg)
 
-*File*: `static/img/Huginn.jpeg` — monochrome geometric raven, black on white.
+*Files*: `static/images/realm/huginn-logo.jpeg` (realm + sidebar) and `static/img/Huginn.jpeg` (login). Monochrome geometric raven, black on white.
+
+**Realm marks** (product switcher, white circle `.hg-realm-mark`):
+
+| Product | File |
+|---|---|
+| FeatureFactory | `static/images/realm/featurefactory-mark.svg` |
+| Mimir | `static/images/realm/mimir-logo.png` |
+| Huginn | `static/images/realm/huginn-logo.jpeg` |
+| Yggdrasil | `static/images/realm/yggdrasil-mark.svg` |
+| Heimdall | `static/images/realm/heimdall-mark.svg` |
 
 **Usage rules**:
-- Navbar: logo mark at 32 × 32 px beside the "Huginn" wordmark.
+- App sidebar header: Huginn mark at 28 × 28 px beside the "Huginn" wordmark.
+- Realm bar: each product mark inside a white circle (`.hg-realm-mark`).
 - Login page: logo mark at 64 × 64 px above the wordmark.
 - Do not recolour, stretch, or place on a busy background.
 - Minimum clear-space: half the logo mark's height on every side.
@@ -189,15 +200,27 @@ Size scale and Huginn-specific classes:
 
 ### 3.1 Page Shell
 
-Every page follows this structure:
+Every authenticated page follows this structure (realm chrome):
 
 ```
-<navbar .hg-navbar>        ← fixed top, primary + gold accent border-bottom
-<div .hg-page-header>      ← white bar: page title + subtitle + top actions (placement: §3.4)
-<main .container-fluid>    ← body bg (#f5f7fa), px-4 py-3
-  [page-specific content]
-</main>
+<nav .hg-navbar data-testid="realm-navbar">
+  FeatureFactory · Mimir · Huginn (active) · Yggdrasil · Heimdall
+  … user email · Logout | Sign In
+</nav>
+<div .hg-app-shell>
+  <aside data-testid="app-sidebar">   ← in-app primary nav (§4.2)
+  <div .hg-app-main>
+    <div .hg-page-header>              ← white bar: title + toolbar (§3.4)
+    <main .hg-main>
+  </div>
+</div>
 ```
+
+The realm bar is the dark sticky `hg-navbar` (gold accent border). The app sidebar is a light left column. Entity VIEW content rails (`.hg-rail`) are separate from this sidebar.
+
+**Anonymous landing** (`/`): realm bar + Sign In only. No app sidebar — Huginn has no public entity catalog.
+
+**Auth screens** that clear `{% block navbar %}` and `{% block sidebar %}` stay chrome-free.
 
 ### 3.2 Layout Patterns
 
@@ -252,7 +275,7 @@ Apply the same pattern to mockups and new surfaces (e.g. RoE VIEW, RoE list head
 | Rule | Detail |
 |---|---|
 | **Icon + title** | The `<h1 class="hg-page-title">` is a flex row: leading Font Awesome icon + title text. Icon classes include **`hg-page-title-icon text-primary`** and **`aria-hidden="true"`** (decorative). Title words stay in a `<span>` when the `<h1>` is also `d-flex`. |
-| **Nav alignment** | Prefer the **same icon** as the primary navbar entry for that surface (e.g. Plot → `fa-sharp fa-solid fa-wave-pulse`, SA → `fa-map-location-dot`, FRAGOs → `fa-puzzle`, RoE → `fa-ballot-check`, Projects → `fa-folder-open`, Data Sources → `fa-plug`). |
+| **Nav alignment** | Prefer the **same icon** as the app sidebar entry for that surface (Plot → `fa-sharp fa-solid fa-wave-pulse`, SA → `fa-map-location-dot`, FRAGOs → `fa-puzzle`, RoE → `fa-ballot-check`, SitReps → `fa-display-chart-up-circle-currency`, Projects → `fa-folder-open`, Data Sources → `fa-plug`, Status → `fa-heart-pulse`). |
 | **No count pill on the title row** | Do **not** place **`badge rounded-pill`** (or similar) beside the `<h1>` for row counts. Counts belong in the **subtitle** line below (`<p class="text-muted small">`), optionally wrapped in a `<span data-testid="…-count-badge">` for tests. |
 | **Subtitle** | One muted line under the title: sync/meta text, count + short description, or both (e.g. `3 projects · Imported from…`). |
 
@@ -275,25 +298,54 @@ Screens that combine **filters → table** with **checkbox-driven bulk operation
 
 ## 4. Navigation
 
-### 4.1 Primary Nav Items
+### 4.1 Realm Nav
 
-**Production navbar order** (`templates/base.html`): Plot → SA → FRAGOs → RoE → Projects → Data Sources → Status.
+Persistent top bar (`data-testid="realm-navbar"`, `.hg-navbar`). Product switcher only — not Huginn entities.
 
-| Nav item | Route | Phase | Icon |
-|---|---|---|---|
-| Plot (Tactical Plot) | `/` (post-login) | Calibration landing | `fa-sharp fa-solid fa-wave-pulse` (Font Awesome Kit) |
-| SA (Situational Awareness) | `/sitawareness/` (no project segment — workspace-global) | Action | `fa-map-location-dot` |
-| FRAGOs | `/fragos/` (list: optional all-projects + **Project** filter before **[+ New FRAGO]**); `/fragos/create/?project=` **only** — no project picker on create (missing param → redirect to list) | Calibration | `fa-puzzle` |
-| RoE | `/roe/` | Inception | `fa-ballot-check` |
-| Projects | `/projects/` | Inception / management | `fa-folder-open` |
-| Data Sources | `/datasources/` | Inception | `fa-plug` |
-| Status | `/welcome/` (health / welcome) | Calibration | `fa-heart-pulse` |
+| Item | URL | Notes |
+|---|---|---|
+| FeatureFactory | `https://featurefactory.io` | Same tab |
+| Mimir | `https://mimir.featurefactory.io` | Same tab |
+| Huginn | `/` (this origin) | `active` / `aria-current="page"` |
+| Yggdrasil | `https://yggdrasil.featurefactory.io` | Same tab |
+| Heimdall | `https://heimdall.featurefactory.io` | Same tab |
 
-**Other journey routes** (not in the production navbar today; mockups / future): Decisions (`fa-gavel`), Contributors (`fa-users`), Action Stations (`fa-list-check`), Chat (`fa-comments`).
+**Marks:** each item shows its file from `static/images/realm/` inside a **white circle**. Class: `.hg-realm-mark`. Test ids: `realm-nav-featurefactory` … `realm-nav-heimdall`.
 
-Right-side: authenticated user name + `fa-circle-user`.
+**Right side (authenticated):** user email + Logout (`fa-circle-user`, `fa-right-from-bracket`). Global search and a notifications bell are future — Huginn does not ship them yet.
 
-### 4.2 Breadcrumbs
+**Right side (anonymous):** Sign In only. No search, bell, or user menu.
+
+**Narrow (`< lg`):** `data-testid="sidebar-toggler"` on the realm bar opens the sidebar offcanvas.
+
+### 4.2 App Sidebar (primary in-app nav)
+
+Left column (`data-testid="app-sidebar"`). Huginn mark + wordmark in the header. Sections follow the journey phases. Items and icons come from `ui/context_processors.py`.
+
+| Section | Items (`data-testid`) | Icon |
+|---|---|---|
+| Workspace | Plot — `nav-plot` → `/plot/` | `fa-sharp fa-solid fa-wave-pulse` |
+| Workspace | SA — `nav-sitawareness` → `/sitawareness/` | `fa-map-location-dot` |
+| Workspace | Status — `nav-status` → `/welcome/` | `fa-heart-pulse` |
+| Command | FRAGOs — `nav-fragos` → `/fragos/` | `fa-puzzle` |
+| Command | SitReps — `nav-sitreps` → `/sitreps/` | `fa-display-chart-up-circle-currency` |
+| Command | RoE — `nav-roe` → `/roe/` | `fa-ballot-check` |
+| Setup | Projects — `nav-projects` → `/projects/` | `fa-folder-open` |
+| Setup | Data Sources — `nav-datasources` → `/datasources/` | `fa-plug` |
+
+FRAGO create stays `/fragos/create/?project=` only (missing param → redirect to list). SA stays workspace-global (no project segment).
+
+Active item is the URL (`nav_section` / `aria-current="page"`), never a stored preference. Nested project SitReps (`/projects/<id>/sitreps/`) highlight **SitReps**, not Projects.
+
+**Collapse (desktop `lg+`):** circular seam button (`data-testid="sidebar-collapse-toggle"`, `‹` expanded / `›` collapsed) slides the sidebar to width 0. Persist only that boolean in `localStorage` key `hg-sidebar-collapsed` (`"1"` = collapsed). Restore on the next visit.
+
+**Narrow (`< lg`):** offcanvas drawer.
+
+**Anonymous sessions:** realm bar only. No sidebar.
+
+**Other journey routes** (not in the production sidebar; mockup preview section only): Decisions (`fa-gavel`), Contributors (`fa-users`), Action Stations (`fa-list-check`), Chat (`fa-comments`).
+
+### 4.3 Breadcrumbs
 
 Used on detail screens (VIEW, EDIT, CREATE nested under a parent entity):
 
@@ -306,9 +358,9 @@ Used on detail screens (VIEW, EDIT, CREATE nested under a parent entity):
 </nav>
 ```
 
-### 4.3 Active State
+### 4.4 Active State
 
-Set `aria-current="page"` on the active nav link and add `.active` class.
+Set `aria-current="page"` on the active **app sidebar** link and add `.active`. Active section is `nav_section` from `primary_nav_section` in `ui/context_processors.py`. Realm item **Huginn** stays active for the whole app. Collapse state is not part of the active item.
 
 ---
 
@@ -819,9 +871,9 @@ Every list and data section must handle all three:
 
 ---
 
-## 7. Icon System — Font Awesome Free
+## 7. Icon System — Font Awesome Pro
 
-**Only `fa-solid` (filled) as primary style.** `fa-regular` available for a limited free subset; `fa-brands` for logos.
+**Primary style: `fa-solid`.** `fa-regular` and `fa-brands` where they fit. `fa-sharp` only for icons that ship that way in the Kit (Plot).
 
 ### 7.1 Standard Icon Mapping
 
@@ -839,11 +891,11 @@ Every list and data section must handle all three:
 | Filter | `fa-filter` | |
 | Refresh / Sync | `fa-arrows-rotate` | |
 | Import | `fa-file-import` | |
-| Tactical Plot | `fa-grip-vertical` | |
+| Tactical Plot | `fa-sharp fa-solid fa-wave-pulse` | Matches sidebar |
 | Project | `fa-folder-open` | |
 | RoE | `fa-ballot-check` | |
 | Data Source | `fa-plug` | |
-| FRAGO | `fa-flag` | |
+| FRAGO | `fa-puzzle` | Matches sidebar |
 | Decision | `fa-gavel` | |
 | SitRep | `fa-display-chart-up-circle-currency` | |
 | Variables | `fa-chart-line` | |
@@ -851,6 +903,7 @@ Every list and data section must handle all three:
 | Action Stations | `fa-list-check` | |
 | Chat / Gjallarhorn | `fa-comments` | |
 | Situational Awareness | `fa-map-location-dot` | |
+| Status | `fa-heart-pulse` | |
 | Status: OK / Connected | `fa-circle-check` | green |
 | Status: Warning | `fa-triangle-exclamation` | orange |
 | Status: Error | `fa-circle-exclamation` | red |
@@ -861,7 +914,7 @@ Every list and data section must handle all three:
 | GitHub | `fa-brands fa-github` | |
 | Jira | `fa-brands fa-jira` | |
 | User | `fa-circle-user` | |
-| Crow (brand) | `fa-crow` | navbar brand only |
+| Crow (brand) | `fa-crow` | Decorative only; chrome uses realm image marks |
 
 ### 7.2 Icon Usage Rules
 
@@ -935,9 +988,10 @@ Standard series colours (in order): `HG.primary`, `HG.green`, `HG.orange`, `HG.r
 
 | Context | Element |
 |---|---|
-| Top navigation | `<nav aria-label="Primary navigation">` |
+| Realm navigation | `<nav aria-label="FeatureFactory realm navigation">` |
+| In-app navigation | `<aside aria-label="Huginn in-app navigation">` |
 | Page main content | `<main>` |
-| Side rail | `<aside aria-label="{rail title}">` |
+| Entity context rail | `<aside aria-label="{rail title}">` |
 | Article card | `<article>` |
 | Data table | `<table>` with `<caption>` or `aria-label` |
 | Status summary | `role="status"` or `aria-live="polite"` |
