@@ -20,8 +20,10 @@ git remote remove github 2>/dev/null || true
 git remote add github "${REMOTE_URL}"
 
 MAIN_REF="${CI_COMMIT_SHA:?CI_COMMIT_SHA is required}"
+EXPECTED_MAIN_SHA="$(git ls-remote github refs/heads/main | awk 'NR == 1 { print $1 }')"
 echo "Mirroring ${MAIN_REF} to github:refs/heads/main (repo=${GITHUB_MIRROR_REPO})"
-git push github "${MAIN_REF}:refs/heads/main" --force-with-lease
+git push github "${MAIN_REF}:refs/heads/main" \
+  "--force-with-lease=refs/heads/main:${EXPECTED_MAIN_SHA}"
 
 if [[ -n "${CI_COMMIT_TAG:-}" ]]; then
   echo "Mirroring tag ${CI_COMMIT_TAG}"
