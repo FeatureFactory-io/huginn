@@ -1,6 +1,7 @@
 # App release pipeline: workflow + runner images only. Work lives in Makefile + scripts/.
 # Flow: git tag x.y.z && git push origin x.y.z  (or: glab release create x.y.z)
 #       → pipeline runs on the tag: lint → test → build → staging → GitLab Release → manual promote.
+# GitHub mirror: pushes to FeatureFactory-io/huginn on every main push and on semver tag pipelines.
 #
 # Targets: make ci-lint | ci-test | ci-staging-deploy | gitlab-release | ci-promote
 # Kaniko executor has no bash; build uses POSIX sh scripts. Release-cli builds use bash where available.
@@ -13,14 +14,20 @@ stages:
   - deploy
   - release
   - promote
+  - sync
 
 variables:
   PYTHON_IMAGE: python:3.12-slim
   GIT_DEPTH: "0"
 
+.release-tag-rules:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+
 workflow:
   rules:
     - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
 
 .python-with-make: &python-with-make
   image: $PYTHON_IMAGE
@@ -28,12 +35,14 @@ workflow:
     - apt-get update -qq && apt-get install -y -qq make
 
 lint:
+  extends: .release-tag-rules
   stage: lint
   <<: *python-with-make
   script:
     - make ci-lint
 
 test:
+  extends: .release-tag-rules
   stage: test
   <<: *python-with-make
   variables:
@@ -52,6 +61,7 @@ infra-pipeline:
         - infra/**/*
 
 build:
+  extends: .release-tag-rules
   stage: build
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
@@ -60,6 +70,7 @@ build:
     - sh scripts/ci-kaniko-build.sh
 
 deploy_staging:
+  extends: .release-tag-rules
   stage: deploy
   <<: *python-with-make
   needs: [build]
@@ -73,6 +84,7 @@ deploy_staging:
     url: $STAGING_URL
 
 create_release:
+  extends: .release-tag-rules
   stage: release
   image:
     name: registry.gitlab.com/gitlab-org/release-cli:latest
@@ -82,6 +94,7 @@ create_release:
     - sh scripts/ci-create-gitlab-release.sh
 
 promote_production:
+  extends: .release-tag-rules
   stage: promote
   <<: *python-with-make
   when: manual
@@ -94,3 +107,16 @@ promote_production:
   environment:
     name: production
     url: https://huginn.featurefactory.io
+
+mirror_github:
+  stage: sync
+  image: $PYTHON_IMAGE
+  variables:
+    GIT_DEPTH: "0"
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git
+  script:
+    - bash scripts/ci-mirror-github.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/

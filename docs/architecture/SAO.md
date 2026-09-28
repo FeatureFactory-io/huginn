@@ -381,11 +381,11 @@ Existing resources (ECR, RDS, EB, IAM) will be brought under CDK management via 
 
 ## 9. CI/CD Pipeline
 
-**Platform:** GitLab CI (`.gitlab-ci.yml`). Repository: `gitlab.com/dp2580/huginn`.
+**Platform:** GitLab CI (`.gitlab-ci.yml`). **Canonical repository:** `gitlab.com/dp2580/huginn`. **Public read mirror:** `github.com/FeatureFactory-io/huginn` (updated by CI on every `main` push and on semver tag pipelines — see `mirror_github` job and `scripts/ci-mirror-github.sh`). Local clone: `git remote add github git@github.com:FeatureFactory-io/huginn.git`.
 
 **Design:** The **Makefile** and **`scripts/`** own commands and sequencing. **`.gitlab-ci.yml`** only selects runner images, installs **GNU make** where available, and runs **`make <target>`** (or the same shell script the Make target wraps, for images that do not ship `make` — Kaniko and `release-cli`).
 
-**Workflow rule:** Pipelines run **only** on **semver tags** matching `x.y.z` (e.g. `1.2.3`). No `v` prefix. No `release/` branch required. There is **no** app pipeline on every `main` push.
+**Workflow rule:** Full release pipelines run **only** on **semver tags** matching `x.y.z` (e.g. `1.2.3`). No `v` prefix. No `release/` branch required. Pushes to **`main`** still start a **minimal pipeline** (GitHub mirror only — no lint/test/deploy). Tag pipelines also run the mirror job after the release stages.
 
 **To ship:** push a semver tag from `main` — that is the entire trigger:
 ```bash
@@ -403,6 +403,7 @@ lint (make ci-lint)
   → deploy (make ci-staging-deploy = ci-prepare-aws + staging)
   → release (bash scripts/ci-create-gitlab-release.sh — uses CI_COMMIT_TAG)
   → promote_production (manual: make ci-promote = ci-prepare-aws + swap)
+  → sync (bash scripts/ci-mirror-github.sh — on main push and tag pipelines)
 ```
 
 **Infra pipeline:** `infra/gitlab-ci.yml` — triggered as a **child pipeline** when **`infra/**` changes** on a matching semver tag. Stages: CDK assertion tests (`tests/infra/`), `cdk diff` (non-blocking), manual `cdk deploy` (stack selectable via `CDK_STACK`). Requires the same AWS GitLab CI variables as EB deploy jobs.
@@ -418,6 +419,7 @@ lint (make ci-lint)
 | `deploy_staging` | `python:3.12-slim` (+ make) | `make ci-staging-deploy` → AWS CLI install + `make staging` → `scripts/deploy-staging.sh` |
 | `create_release` | `registry.gitlab.com/gitlab-org/release-cli:latest` | `bash scripts/ci-create-gitlab-release.sh` — GitLab Release for `$CI_COMMIT_TAG` (requires **Job token** permission to create releases, if restricted in project settings) |
 | `promote_production` | `python:3.12-slim` (+ make), **manual** | `make ci-promote` → `scripts/promote-prod.sh` after human acceptance |
+| `mirror_github` | `python:3.12-slim` (+ git) | `bash scripts/ci-mirror-github.sh` — force-with-lease push of `CI_COMMIT_SHA` to `main` on GitHub; pushes `CI_COMMIT_TAG` when set |
 
 **Why Kaniko:** GitLab shared runners are Alpine-based and lack a Docker daemon. Kaniko builds without DinD and avoids `glibc` issues with `aws-cli` v2 on Alpine.
 
@@ -452,6 +454,8 @@ lint (make ci-lint)
 | `EB_APP_NAME` | `huginn` |
 | `EB_BLUE_ENV` | `huginn-blue` |
 | `EB_GREEN_ENV` | `huginn-green` |
+| `GITHUB_MIRROR_TOKEN` | GitHub PAT with **Contents: write** on `FeatureFactory-io/huginn` (masked; used only by `mirror_github`) |
+| `GITHUB_MIRROR_REPO` | Optional override; default `FeatureFactory-io/huginn` |
 
 **Artifact registry:** AWS ECR — `411113550285.dkr.ecr.us-east-1.amazonaws.com/huginn`.
 
