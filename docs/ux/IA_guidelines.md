@@ -181,11 +181,11 @@ Size scale and Huginn-specific classes:
 
 | Product | File |
 |---|---|
-| FeatureFactory | `static/images/realm/featurefactory-mark.svg` |
+| FeatureFactory | `static/images/realm/featurefactory-logo.png` |
 | Mimir | `static/images/realm/mimir-logo.png` |
 | Huginn | `static/images/realm/huginn-logo.jpeg` |
-| Yggdrasil | `static/images/realm/yggdrasil-mark.svg` |
-| Heimdall | `static/images/realm/heimdall-mark.svg` |
+| Yggdrasil | `static/images/realm/yggdrasil-logo.png` |
+| Heimdall | `static/images/realm/heimdall-logo.png` |
 
 **Usage rules**:
 - App sidebar header: Huginn mark at 28 × 28 px beside the "Huginn" wordmark.

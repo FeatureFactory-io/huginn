@@ -20,6 +20,14 @@ def test_guest_chrome_and_realm_list():
     assert ctx["chrome"] == "guest"
     assert ctx["active_realm"] == ACTIVE_REALM == "huginn"
     assert slugs == ["featurefactory", "mimir", "huginn", "yggdrasil", "heimdall"]
+    marks = [item["mark"] for item in ctx["realm_items"]]
+    assert marks == [
+        "images/realm/featurefactory-logo.png",
+        "images/realm/mimir-logo.png",
+        "images/realm/huginn-logo.jpeg",
+        "images/realm/yggdrasil-logo.png",
+        "images/realm/heimdall-logo.png",
+    ]
     assert ctx["realm_items"] == list(REALM_ITEMS)
     assert ctx["nav_section"] == "plot"
 
