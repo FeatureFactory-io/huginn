@@ -42,6 +42,17 @@ def test_anonymous_root_shows_marketing_landing():
     assert 'data-testid="realm-navbar"' in body
     assert 'data-testid="navbar-login"' in body
     assert 'data-testid="app-sidebar"' not in body
+    assert 'data-testid="landing-cta-join-beta"' in body
+    assert "Join the beta" in body
+    assert 'data-testid="landing-cta-register"' not in body
+    assert 'data-testid="beta-dialog"' in body
+    assert 'data-testid="beta-email-input"' in body
+    assert 'data-testid="beta-consent"' in body
+    assert 'data-testid="beta-submit"' in body
+    assert 'data-testid="beta-status"' in body
+    assert "https://dnucu9yrr1.execute-api.us-east-1.amazonaws.com/registrations" in body
+    assert "js/beta_registration.js" in body
+    assert "js/landing_beta.js" in body
 
 
 @pytest.mark.django_db

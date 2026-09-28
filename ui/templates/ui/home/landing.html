@@ -22,7 +22,9 @@
         Sign In
       </a>
       <a href="#landing-features" class="hg-landing-link" data-testid="landing-cta-learn">Learn more</a>
-      <span class="hg-landing-link hg-landing-link--disabled" aria-disabled="true" data-testid="landing-cta-register">Register</span>
+      <button type="button" class="hg-landing-link" data-testid="landing-cta-join-beta" data-open-beta>
+        Join the beta
+      </button>
     </div>
   </div>
 </section>
@@ -93,4 +95,49 @@
   </div>
 </section>
 </div>
+
+<div class="modal fade" id="beta-join-modal" tabindex="-1" aria-labelledby="beta-title" aria-hidden="true" data-testid="beta-dialog">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="beta-title">Join the Huginn beta.</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close beta signup" data-testid="beta-close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tell us where to send product notes and early-access invitations.</p>
+        <form
+          data-beta-form
+          data-testid="beta-form"
+          data-endpoint="https://dnucu9yrr1.execute-api.us-east-1.amazonaws.com/registrations"
+          novalidate
+        >
+          <label class="form-label" for="beta-email">Work email</label>
+          <input
+            id="beta-email"
+            class="form-control mb-3"
+            name="email"
+            type="email"
+            autocomplete="email"
+            placeholder="you@company.com"
+            required
+            data-testid="beta-email-input"
+          >
+          <div class="form-check mb-3">
+            <input class="form-check-input" id="beta-consent" name="consent" type="checkbox" required data-testid="beta-consent">
+            <label class="form-check-label" for="beta-consent">
+              I agree to receive Huginn beta updates. I can unsubscribe at any time.
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary" data-testid="beta-submit">Join the beta</button>
+          <p class="form-text mt-3 mb-0" role="status" aria-live="polite" data-testid="beta-status"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/beta_registration.js' %}"></script>
+<script src="{% static 'js/landing_beta.js' %}"></script>
 {% endblock %}
