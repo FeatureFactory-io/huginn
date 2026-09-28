@@ -168,7 +168,9 @@ def test_project_variables_echarts_api_filters_by_period(client):
 
     base = timezone.now()
     old = base - timezone.timedelta(days=30)
-    recent = base - timezone.timedelta(days=1)
+    # Keep the in-range point inside the current calendar week even when the
+    # suite runs on Monday; "one day ago" would then belong to last week.
+    recent = base
 
     from gjallarhorn.models import Conversation, ExecutionPlan
 

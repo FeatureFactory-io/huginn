@@ -18,11 +18,11 @@
       Unprecedented operational tempo of data-driven decision making with Human-AI Command Composite
     </p>
     <div class="d-flex gap-4 flex-wrap justify-content-center align-items-center">
-      <a href="{% url 'auth-login' %}" class="btn btn-primary btn-lg px-5" data-testid="landing-cta-signin">
+      <a href="{% url 'auth-login' %}" class="btn btn-primary btn-lg px-5" data-testid="landing-cta-signin" data-analytics-event="cta_click" data-analytics-cta="hero" data-analytics-target="sign_in">
         Sign In
       </a>
-      <a href="#landing-features" class="hg-landing-link" data-testid="landing-cta-learn">Learn more</a>
-      <button type="button" class="hg-landing-link" data-testid="landing-cta-join-beta" data-open-beta>
+      <a href="#landing-features" class="hg-landing-link" data-testid="landing-cta-learn" data-analytics-event="cta_click" data-analytics-cta="hero" data-analytics-target="features">Learn more</a>
+      <button type="button" class="hg-landing-link" data-testid="landing-cta-join-beta" data-open-beta data-analytics-event="cta_click" data-analytics-cta="hero" data-analytics-target="beta_registration">
         Join the beta
       </button>
     </div>
@@ -30,69 +30,158 @@
 </section>
 
 <div class="hg-landing-features-wrap">
-<section class="card border-0 shadow-sm rounded-3 mb-4" id="landing-features" data-testid="landing-features">
-  <div class="card-header bg-white border-bottom py-2 px-3 fw-semibold d-flex align-items-center">
-    <i class="fa-solid fa-route me-2 text-primary" aria-hidden="true"></i>
-    <span>How it works</span>
-  </div>
-  <div class="card-body">
-    <div class="row g-3">
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-roe-variables">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-ballot-check" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Encode your situation assessment heuristics</h2>
-          <p class="mb-0 small text-muted">
-            Author Rules of Engagement — a versioned Playbook with Workflow and Variables that define what good looks like for each project. Gjallarhorn evaluates every sync against those expectations.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-datasources">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-plug" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Feed deep, broad data streams</h2>
-          <p class="mb-0 small text-muted">
-            Connect GitLab, Jira, and more. Mimir playbooks extend ingestion with unprecedented breadth and depth — commits, issues, milestones, and the signals your Variables need to assess reality.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-priorities">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">See priorities immediately</h2>
-          <p class="mb-0 small text-muted">
-            Color-coded Variables on the Tactical Plot surface red, orange, yellow, and green instantly. Track progression over time via VariableDatapoints — each point traces to the SitRep that produced it.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-sitrep">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-display-chart-up-circle-currency" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">SitReps that drive decisions</h2>
-          <p class="mb-0 small text-muted">
-            Gjallarhorn sits on top of your data streams — situational assessment, Variables snapshot, and Decisions with Outcome options. You choose the course: calibrate doctrine, dispatch work, or type your own.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-learning">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-brain" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Learns from your judgment</h2>
-          <p class="mb-0 small text-muted">
-            Every Decision review enriches Decisions Logic — project memory of how reasoning evolved — and your Commander profile. Gjallarhorn adapts proposed Outcomes to your management style over time.
-          </p>
-        </div>
-      </div>
-      <div class="col-12 col-md-6 col-xl-4 d-flex">
-        <div class="hg-landing-feature flex-grow-1" data-testid="landing-feature-autonomous">
-          <div class="hg-landing-feature-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></div>
-          <h2 class="h6 mb-1">Unleash autonomous mode</h2>
-          <p class="mb-0 small text-muted">
-            When RoE and management style are sufficiently aligned, flip Semi-Auto to Auto per project. Gjallarhorn executes Outcomes on its own — you observe via audit log and Action Stations.
-          </p>
-        </div>
-      </div>
+<section class="hg-landing-story" id="landing-features" data-testid="landing-features" aria-labelledby="landing-story-title">
+  <header class="hg-story-header">
+    <p class="hg-story-kicker">The daily command loop · Acts 5–12</p>
+    <h2 id="landing-story-title">From signal to accountable action.</h2>
+    <p>Gjallarhorn assembles the situation. You bring judgment. Huginn preserves the evidence, executes the chosen outcome, and carries the learning into the next loop.</p>
+  </header>
+
+  <article class="hg-story-feature" data-analytics-feature="sitrep">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">05 · Orient</span>
+      <h3>Read the situation, not another dashboard.</h3>
+      <p>Each sync becomes a frozen SitRep: assessed period, Rules of Engagement, Variables, applied FRAGOs, and the Decisions that now deserve command attention.</p>
+      <strong>SitRep · Evidence · Proposed Decisions</strong>
     </div>
-  </div>
+    <figure class="hg-product-screen" data-screen-id="SITREP-VIEW_SITREP-1" aria-label="Huginn SitRep product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>atlas-backend / SitRep</span><span class="hg-screen-status hg-screen-status--red">RED</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Situation Report · 28 Sep 14:30</span><h4>Milestone risk requires a decision</h4><p>Today 09:00 → 14:30 · RoE v4 · Auto trigger</p></div><span class="hg-screen-chip">Semi-Auto</span></header>
+        <div class="hg-screen-metrics" aria-label="Variable snapshot"><div><span>Throughput</span><strong class="hg-text-green">18</strong><small>increments</small></div><div><span>Cycle Time</span><strong class="hg-text-red">8.4d</strong><small>target ≤ 5d</small></div><div><span>Quality</span><strong class="hg-text-orange">82%</strong><small>coverage</small></div><div><span>Rework</span><strong class="hg-text-green">11%</strong><small>stable</small></div></div>
+        <div class="hg-screen-columns">
+          <section class="hg-screen-card hg-screen-card--accent"><div class="hg-screen-card-heading"><strong>1 · Situation Assessment</strong><span class="hg-screen-status hg-screen-status--red">Critical</span></div><p class="hg-screen-lead">Release 1.21 is at risk. Three critical bugs remain open and median cycle time has crossed the command threshold.</p><ul class="hg-screen-evidence"><li><span>Cycle Time</span>8.4d actual · ≤ 5d expected</li><li><span>Milestone</span>3 critical bugs · due Monday</li><li><span>Context</span>Friday bug belay applied</li></ul></section>
+          <aside class="hg-screen-rail"><div class="hg-screen-card"><span class="hg-screen-label">Decision proposed</span><strong>Stabilize the release path</strong><small>3 Outcome options</small></div><div class="hg-screen-card"><span class="hg-screen-label">Evidence</span><strong>7 sourced facts</strong><small>2 Variables breached</small></div><span class="hg-screen-button">Review Decision →</span></aside>
+        </div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature hg-story-feature--reverse" data-analytics-feature="frago">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">06 · Calibrate</span>
+      <h3>Change the doctrine without erasing the record.</h3>
+      <p>A FRAGO explains a legitimate exception in flight. Scope it, time-box it, and verify exactly which SitReps used it.</p>
+      <strong>Project-scoped · Versioned · Auditable</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="FRAGOS-VIEW_FRAGO-1" aria-label="Huginn FRAGO detail product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>FRAGOs / atlas-backend</span><span class="hg-screen-status hg-screen-status--green">Active</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Rules of Engagement adjustment</span><h4>Friday bug belay</h4><p>Affects Active Bug Count (ABC) · Project atlas-backend</p></div><span class="hg-screen-toggle"><i></i> Enabled</span></header>
+        <div class="hg-frago-layout">
+          <section class="hg-screen-card hg-frago-document"><div class="hg-screen-card-heading"><strong>Body</strong><span>Markdown</span></div><h5>Friday release tolerance</h5><p>Belay the zero-bug expectation on Fridays. Up to <strong>3 active bugs</strong> is acceptable while release verification is underway.</p><div class="hg-screen-callout"><span>Effective window</span><strong>Fridays · through 31 Oct</strong></div></section>
+          <aside class="hg-screen-rail"><div class="hg-screen-card"><span class="hg-screen-label">Application history</span><strong>SitRep #142</strong><small>28 Sep · 14:30</small><strong>SitRep #138</strong><small>21 Sep · 16:10</small></div><div class="hg-screen-card"><span class="hg-screen-label">Last changed</span><strong>Enabled</strong><small>Donland · 09:12</small></div></aside>
+        </div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature" data-analytics-feature="variables">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">07 · Explain</span>
+      <h3>See when the signal changed—and why.</h3>
+      <p>Every Variable trajectory is reconstructed from immutable SitRep datapoints. Select any point to inspect its period, source plan, and original assessment.</p>
+      <strong>Variable trajectory · Provenance · Drill-down</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="VARIABLES-VIEW-1" aria-label="Huginn Variables trend product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>atlas-backend / Variables</span><span>Today</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Rules of Engagement · v4</span><h4>Cycle Time (CT)</h4><p>Median time from first increment to completed work</p></div><span class="hg-screen-chip">Last 8 hours ▾</span></header>
+        <div class="hg-variable-layout">
+          <section class="hg-screen-card hg-screen-chart"><div class="hg-screen-card-heading"><strong>Variable trajectory</strong><span class="hg-screen-status hg-screen-status--red">8.4 days</span></div><svg viewBox="0 0 640 220" role="img" aria-label="Cycle time rose from green to red across five SitRep datapoints"><g class="hg-chart-grid"><line x1="42" y1="36" x2="620" y2="36"/><line x1="42" y1="96" x2="620" y2="96"/><line x1="42" y1="156" x2="620" y2="156"/><line x1="42" y1="204" x2="620" y2="204"/></g><polyline points="58,178 190,154 322,126 454,78 592,44"/><g class="hg-chart-points"><circle class="is-green" cx="58" cy="178" r="7"/><circle class="is-green" cx="190" cy="154" r="7"/><circle class="is-orange" cx="322" cy="126" r="7"/><circle class="is-orange" cx="454" cy="78" r="7"/><circle class="is-red" cx="592" cy="44" r="9"/></g><g class="hg-chart-labels"><text x="48" y="218">09:00</text><text x="180" y="218">10:30</text><text x="312" y="218">12:00</text><text x="444" y="218">13:15</text><text x="570" y="218">14:30</text></g></svg><div class="hg-screen-thresholds"><span><i class="is-green"></i> ≤ 5d</span><span><i class="is-orange"></i> 5–7d</span><span><i class="is-red"></i> &gt; 7d</span></div></section>
+          <aside class="hg-screen-card hg-point-detail"><span class="hg-screen-label">Selected datapoint</span><strong>8.4 days · Red</strong><small>13:15 → 14:30</small><dl><dt>Origin</dt><dd>SitRep #142</dd><dt>Plan step</dt><dd>Assess Cycle Time</dd><dt>Evidence</dt><dd>23 work items</dd></dl><span class="hg-screen-button">Open SitRep</span></aside>
+        </div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature hg-story-feature--reverse" data-analytics-feature="chat">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">08 · Interrogate</span>
+      <h3>Ask the question the report did not answer.</h3>
+      <p>Gjallarhorn reasons inside the selected Project, grounds its answer in live evidence, and keeps tool work inspectable instead of hiding it behind a confident paragraph.</p>
+      <strong>Grounded in SitRep · Project memory · Tool trace</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="CHAT-FULLSCREEN-1" aria-label="Gjallarhorn grounded chat product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>Gjallarhorn / atlas-backend</span><span class="hg-screen-status hg-screen-status--blue">Grounded</span></div>
+      <div class="hg-screen-canvas hg-chat-screen">
+        <div class="hg-chat-context"><span>Context</span><strong>SitRep #142</strong><span>RoE v4</span><span>2 active FRAGOs</span></div>
+        <div class="hg-chat-layout">
+          <section class="hg-chat-thread"><div class="hg-chat-bubble hg-chat-bubble--user">Why did Cycle Time turn red today if throughput stayed green?</div><div class="hg-chat-bubble hg-chat-bubble--agent"><span class="hg-screen-kicker">Gjallarhorn</span><p>Throughput is healthy because 18 increments landed, but 11 belong to work already in progress. Three long-running critical bugs crossed the seven-day threshold, lifting median Cycle Time to 8.4 days.</p><div class="hg-chat-citations"><span>SitRep #142</span><span>CT datapoint</span><span>23 UoWs</span></div></div><details open><summary>Tool trace · 3 calls</summary><code>get_sitrep(142) → get_variable("CT") → list_uows(age_days ≥ 7)</code></details></section>
+          <aside class="hg-screen-rail"><div class="hg-screen-card"><span class="hg-screen-label">Pinned context</span><strong>Milestone 1.21</strong><small>Due Monday</small><strong>Friday bug belay</strong><small>Active</small></div><div class="hg-screen-card"><span class="hg-screen-label">Suggested next step</span><strong>Review stabilization Decision</strong></div></aside>
+        </div>
+        <div class="hg-chat-input"><span>Ask Gjallarhorn…</span><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature" data-analytics-feature="decisions">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">09 · Decide</span>
+      <h3>Choose the outcome—and leave the reasoning behind.</h3>
+      <p>Approve one bounded calibration or dispatch, reject with optional vigilance, or write your own. The action and your rationale become durable command memory.</p>
+      <strong>Outcome options · Human judgment · Decisions Logic</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="DECISIONS-VIEW_DECISION-1" aria-label="Huginn Decision outcome chooser product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>Decision / D-442</span><span class="hg-screen-status hg-screen-status--orange">Proposed</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Source SitRep #142 · High confidence</span><h4>Stabilize the release path before Monday</h4><p>Owner: Commander · Mode: Semi-Auto</p></div><span class="hg-screen-chip">2 breaches</span></header>
+        <section class="hg-screen-card hg-decision-case"><div class="hg-screen-card-heading"><strong>Gjallarhorn's case</strong><span>7 evidence items</span></div><p>Cycle time is rising because critical bugs are aging, not because delivery stopped. Protect the milestone by dispatching targeted stabilization work.</p></section>
+        <div class="hg-outcome-grid" aria-label="Outcome options"><div class="hg-outcome-card"><span>Calibration</span><strong>Monitor through a FRAGO</strong><small>Retune the threshold for this release window.</small></div><div class="hg-outcome-card is-selected"><span>Recommended · Dispatch</span><strong>Create Jira stabilization issue</strong><small>Assign the three critical bugs as one bounded task.</small><b>Selected</b></div><div class="hg-outcome-card"><span>Custom</span><strong>Type your own</strong><small>Route another bounded outcome.</small></div></div>
+        <div class="hg-decision-footer"><div><span class="hg-screen-label">Reasoning · required</span><p>Protect the release without masking the Cycle Time signal.</p></div><span class="hg-screen-button hg-screen-button--success">Approve and create HUGINN-302</span></div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature hg-story-feature--reverse" data-analytics-feature="contributors">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">10 · Verify reality</span>
+      <h3>Inspect contribution without collapsing people into a score.</h3>
+      <p>Follow the underlying increments and work items day by day. Identity reconciliation keeps source handles together while the evidence remains available for review.</p>
+      <strong>Activity timeline · Reconciled identity · Source records</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="CONTRIBUTORS-VIEW_CONTRIBUTOR-1" aria-label="Huginn contributor activity product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>Contributors / Anton P.</span><span>This week</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Reconciled contributor</span><h4>Anton Petrov</h4><p>anton@company.com · @antonp · Jira anton.petrov</p></div><span class="hg-screen-status hg-screen-status--green">Mapped</span></header>
+        <div class="hg-contributor-layout"><section class="hg-screen-card"><div class="hg-screen-card-heading"><strong>Activity timeline</strong><span>23 increments · 8 UoWs</span></div><div class="hg-week-chart" aria-label="Daily contributor activity"><div><span>Mon</span><i style="--hg-bar:82%"></i><b>8 / 3</b></div><div><span>Tue</span><i style="--hg-bar:55%"></i><b>5 / 2</b></div><div><span>Wed</span><i style="--hg-bar:68%"></i><b>6 / 1</b></div><div><span>Thu</span><i style="--hg-bar:46%"></i><b>4 / 2</b></div><div><span>Fri</span><i style="--hg-bar:8%"></i><b>0 / 0</b></div></div><div class="hg-activity-list"><div><span class="hg-screen-status hg-screen-status--blue">feat</span><strong>9f8a2c1</strong><small>Release health endpoint</small></div><div><span class="hg-screen-status hg-screen-status--green">fix</span><strong>HUG-291</strong><small>Close retry loop regression</small></div></div></section><aside class="hg-screen-rail"><div class="hg-screen-card"><span class="hg-screen-label">Open UoWs</span><strong>HUG-298</strong><small>Critical · 8d</small><strong>HUG-302</strong><small>Dispatched today</small></div><div class="hg-screen-card"><span class="hg-screen-label">FRAGO mentions</span><strong>None active</strong></div></aside></div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature" data-analytics-feature="action-stations">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">11 · Confirm dispatch</span>
+      <h3>Know that the work landed where execution happens.</h3>
+      <p>Action Stations is a read-only Jira mirror for successful dispatches. Huginn shows current state and provenance; the team keeps working in its system of record.</p>
+      <strong>Read-only Jira mirror · Dispatch provenance · Sync</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="ACTIONSTATIONS-LIST+FIND-1" aria-label="Huginn Action Stations product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>Action Stations</span><span class="hg-screen-status hg-screen-status--green">Synced</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Read-only Jira mirror</span><h4>4 active dispatches</h4><p>Last sync 14:38 · HUGINN-labelled issues</p></div><span class="hg-screen-button">↻ Sync</span></header>
+        <div class="hg-screen-filters"><span>Project: All</span><span>Status: Open + In progress</span><span>Assignee: All</span></div>
+        <div class="hg-screen-table-wrap"><table class="hg-screen-table"><thead><tr><th>Key</th><th>Summary</th><th>Status</th><th>Assignee</th><th>Project</th><th>Updated</th></tr></thead><tbody><tr><td><strong>HUGINN-302 ↗</strong></td><td>Stabilize release 1.21 critical path</td><td><span class="hg-screen-status hg-screen-status--blue">In progress</span></td><td>Anton P.</td><td>Atlas</td><td>2m ago</td></tr><tr><td><strong>HUGINN-298 ↗</strong></td><td>Restore canary coverage gate</td><td><span class="hg-screen-status hg-screen-status--orange">Open</span></td><td>Maria S.</td><td>Atlas</td><td>1h ago</td></tr><tr><td><strong>HUGINN-287 ↗</strong></td><td>Document rollback ownership</td><td><span class="hg-screen-status hg-screen-status--green">Done</span></td><td>Priya N.</td><td>Platform</td><td>Yesterday</td></tr></tbody></table></div>
+        <div class="hg-screen-footnote"><i class="fa-solid fa-lock" aria-hidden="true"></i> Jira remains the system of record. No edits are made from this screen.</div>
+      </div>
+    </figure>
+  </article>
+
+  <article class="hg-story-feature hg-story-feature--reverse hg-story-feature--last" data-analytics-feature="situational-awareness">
+    <div class="hg-story-copy">
+      <span class="hg-story-step">12 · Compound</span>
+      <h3>Carry today’s context into every future loop.</h3>
+      <p>Situational Awareness is workspace-wide narrative memory: durable constraints, active situations, source Decisions, and a version trail that explains what changed.</p>
+      <strong>Workspace-wide narrative memory · Versions · Decision links</strong>
+    </div>
+    <figure class="hg-product-screen" data-screen-id="SITAWARENESS-VIEW-1" aria-label="Huginn Situational Awareness product screenshot">
+      <div class="hg-screen-bar"><span class="hg-screen-brand">HUGINN</span><span>Situational Awareness</span><span>v12 · Current</span></div>
+      <div class="hg-screen-canvas">
+        <header class="hg-screen-header"><div><span class="hg-screen-kicker">Workspace-wide narrative memory</span><h4>Context every SitRep should know</h4><p>Shared across all Projects · Read-only view</p></div><span class="hg-screen-button">Edit</span></header>
+        <div class="hg-awareness-layout"><section class="hg-awareness-document"><div class="hg-screen-card"><div class="hg-screen-card-heading"><strong>Standing context</strong><span>2 entries</span></div><article><h5>Core team owns ingestion</h5><small>Donland · 10 Apr</small><p>Platform Engineering is accountable for ingestion reliability and connector policy.</p></article><article><h5>Release authority</h5><small>Priya N. · 18 Apr</small><p>Production promotion remains an explicit Commander decision.</p></article></div><div class="hg-screen-card"><div class="hg-screen-card-heading"><strong>Active situations</strong><span class="hg-screen-status hg-screen-status--orange">This week</span></div><article><h5>GitLab rate-limit window</h5><small>Source Decision D-438 · 28 Sep</small><p>Expect delayed sync completion during the migration window; do not interpret gaps as team inactivity.</p></article></div></section><aside class="hg-screen-card hg-version-list"><span class="hg-screen-label">Versions</span><div class="is-current"><strong>v12</strong><small>Rate-limit context · Today</small></div><div><strong>v11</strong><small>Release authority · 18 Apr</small></div><div><strong>v10</strong><small>Team disposition · 10 Apr</small></div><span class="hg-screen-button">Compare with current</span></aside></div>
+      </div>
+    </figure>
+  </article>
 </section>
 </div>
 
@@ -107,6 +196,7 @@
         <p>Tell us where to send product notes and early-access invitations.</p>
         <form
           data-beta-form
+          data-analytics-registration="beta"
           data-testid="beta-form"
           data-endpoint="https://dnucu9yrr1.execute-api.us-east-1.amazonaws.com/registrations"
           novalidate

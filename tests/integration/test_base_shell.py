@@ -3,6 +3,7 @@
 from datetime import date, timedelta
 
 import pytest
+from django.conf import settings
 from django.test import Client
 from django.urls import reverse
 
@@ -12,6 +13,17 @@ from tests.factories import (
     SitRepFactory,
     SituationalAwarenessFactory,
     SituationalAwarenessVersionFactory,
+)
+
+LANDING_PRODUCT_SCREEN_IDS = (
+    "SITREP-VIEW_SITREP-1",
+    "FRAGOS-VIEW_FRAGO-1",
+    "VARIABLES-VIEW-1",
+    "CHAT-FULLSCREEN-1",
+    "DECISIONS-VIEW_DECISION-1",
+    "CONTRIBUTORS-VIEW_CONTRIBUTOR-1",
+    "ACTIONSTATIONS-LIST+FIND-1",
+    "SITAWARENESS-VIEW-1",
 )
 
 
@@ -53,6 +65,43 @@ def test_anonymous_root_shows_marketing_landing():
     assert "https://dnucu9yrr1.execute-api.us-east-1.amazonaws.com/registrations" in body
     assert "js/beta_registration.js" in body
     assert "js/landing_beta.js" in body
+
+
+@pytest.mark.django_db
+def test_anonymous_root_learn_more_tells_acts_five_through_twelve_story():
+    client = Client()
+    response = client.get("/")
+    body = response.content.decode()
+
+    screen_positions = []
+    for screen_id in LANDING_PRODUCT_SCREEN_IDS:
+        screen_marker = f'data-screen-id="{screen_id}"'
+        assert screen_marker in body
+        screen_positions.append(body.index(screen_marker))
+
+    assert screen_positions == sorted(screen_positions)
+    assert body.count('class="hg-product-screen"') == len(LANDING_PRODUCT_SCREEN_IDS)
+    for phrase in (
+        "Situation Assessment",
+        "Friday bug belay",
+        "Variable trajectory",
+        "Grounded in SitRep",
+        "Outcome options",
+        "Activity timeline",
+        "Read-only Jira mirror",
+        "Workspace-wide narrative memory",
+    ):
+        assert phrase in body
+
+
+def test_landing_story_styles_product_screens_and_mobile_layout():
+    styles = (settings.BASE_DIR / "static" / "css" / "huginn.css").read_text()
+
+    assert ".hg-landing-story" in styles
+    assert ".hg-product-screen" in styles
+    assert ".hg-screen-bar" in styles
+    assert ".hg-screen-chart" in styles
+    assert "@media (max-width: 820px)" in styles
 
 
 @pytest.mark.django_db

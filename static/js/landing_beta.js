@@ -74,6 +74,7 @@
         status.textContent = error instanceof Error ? error.message : OUTCOME_COPY.error;
         button.disabled = false;
         button.textContent = "Join the beta";
+        dispatchRegistrationOutcome("error");
         console.log("[beta] submission rejected", error);
       });
   }
@@ -103,7 +104,12 @@
     const complete = outcome === "success" || outcome === "duplicate";
     button.disabled = complete;
     button.textContent = complete ? "Request received" : "Join the beta";
+    dispatchRegistrationOutcome(outcome);
     console.log("[beta] outcome=" + outcome);
+  }
+
+  function dispatchRegistrationOutcome(outcome) {
+    window.dispatchEvent(new CustomEvent("ff:registration-outcome", { detail: { outcome: outcome } }));
   }
 
   if (document.readyState === "loading") {

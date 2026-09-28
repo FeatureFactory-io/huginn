@@ -13,7 +13,7 @@
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
   <script src="https://kit.fontawesome.com/5763ae6dfb.js" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="{% static 'css/huginn.css' %}">
+  <link rel="stylesheet" href="{% static 'css/huginn.css' %}?v=acts-5-12">
   <script>
     (function () {
       try {
@@ -29,7 +29,13 @@
 
   {% block extra_css %}{% endblock %}
 </head>
-<body class="d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}">
+<body class="d-flex flex-column min-vh-100 {% block body_class %}{% endblock %}"
+      data-analytics-measurement-id="G-0M33216B65"
+      data-analytics-product-id="huginn"
+      data-analytics-experiment-id="exp-huginn-beta-001"
+      data-analytics-hypothesis-id="hyp-command-composite-demand-001"
+      data-analytics-variant-id="var-landing-001"
+      {% if not user.is_authenticated %}data-analytics-enabled="true"{% endif %}>
 
 {% block navbar %}
 <nav class="navbar navbar-expand-lg navbar-dark hg-navbar hg-realm-navbar sticky-top"
@@ -166,8 +172,17 @@
   </div>
 </div>
 
+{% if not user.is_authenticated %}
+<button class="analytics-settings btn btn-sm btn-outline-secondary" type="button" data-analytics-settings aria-label="Change analytics preference">Analytics</button>
+<aside class="analytics-consent" data-analytics-consent hidden aria-label="Analytics preference">
+  <p><strong>Help improve Huginn.</strong> Allow privacy-conscious product analytics? Beta signup works either way.</p>
+  <div><button type="button" class="btn btn-sm btn-outline-secondary" data-analytics-deny>Not now</button><button type="button" class="btn btn-sm btn-primary" data-analytics-allow>Allow analytics</button></div>
+</aside>
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'js/list-find-filters.js' %}"></script>
+<script src="{% static 'js/product_analytics.js' %}"></script>
 <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 
