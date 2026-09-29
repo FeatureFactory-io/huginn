@@ -38,6 +38,7 @@ from .views.roe import (
     RulesOfEngagementEditView,
     RulesOfEngagementListView,
 )
+from .views.seo import robots_txt, sitemap_xml
 from .views.sitrep import SitRepAllListView, SitRepDetailView, SitRepListView, sitrep_generate_view
 from .views.situational_awareness import SituationalAwarenessEditView, SituationalAwarenessView
 from .views.ux_preview import palette_preview
@@ -45,6 +46,8 @@ from .views.variables import ProjectVariablesEChartsApiView
 
 urlpatterns = [
     path("", HomeView.as_view(), name="home"),
+    path("robots.txt", robots_txt, name="robots-txt"),
+    path("sitemap.xml", sitemap_xml, name="sitemap-xml"),
     path("plot/", DashboardProjectsView.as_view(), name="tactical-plot"),
     path("accounts/login/", LoginScreenView.as_view(), name="auth-login"),
     path("accounts/logout/", LogoutScreenView.as_view(), name="auth-logout"),
