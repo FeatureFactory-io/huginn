@@ -1,7 +1,7 @@
 # Increments & sync engine — full rollout (BPE-01)
 
 **Milestone:** Datasources & Projects (`dp2580/huginn`)
-**Workflow:** `.cursor/workflows/BPE-reference/BPE-reference-01-Plan_Feature.md`
+**Workflow:** `.cursor/workflows/BPE/BPE-01-Plan_Feature.md`
 **GitLab:** `glab` CLI (issue titles `Act 2 Projects — Phase I–O (F12–F18)`)
 **Dependency chain:** F12 (docs) → F13 (models) → F14 (SyncEngine + adapter ABC) → F15 (GitLab adapter) → F16 (Celery + beat) → F17 (Vitals tabs) → F18 (Increments tab UI + tests)
 

@@ -1,6 +1,6 @@
 # GitHub DataSource — BPE-01 Plan Feature
 
-Companion to [`.cursor/workflows/BPE-reference/BPE-reference-01-Plan_Feature.md`](.cursor/workflows/BPE-reference/BPE-reference-01-Plan_Feature.md).
+Companion to [`.cursor/workflows/BPE/BPE-01-Plan_Feature.md`](.cursor/workflows/BPE/BPE-01-Plan_Feature.md).
 
 **BPE-01 step coverage (this session):**
 

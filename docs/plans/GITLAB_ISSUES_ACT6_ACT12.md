@@ -3,7 +3,7 @@
 **Project:** `dp2580/huginn`
 **Milestone:** [Playbooks + FRAGOs + Awareness](https://gitlab.com/dp2580/huginn/-/milestones/6) (`7419452`)
 
-Planned per **BPE-reference-01** (issue bodies include mockup parity targets).
+Planned per **BPE-01** (issue bodies include mockup parity targets).
 
 | IID | Title | Body file |
 |-----|-------|-----------|

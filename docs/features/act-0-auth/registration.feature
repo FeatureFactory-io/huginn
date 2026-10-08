@@ -4,7 +4,7 @@ Feature: Act 0 — Registration, verification, approval, moderation
   So that I can sign in to Huginn after onboarding
 
   # ESM Activity 05 (feature files): Huginn uses Screen IDs `{ENTITY}-{OPERATION}-{VERSION}` and
-  # scenarios `AUTH-{…}-{NN}` / `USERS-{…}-{NN}` — not the Mimir `FOB-*` prefix from `.cursor/workflows/ESM-reference/ESM-reference-05-Write_Feature_Files.md`.
+  # scenarios `AUTH-{…}-{NN}` / `USERS-{…}-{NN}` — not the Mimir `FOB-*` prefix from `.cursor/workflows/ESM/ESM-05-Write_Feature_Files.md`.
 
   # Covers journeys in docs/features/user_journey.md § Act 0 — screens AUTH-LOGIN-1 (signup edges),
   # AUTH-REGISTER-1, AUTH-AWAIT_VERIFICATION-1, AUTH-VERIFY_EMAIL-1, AUTH-AWAIT_APPROVAL-1.

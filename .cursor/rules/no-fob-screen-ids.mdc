@@ -26,6 +26,6 @@ Feature Files, ESM-06 Mockups), substitute or omit the Screen ID convention:
   `VIEW + EDIT`, `LIST+FIND + VIEW`, `CHAT`, `REVOKE_*`).
 
 This rule is a project-level override of the Mimir template defaults. The
-template text in `.cursor/workflows/ESM-reference/*` is reference material
+template text in `.cursor/workflows/ESM/*` is reference material
 only — treat any `FOB-*` examples there as illustrative of Mimir, not as
 prescriptive for Huginn.

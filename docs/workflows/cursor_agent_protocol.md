@@ -11,7 +11,7 @@ Use the **dark-factory** Cursor skill (install `dark-factory`, read `SKILL.md` i
 1. **Manifest** — `<!-- MANIFEST -->` on the GitLab milestone (source: `docs/plans/iterations/ITER-*.yaml` or published equivalent).
 2. **Per-scenario blocks** — machine-readable blocks in GitLab issue bodies (e.g. `<!-- SCENARIO -->`).
 3. **Architecture & CI/CD** — [`docs/architecture/SAO.md`](../architecture/SAO.md) (especially §9–§10).
-4. **Implementation playbooks** — [`.cursor/workflows/BPE-reference/`](../../.cursor/workflows/BPE-reference/) (plan, implement, definition of done, finalize) and **`docs/features/**`**.
+4. **Implementation playbooks** — [`.cursor/workflows/BPE/`](../../.cursor/workflows/BPE/) (plan, implement, definition of done, finalize) and **`docs/features/**`**.
 
 ## Worker code quality (Dr. Dobbs)
 

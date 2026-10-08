@@ -1,6 +1,6 @@
 # BPE-01 Plan — Act 6 (FRAGO) + Act 12 (Situational Awareness)
 
-Companion to FeatureFactory **BPE-reference-01-Plan_Feature**. Sources:
+Companion to FeatureFactory **BPE-01-Plan_Feature**. Sources:
 
 - `docs/features/act-6-fragos/*.feature`
 - `docs/features/act-12-situational-awareness/*.feature`

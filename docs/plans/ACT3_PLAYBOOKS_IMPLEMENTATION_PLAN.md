@@ -1,6 +1,6 @@
 # Act 3 — Playbooks (BPE-01 Plan Feature)
 
-**Activity:** BPE-reference-01-Plan_Feature
+**Activity:** BPE-01-Plan_Feature
 **Specs:** `docs/features/act-3-playbooks/*.feature`, `docs/features/user_journey.md` (Act 3)
 **Reference UI:** `ui/templates/ui/mockups/playbooks/` + `ui/views/mockups/playbooks.py` (reference-only; operational UI goes under `ui/templates/ui/playbooks/` and `ui/views/`).
 
